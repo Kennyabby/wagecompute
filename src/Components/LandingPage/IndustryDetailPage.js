@@ -1,5 +1,5 @@
 /* ============================================================================
-   /industries/:slug — one page per sector.
+   /industries/:slug, one page per sector.
    ----------------------------------------------------------------------------
    Driven from content/industries.js. Section order: hero, the failure modes
    that sector lives with, what the platform does about them, the module set,
@@ -99,13 +99,14 @@ const IndustryDetailPage = () => {
         eyebrow="The problems"
         title={`What goes wrong in ${industry.name.toLowerCase()}`}
         subtitle="Specific failure modes rather than generic pain points, and what in the platform actually addresses each one."
+        rail
         split
       >
         <Grid cols={2}>
           {industry.challenges.map((challenge, index) => (
             <div className="ds-fact" key={challenge.title}>
               <div className="ds-fact-value" style={{ fontSize: '1.75rem' }}>{String(index + 1).padStart(2, '0')}</div>
-              <h3 className="ds-h4" style={{ marginTop: 14, marginBottom: 8 }}>{challenge.title}</h3>
+              <h3 className="ds-h4 ds-step-title">{challenge.title}</h3>
               <p className="ds-body ds-mb-0">{challenge.text}</p>
             </div>
           ))}
@@ -118,6 +119,7 @@ const IndustryDetailPage = () => {
         variant="cream"
         eyebrow="What it does"
         title={`A ${industry.name.toLowerCase()} configuration, out of the box`}
+        rail
         split
         subtitle="These are platform capabilities, not sector-specific code. The difference between one industry's setup and another's is configuration, which is why there is no customisation to maintain."
       >
@@ -141,6 +143,7 @@ const IndustryDetailPage = () => {
         eyebrow="Module set"
         title="The modules most operators in this sector run"
         subtitle="A starting point rather than a package. Enable what you need and add the rest later. The new price applies from your next renewal."
+        rail
         split
         footer={(
           <ButtonRow>
@@ -177,7 +180,7 @@ const IndustryDetailPage = () => {
               {industry.quote.text}
             </Quote>
             {ILLUSTRATIVE && (
-              <p className="ds-body sm" style={{ marginTop: 28, marginBottom: 0 }}>{PLACEHOLDER_NOTICE}</p>
+              <p className="ds-note">{PLACEHOLDER_NOTICE}</p>
             )}
           </Container>
         </Section>
@@ -189,7 +192,8 @@ const IndustryDetailPage = () => {
           id="stories"
           eyebrow="In practice"
           title="What changed for operators like you"
-          split
+          rail
+        split
           subtitle="Representative scenarios drawn from the kind of operation this configuration is built for."
           footer={<TextLink to="/customers" navigate={navigate}>All customer stories</TextLink>}
         >
@@ -212,7 +216,8 @@ const IndustryDetailPage = () => {
 
       {/* ------------------------------------------------------------- FAQ -- */}
       {industry.faqs && (
-        <Section id="faq" variant="alt" eyebrow="FAQ" title={`Questions about ${industry.name.toLowerCase()}`}>
+        <Section
+        rail id="faq" variant="alt" eyebrow="FAQ" title={`Questions about ${industry.name.toLowerCase()}`}>
           <Container width="narrow">
             <Accordion items={industry.faqs} />
           </Container>

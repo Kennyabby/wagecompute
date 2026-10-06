@@ -1,5 +1,5 @@
 /* ============================================================================
-   /partners — the partner ecosystem.
+   /partners, the partner ecosystem.
    ========================================================================= */
 
 import { useContext, useEffect } from 'react'
@@ -66,6 +66,7 @@ const PartnersPage = () => {
         eyebrow="Programmes"
         title="Four ways to work together"
         subtitle="Pick the one that matches what you already do rather than what you would have to become."
+        rail
         split
       >
         <Grid cols={2}>
@@ -122,6 +123,7 @@ const PartnersPage = () => {
         eyebrow="Certification"
         title="Prove capability to your clients"
         subtitle="Four certifications. The partner track covers data migration, rollout sequencing and handover specifically."
+        rail
         split
         footer={<TextLink to="/training" navigate={navigate}>See the full training paths</TextLink>}
       >
@@ -144,6 +146,7 @@ const PartnersPage = () => {
         eyebrow="Find a partner"
         title="Looking for help rather than offering it?"
         subtitle="Certified partners deliver the same implementation engagements we do, often with sector depth we do not have in-house."
+        rail
         split
       >
         <Grid cols={3}>

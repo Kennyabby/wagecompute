@@ -7,7 +7,7 @@ import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 
 const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
-// Column-wise sum across a location's lines — same fields/abs/fallback logic
+// Column-wise sum across a location's lines, same fields/abs/fallback logic
 // as the table's own row rendering below, reused for both the card-level
 // summary and the table's top/bottom TOTAL rows so all three always agree.
 const sumLocationLines = (lines = []) => lines.reduce((acc, line) => {
@@ -90,13 +90,13 @@ const ReconciliationReview = ({
             setGlDeepLinkTarget(`${match.location}::${initialEmployeeId}`)
         } else {
             setAlertState('info')
-            setAlert('Could not find a shortage charge for this employee on this posting date — it may have been recomputed since.')
+            setAlert('Could not find a shortage charge for this employee on this posting date. It may have been recomputed since.')
             setAlertTimeout(5000)
         }
         setGlDeepLinkApplied(true)
     }, [record, initialEmployeeId, glDeepLinkApplied, setAlert, setAlertState, setAlertTimeout])
 
-    // Runs after every render (no dep array) — the target row's ref only
+    // Runs after every render (no dep array), the target row's ref only
     // exists once the location card is expanded and re-rendered, which
     // happens a render or two after the effect above fires.
     useEffect(() => {
@@ -444,7 +444,7 @@ const ReconciliationReview = ({
                     <div className='reconcile-confirm-modal reconcile-shortage-modal' onClick={(e) => e.stopPropagation()}>
                         <h4>Post Shortage to POS Session(s)</h4>
                         <p>
-                            Location <b>{shortageDraft.location}</b> — shortage value available:{' '}
+                            Location <b>{shortageDraft.location}</b>, shortage value available:{' '}
                             <b>{shortageDraft.shortageAvailable.toLocaleString()}</b>.
                             Select the amount to charge each employee's session below (partial splits allowed).
                         </p>
@@ -484,7 +484,7 @@ const ReconciliationReview = ({
                     <div className='reconcile-confirm-modal' onClick={(e) => e.stopPropagation()}>
                         <h4>Record Inventory Shortage Recovery</h4>
                         <p>
-                            {getEmployeeName ? getEmployeeName(recoveryDraft.employeeId) : recoveryDraft.employeeId} —
+                            {getEmployeeName ? getEmployeeName(recoveryDraft.employeeId) : recoveryDraft.employeeId}:
                             outstanding: ₦{(Number(outstandingByEmployee?.[recoveryDraft.employeeId]) || 0).toLocaleString()}
                         </p>
                         <div className='inpcov'>

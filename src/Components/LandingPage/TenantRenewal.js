@@ -7,7 +7,7 @@ import { fetchPublicCompanyLogo } from '../../Resources/ClientServerAPIConn/fetc
 
 // Public (no-login) self-service renewal page for a suspended/expired tenant.
 // The tenant is resolved server-side from the request's host, exactly like
-// every other request in the app — nothing here is client-supplied. See
+// every other request in the app, nothing here is client-supplied. See
 // `public/tenant/renewal/initialize|verify` in wageserver/UserModule/Billing/billing.js.
 const TenantRenewal = () => {
   const { fetchServer, server, storePath } = useContext(ContextProvider)
@@ -80,7 +80,7 @@ const TenantRenewal = () => {
       </section>
 
       {status.message && (
-        <section className="ec-section" style={{ paddingTop: 0 }}>
+        <section className="ec-section">
           <div className={`sp-status-banner ${status.type || 'info'}`}>
             <strong>{status.type === 'error' ? 'Renewal Issue' : 'Status'}</strong>
             <p>{status.message}</p>
@@ -88,7 +88,7 @@ const TenantRenewal = () => {
         </section>
       )}
 
-      <section className="ec-section" style={{ paddingTop: 0, marginTop: -40 }}>
+      <section className="ec-section">
         <div className="sp-confirm-shell">
           <div className="sp-confirm-card info">
             <div className="sp-confirm-pill-row">

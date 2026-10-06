@@ -1,10 +1,10 @@
 /* ============================================================================
-   /integrations — what connects today, what the platform exposes, and what is
+   /integrations, what connects today, what the platform exposes, and what is
    genuinely still on the roadmap.
    ----------------------------------------------------------------------------
    The roadmap group is visually distinct and explicitly labelled. Listing
    unbuilt integrations alongside shipped ones without that distinction is a
-   common and damaging pattern — buyers discover it during implementation,
+   common and damaging pattern, buyers discover it during implementation,
    and by then the trust is gone.
    ========================================================================= */
 
@@ -94,7 +94,8 @@ const IntegrationsPage = () => {
           eyebrow={group.roadmap ? 'Not available yet' : group.name}
           title={group.roadmap ? 'On the roadmap' : group.name}
           subtitle={group.note}
-          split
+          rail
+        split
         >
           <Tiles cols={group.items.length > 6 ? 4 : 3}>
             {group.items.map((item) => (

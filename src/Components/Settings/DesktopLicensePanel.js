@@ -1,5 +1,5 @@
-// Electron desktop build only — replaces BillingSettingsPanel in the
-// "Billing & Plan" settings tab (relabeled "License" for this build — see
+// Electron desktop build only, replaces BillingSettingsPanel in the
+// "Billing & Plan" settings tab (relabeled "License" for this build, see
 // Settings.js). This app was paid for once via the offline license, not
 // through any in-app subscription, so nothing here initiates payment; it
 // just shows this install's current license status (read from the LOCAL
@@ -33,9 +33,9 @@ const DesktopLicensePanel = ({ variants }) => {
         try {
             const resp = await fetch(`${server}/desktop/license/recheck`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
             const data = await resp.json()
-            setMessage(data.reachedCentral ? 'License status refreshed.' : 'Could not reach the license server — showing the last known status.')
+            setMessage(data.reachedCentral ? 'License status refreshed.' : 'Could not reach the license server, so this is the last known status.')
         } catch (e) {
-            setMessage('Could not reach the license server — showing the last known status.')
+            setMessage('Could not reach the license server, so this is the last known status.')
         }
         await loadStatus()
         setBusy(false)

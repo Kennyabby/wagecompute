@@ -63,7 +63,7 @@ const DatabaseNotFound = ({ isProduction }) => {
             onClick={() => {
               // Electron desktop build: the app's own origin (whatever port
               // electron/main.js's spawned wageserver ended up on) is the
-              // only place to go back to — a hardcoded localhost:3000/
+              // only place to go back to, a hardcoded localhost:3000/
               // epxcentral.com URL below is the WEB deployment's separate
               // marketing site, unreachable/irrelevant from inside the
               // desktop shell. Client-side navigate('/') lands back on

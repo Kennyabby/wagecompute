@@ -1,5 +1,5 @@
 /* ============================================================================
-   /industries — sector overview.
+   /industries, sector overview.
    ----------------------------------------------------------------------------
    Follows sap.com/industries.html: a hero, a set of cross-cutting outcomes,
    then the sectors grouped and shown as photographic cards. Fourteen sectors
@@ -75,8 +75,10 @@ const IndustriesPage = () => {
       >
         <div className="ds-stack lg">
           {INDUSTRY_GROUPS.map((group) => (
-            <div key={group.key}>
-              <h3 className="ds-h3" style={{ marginBottom: 20 }}>{group.name}</h3>
+            <div className="ds-group" key={group.key}>
+              <div className="ds-group-head">
+                <h3 className="ds-h3">{group.name}</h3>
+              </div>
               <Grid cols={4}>
                 {industriesInGroup(group.key).map((industry) => (
                   <Card
@@ -99,13 +101,14 @@ const IndustriesPage = () => {
       {/* ---------------------------------------------------- what's common */}
       <Section
         id="common"
+        rail
         variant="cream"
         eyebrow="What they share"
         title="Four problems that turn up in every sector we work in"
         subtitle="Industry specificity matters at the edges. The centre is remarkably consistent, which is why one engine can serve all fourteen."
         split
       >
-        <Grid cols={4}>
+        <Grid cols={2}>
           <Card
             image={img('inventoryCount', 'card')}
             eyebrow="Problem one"
@@ -172,7 +175,7 @@ const IndustriesPage = () => {
           </ButtonRow>
         </FiftyFifty>
 
-        <div style={{ marginTop: 'clamp(56px, 7vw, 96px)' }}>
+        <div>
           <FiftyFifty
             eyebrow="Not on the list?"
             title="The engine does not actually care what you sell"

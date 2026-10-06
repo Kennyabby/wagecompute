@@ -1,4 +1,4 @@
-// Content for the "Our Story" section on the About page — the same walkthrough
+// Content for the "Our Story" section on the About page, the same walkthrough
 // published as the platform's detailed pitch document, told as one continuous
 // story following one small business (and the sister business that joins it)
 // through a single week, chapter by chapter through every module.

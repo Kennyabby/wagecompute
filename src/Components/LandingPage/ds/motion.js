@@ -3,18 +3,18 @@
    ----------------------------------------------------------------------------
    Three pieces:
 
-   1. useInView / Reveal — IntersectionObserver-driven entrance animations.
+   1. useInView / Reveal, IntersectionObserver-driven entrance animations.
       Elements start slightly down and transparent, and settle as they come
       into view. Children of a revealing container stagger via a CSS custom
       property rather than per-element JavaScript timers, so a grid of twelve
       cards still costs one observer and zero timeouts.
 
-   2. smoothScrollTo — eased programmatic scrolling for anchors and
+   2. smoothScrollTo, eased programmatic scrolling for anchors and
       back-to-top. The native `scroll-behavior: smooth` is linear and feels
       mechanical over long distances; this uses an ease-in-out curve and
       scales its duration with the distance travelled.
 
-   3. useParallax — a few per cent of drift on hero imagery, for depth.
+   3. useParallax, a few per cent of drift on hero imagery, for depth.
 
    What is NOT here is any interception of the wheel. The page scrolls at
    exactly the speed the operating system says it should; see the note
@@ -37,7 +37,7 @@ const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2
 /* ------------------------------------------------------------- in-view --- */
 
 /**
- * Returns [ref, inView]. Fires once and then disconnects — these are
+ * Returns [ref, inView]. Fires once and then disconnects, these are
  * entrance animations, not scroll-linked effects, so re-triggering on the
  * way back up would be noise rather than polish.
  */
@@ -159,13 +159,22 @@ export const smoothScrollTo = (targetY, { duration } = {}) => {
   activeScroll = requestAnimationFrame(frame)
 }
 
-/** Eased scroll to an element, allowing for the sticky header and sub-nav. */
+/**
+ * Eased scroll to an element, clearing the sticky header and secondary nav.
+ *
+ * The allowance is the FULL chrome height, not whatever is on screen at the
+ * moment of the click. Jumping to an anchor scrolls upward as often as not,
+ * which brings the secondary nav straight back in; reserving only the
+ * currently-visible height would land the target underneath it.
+ * ds/useStickyChrome.js keeps --ds-subnav-h at the measured height whether
+ * the bar is shown or hidden, which is exactly what is wanted here.
+ */
 export const smoothScrollToId = (id, extra = 0) => {
   const el = document.getElementById(id)
   if (!el) return
   const styles = getComputedStyle(document.documentElement)
   const header = parseInt(styles.getPropertyValue('--ds-header-h'), 10) || 64
-  const subnav = parseInt(styles.getPropertyValue('--ds-subnav-h'), 10) || 56
+  const subnav = parseInt(styles.getPropertyValue('--ds-subnav-h'), 10) || 96
   smoothScrollTo(el.getBoundingClientRect().top + window.scrollY - header - subnav - 20 - extra)
 }
 
@@ -182,7 +191,7 @@ export const smoothScrollToTop = () => smoothScrollTo(0)
      - A trackpad already applies its own momentum curve at the OS level.
        Layering a second easing on top of that makes the page keep gliding
        after the fingers have lifted, and no choice of easing factor fixes
-       it — the two curves simply compose.
+       it, the two curves simply compose.
      - Any interception adds latency between the input and the pixels, which
        reads as sluggishness even when the total travel is correct.
      - It fights every other way a page can scroll: the scrollbar, the
@@ -199,7 +208,7 @@ export const smoothScrollToTop = () => smoothScrollTo(0)
 
 /**
  * Drifts an element slightly slower than the page as it scrolls. Kept very
- * small (a few percent of travel) — enough to add depth behind hero copy,
+ * small (a few percent of travel), enough to add depth behind hero copy,
  * not enough to induce the queasiness heavy parallax causes.
  */
 export const useParallax = (strength = 0.12) => {

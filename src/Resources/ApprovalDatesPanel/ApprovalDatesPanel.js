@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import './ApprovalDatesPanel.css'
 
-// One row per approval doc — deliberately NOT grouped/deduplicated by date.
+// One row per approval doc, deliberately NOT grouped/deduplicated by date.
 // An earlier grouped-chip version summed same-date items into one chip
 // (e.g. "2026-09-10 (3 approved)"), which is mathematically correct but
-// reads as fewer entries than the badge count at a glance — a flat list
+// reads as fewer entries than the badge count at a glance, a flat list
 // where row count always equals the badge number removes that ambiguity
 // entirely.
 const sortByDate = (list = []) => (
@@ -13,8 +13,8 @@ const sortByDate = (list = []) => (
 
 // Shared across every approval-enabled module: a small clickable trigger
 // (so it never eats page space) that opens a popup listing, per section,
-// every pending (red) and approved (green) approval's posting date — one
-// row per approval — so a document outside the page's current date-range
+// every pending (red) and approved (green) approval's posting date, one
+// row per approval, so a document outside the page's current date-range
 // filter isn't just an invisible number; the user can see exactly which
 // date to point the filter at. Renders nothing if every section is empty.
 const ApprovalDatesPanel = ({ sections = [] }) => {

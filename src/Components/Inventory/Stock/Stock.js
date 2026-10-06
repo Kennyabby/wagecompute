@@ -32,8 +32,8 @@ const Stock = ({
     const [categories, setCategories] = useState([]);
 
     // `dateRange` is the live draft bound to the date inputs, seeded from the
-    // shared `inventoryDateRange` (App.js) each time this page mounts —
-    // changing it no longer fetches anything by itself. The shared range
+    // shared `inventoryDateRange` (App.js) each time this page mounts.
+    // Changing it no longer fetches anything by itself. The shared range
     // itself is what's actually been fetched; it only changes when Apply
     // Filters is clicked here (or on Stock/Adjustments/Overview, all three
     // pages read and write the same value), and is what the periodic
@@ -42,10 +42,10 @@ const Stock = ({
     // and switching to another picks it up automatically via this same
     // useState initializer, keeping every page's date picker honest about
     // what period its numbers actually cover. Warehouse/Category/Search stay
-    // pure client-side filters over whatever's already loaded — no server
+    // pure client-side filters over whatever's already loaded, no server
     // round-trip needed for those.
     const [dateRange, setDateRange] = useState(inventoryDateRange);
-    // 'idle' | 'loading' | 'success' | 'error' — drives the status section
+    // 'idle' | 'loading' | 'success' | 'error', drives the status section
     // next to the Apply Filters button; 'loading' also gates the button
     // against duplicate clicks so a slow request can't be fired twice.
     const [applyStatus, setApplyStatus] = useState('idle');
@@ -242,7 +242,7 @@ const Stock = ({
     //     endDate: dateRange.endDate
     // }), [dateRange.startDate.getTime(), dateRange.endDate.getTime()]);
 
-    // Periodic background refresh — re-fetches on whatever date range was
+    // Periodic background refresh, re-fetches on whatever date range was
     // last actually Applied, not the live draft in the date inputs, so
     // typing/picking a new date doesn't itself trigger a server call.
     useEffect(() => {
@@ -634,13 +634,13 @@ const Stock = ({
             console.error('Apply Filters failed:', error);
             setApplyStatus('error');
             // getProductsStockReport swallows its own internal errors (shows
-            // its own alert and resolves normally) — a rejection reaching
+            // its own alert and resolves normally), a rejection reaching
             // here is almost always this request's own timeout firing on a
             // heavy/wide date range, so surface the real reason instead of a
             // generic message.
             setApplyMessage(
                 error?.message === 'Request timed out'
-                    ? 'Timed out waiting for the server — try a narrower date range.'
+                    ? 'Timed out waiting for the server. Try a narrower date range.'
                     : `Failed to fetch updated data${error?.message ? `: ${error.message}` : '.'}`
             );
         }

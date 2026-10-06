@@ -1,9 +1,9 @@
 /* ============================================================================
-   /resources — the filterable resource library.
+   /resources, the filterable resource library.
    ----------------------------------------------------------------------------
    The resource-centre pattern every major ERP site carries: one pool, filters
    by type and topic, plus a text search over the same pool. Nothing here is
-   gated behind a form — every item routes to real content that already
+   gated behind a form, every item routes to real content that already
    exists on the site.
    ========================================================================= */
 
@@ -68,7 +68,7 @@ const ResourcesPage = () => {
         lede="Setup guides, operational checklists, data-loading templates and writing on the problems this platform exists to solve. Nothing behind a form."
         image={heroImg('businessTraining')}
       >
-        <div className="ds-search" style={{ marginTop: 8 }}>
+        <div className="ds-search">
           <input
             type="search"
             value={query}
@@ -87,6 +87,7 @@ const ResourcesPage = () => {
         variant="alt"
         eyebrow="Start here"
         title="If you only read two things"
+        rail
         split
         subtitle="The implementation plan and the chart-of-accounts guide between them cover the decisions that are expensive to get wrong at setup."
       >
@@ -109,12 +110,14 @@ const ResourcesPage = () => {
       {/* --------------------------------------------------------- library -- */}
       <Section
         id="library"
+        bodySnug
         eyebrow="Library"
         title="Everything, filterable"
+        rail
         split
         subtitle={`${RESOURCES.length} items across setup, accounting, inventory, point of sale, payroll, reporting, security and AI.`}
       >
-        <div className="ds-stack" style={{ marginBottom: 32 }}>
+        <div className="ds-filters">
           <Pills label="Filter by type" options={RESOURCE_TYPES} value={type} onChange={setType} />
           <Pills label="Filter by topic" options={RESOURCE_TOPICS} value={topic} onChange={setTopic} />
         </div>
@@ -159,6 +162,7 @@ const ResourcesPage = () => {
         variant="cream"
         eyebrow="Latest writing"
         title="From the product and engineering team"
+        rail
         split
         subtitle="Longer-form pieces on why the platform works the way it does, and on the operational problems behind those decisions."
         footer={<TextLink to="/blog" navigate={navigate}>Read all articles</TextLink>}
@@ -184,8 +188,9 @@ const ResourcesPage = () => {
         id="live"
         eyebrow="Live sessions"
         title="Learn it with someone in the room"
+        rail
         split
-        subtitle="Implementation walkthroughs, module deep dives and open office hours with the product team."
+        subtitle="Implementation walkthroughs, detailed module sessions and open office hours with the product team."
         footer={<TextLink to="/events" navigate={navigate}>All events and recordings</TextLink>}
       >
         <Grid cols={3}>

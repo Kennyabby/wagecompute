@@ -3,7 +3,7 @@
    ----------------------------------------------------------------------------
    sap.com and netsuite.com both put a magnifier in the header; on both, it
    takes you to a separate results page. This does the lookup inline instead,
-   which for a site of this size is strictly better — the whole corpus is
+   which for a site of this size is strictly better, the whole corpus is
    already in the bundle as content modules, so there is nothing to fetch and
    results can appear as you type.
 

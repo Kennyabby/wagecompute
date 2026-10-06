@@ -1,4 +1,4 @@
-/* Shared layout primitives — StatCardGrid/StatCard, PageShell,
+/* Shared layout primitives, StatCardGrid/StatCard, PageShell,
    ResponsiveTableWrap. Built entirely on the platform design tokens
    (src/styles/tokens.css); no page-specific values live here. */
 

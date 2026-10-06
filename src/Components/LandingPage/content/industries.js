@@ -2,7 +2,7 @@
    Industry content for /industries and /industries/:slug.
    ----------------------------------------------------------------------------
    Each entry is written against what the platform can genuinely do for that
-   sector — the `modules` array lists real module slugs from content/products.js
+   sector, the `modules` array lists real module slugs from content/products.js
    (which in turn match moduleCatalog.js), so an industry page can never
    promise a capability that does not ship.
 

@@ -4,7 +4,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 
 // Pure "waiting on activation check" state. The real activation/subscription
 // gate is enforced server-side (every request is checked against the tenant's
-// suspension state) — this view has no client-side bypass of any kind; it only
+// suspension state), this view has no client-side bypass of any kind; it only
 // reflects whatever the server has already decided.
 const PauseView = () => {
     const { viewAccess } = useContext(ContextProvider)

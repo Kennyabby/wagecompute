@@ -5,7 +5,7 @@
    on their site: security, privacy, availability and compliance as one
    destination rather than scattered through legal pages.
 
-   IMPORTANT — every claim below describes a control the platform actually
+   IMPORTANT, every claim below describes a control the platform actually
    implements (tenant isolation, per-action permissions, audit trails,
    encryption in transit, offline queue durability). Nothing here asserts a
    third-party certification. `CERTIFICATION_POSTURE` states the position

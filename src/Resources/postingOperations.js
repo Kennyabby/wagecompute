@@ -7,13 +7,13 @@
 //
 // 1. generateOperationId() before the POST, so the server can track/broadcast
 //    progress under a stable id the caller already knows.
-// 2. postWithResumability(...) instead of a bare fetchServer(...) call — if
+// 2. postWithResumability(...) instead of a bare fetchServer(...) call, if
 //    the connection drops mid-request, it asks the server "did this actually
 //    finish?" instead of assuming failure. The underlying route's
 //    clientTxnId dedup already makes a genuine retry harmless either way;
 //    this just gives the UI a fast, correct answer instead of "shrug, try
 //    again".
-// 3. usePostingOperationProgress(operationId) to render live progress — fed
+// 3. usePostingOperationProgress(operationId) to render live progress, fed
 //    by App.js's SSE switch dispatching `wc:posting-progress-update` for the
 //    'PostingOperations' collection, the same window.CustomEvent fan-out
 //    pattern already used for `wc:accounting-live-update` /
@@ -32,7 +32,7 @@ const looksLikeNetworkFailure = (result) => !!result?.err
 /**
  * POSTs a body with a generated operationId attached. On a genuine network
  * failure (not a server-side rejection), checks postingOperationStatus
- * before giving up — 'completed'/'failed' means the server already resolved
+ * before giving up, 'completed'/'failed' means the server already resolved
  * it (don't blindly retry), 'in-progress'/'unknown' surfaces the original
  * error so the caller can decide whether to wait or retry.
  */
@@ -49,7 +49,7 @@ export const postWithResumability = async (body, endpoint, server) => {
   return { ...result, operationId };
 };
 
-/** One-off status check — used to reattach to an in-progress operation (e.g. the backlog run) after a page reload. */
+/** One-off status check, used to reattach to an in-progress operation (e.g. the backlog run) after a page reload. */
 export const checkPostingOperationStatus = async (operationId, server) => {
   if (!operationId) return null;
   const resp = await fetchServer('POST', { operationId }, 'accounting/postingOperationStatus', server).catch(() => null);

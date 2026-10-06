@@ -53,7 +53,7 @@ export const generatePDF = async (data, columns, companyInfo, dateRange, reportT
             orientation: 'landscape'
         });
 
-        // Logo — only if the tenant actually uploaded one via companyInfo.logoUrl
+        // Logo, only if the tenant actually uploaded one via companyInfo.logoUrl
         // (never a platform default; this is the tenant's own document).
         const logo = await loadPdfImage(companyInfo.logoUrl);
         const textX = 14 + (logo ? 20 : 0);

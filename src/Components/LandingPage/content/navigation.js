@@ -4,9 +4,8 @@
    ----------------------------------------------------------------------------
    Kept as data in one file (rather than JSX scattered through NavBar.js and
    Footer.js) because the same tree drives the desktop mega menu, the mobile
-   accordion and the footer, and because the sitemap is now large enough —
-   ~40 public routes — that having it in one readable place is the only way to
-   keep it honest.
+   accordion and the footer, and because the sitemap is now large enough, at roughly 40 public routes, that
+   having it in one readable place is the only way to keep it honest.
 
    Structure follows the pattern common to sap.com, netsuite.com and odoo.com:
    a small number of top-level entries, each opening a multi-column panel of

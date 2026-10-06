@@ -56,7 +56,7 @@ const Adjustments = ({
     const [hasLoadedAdjustments, setHasLoadedAdjustments] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     // `dateRange` is the live draft bound to the date inputs, seeded from the
-    // shared `inventoryDateRange` (App.js) each time this page mounts — same
+    // shared `inventoryDateRange` (App.js) each time this page mounts, same
     // split as Stock.js, and the same shared value, so applying a new range
     // on Stock/Overview and switching to Adjustments picks it up automatically.
     const [dateRange, setDateRange] = useState(inventoryDateRange)
@@ -346,7 +346,7 @@ const Adjustments = ({
     }
 
     // Apply Filters: Warehouse/Category/Search already filter the
-    // already-loaded products instantly, client-side — this is specifically
+    // already-loaded products instantly, client-side, this is specifically
     // what re-fetches from the server for a new date range. Guarded by
     // applyStatus === 'loading' so duplicate clicks can't fire overlapping
     // requests.
@@ -373,13 +373,13 @@ const Adjustments = ({
             console.error('Apply Filters failed:', error);
             setApplyStatus('error');
             // getProductsStockReport swallows its own internal errors (shows
-            // its own alert and resolves normally) — a rejection reaching
+            // its own alert and resolves normally), a rejection reaching
             // here is almost always this request's own timeout firing on a
             // heavy/wide date range, so surface the real reason instead of a
             // generic message.
             setApplyMessage(
                 error?.message === 'Request timed out'
-                    ? 'Timed out waiting for the server — try a narrower date range.'
+                    ? 'Timed out waiting for the server. Try a narrower date range.'
                     : `Failed to fetch updated data${error?.message ? `: ${error.message}` : '.'}`
             );
         }

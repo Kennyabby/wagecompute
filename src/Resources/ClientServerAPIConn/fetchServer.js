@@ -1,6 +1,6 @@
 import { generateClientTxnId } from '../clientTxnId';
 
-// In-memory only (never localStorage) — the real, authoritative session is the
+// In-memory only (never localStorage), the real, authoritative session is the
 // httpOnly `accessToken`/`refreshToken` cookie the server already sets on every
 // login and refresh (server verifyToken falls back to the cookie when no
 // Authorization header is present, and /token refresh reads the cookie only).
@@ -17,14 +17,14 @@ export const clearInMemoryAccessToken = () => { inMemoryAccessToken = null; };
 // but still wants the same same-tab Authorization header everything else gets.
 export const getInMemoryAccessToken = () => inMemoryAccessToken;
 
-// Electron desktop build only — set once TenantSetup.js's workspace picker
+// Electron desktop build only, set once TenantSetup.js's workspace picker
 // resolves a local tenant, read on every request afterward so
 // wageserver/InitializingModule/InitializeApp.js's tenant-resolution
 // middleware can bind this request to it (there's no subdomain to resolve
 // from when loaded at 127.0.0.1). window.electronAPI only exists when
 // electron/preload.js actually ran (i.e. only inside the desktop shell), so
 // a normal web page never has anything to read here and never sends this
-// header — the whole mechanism is a no-op for the web build.
+// header, the whole mechanism is a no-op for the web build.
 const DESKTOP_TENANT_STORAGE_KEY = 'desktop-selected-tenant';
 export const setDesktopTenant = (tenantDb) => {
     try {
@@ -44,7 +44,7 @@ export const getDesktopTenantHeader = () => {
 
 // Shared by every pre-login/public page that shows the tenant's own logo
 // before any session exists (Login, Signup, Forgot Password, Tenant
-// Renewal, License Expired, Payment Confirmation, ...) — one fetch used
+// Renewal, License Expired, Payment Confirmation, ...), one fetch used
 // everywhere instead of each page re-implementing it slightly differently,
 // so a fix here (like adding the desktop tenant header) never has to be
 // re-applied file by file again. Resolves the tenant the same way
@@ -54,17 +54,17 @@ export const getDesktopTenantHeader = () => {
 // falling back to the page's real hostname (web, subdomain-based).
 //
 // Returns the tenant's logoUrl, or null when there is none (unrecognized
-// host, or a real tenant that simply never uploaded one) — callers show
+// host, or a real tenant that simply never uploaded one), callers show
 // the platform's own default logo in either null case; only a genuinely
 // uploaded logo ever overrides it.
 //
 // `server` (the same origin every other fetchServer call already targets)
-// is required, not optional — a bare relative fetch here would resolve
+// is required, not optional, a bare relative fetch here would resolve
 // against whatever origin the PAGE ITSELF loaded from. That's harmless in
 // production (wageserver serves both the API and the built SPA from one
 // origin), but in local dev the frontend (CRA's own dev server) and the
 // backend are different origins entirely, so a relative fetch silently hit
-// CRA's own dev server instead — which has no idea what this path is and
+// CRA's own dev server instead, which has no idea what this path is and
 // just serves back its own index.html, making the logo look like it's
 // always missing even when the real data and the real API are both fine.
 // Confirmed exactly this way against a real dev environment.
@@ -87,7 +87,7 @@ export const fetchPublicCompanyLogo = async (server) => {
 // picker, and resuming a different local database's session), so they're
 // called directly with fetch rather than the main fetchServer function below
 // (that one assumes an already-known tenant/session). Same server origin
-// either way — `server` here already resolves to window.location.origin for
+// either way, `server` here already resolves to window.location.origin for
 // the desktop build (App.js's SERVER constant), i.e. wherever
 // electron/main.js's spawned wageserver actually ends up listening.
 export const callDesktop = async (server, path, body, setupToken) => {
@@ -110,13 +110,13 @@ export const callDesktop = async (server, path, body, setupToken) => {
 
 // Every document create call gets a stable idempotency key generated exactly
 // once here (rather than requiring every calling component to remember to add
-// one) — a retried request (network timeout, offline-queue replay) carries the
+// one), a retried request (network timeout, offline-queue replay) carries the
 // same clientTxnId, so the server recognizes it as the same record instead of
 // creating a duplicate. Injected centrally so no create call site is missed.
-// Dedicated atomic posting routes (Accommodations/Rentals/Sales — bypass the
+// Dedicated atomic posting routes (Accommodations/Rentals/Sales, bypass the
 // generic createDoc gateway so their booking + GL posting can happen in one
 // server-side request) each read their own numbered document's idempotency
-// key from a top-level `clientTxnId`, not `body.update.clientTxnId` — they
+// key from a top-level `clientTxnId`, not `body.update.clientTxnId`, they
 // don't match either branch above, so every request from them arrived with
 // no clientTxnId at all, and the *second* one ever posted at each endpoint
 // collided with the first's `null` entry on the collection's unique index
@@ -149,8 +149,8 @@ const ensureClientTxnId = (endpoint, body) => {
 
 // Posting Tiering Model: Tier A (POS sale, Delivery order, session/table state,
 // InventoryTransactions) is already handled by the offline queue
-// (offlineDb.js/offlineSync.js) and must keep working instantly offline — it
-// is never gated here. Tier B — actions that need live backend state to be
+// (offlineDb.js/offlineSync.js) and must keep working instantly offline, it
+// is never gated here. Tier B, actions that need live backend state to be
 // correct (manual journal entries, period closing, chart-of-accounts edits,
 // business-partner invoices/bills/payments, subscription/billing actions) has
 // no offline queue and shouldn't get one; these are blocked with a clear
@@ -180,7 +180,7 @@ const fetchServer = async (method, rawBody, endpoint, server, signal) => {
         return {
             err: true,
             offline: true,
-            mess: 'No connection to server — this action requires a live connection and cannot be completed offline.',
+            mess: 'No connection to server. This action requires a live connection and cannot be completed offline.',
         };
     }
     // Skip auth checks for login and token endpoints
@@ -268,7 +268,7 @@ const fetchServer = async (method, rawBody, endpoint, server, signal) => {
                 const responseData = await resp.json();
                 // A non-401 error here (e.g. 403 "Workspace Suspended" from a
                 // route that's genuinely off-limits, not an auth failure) is
-                // NOT a session problem — but it's still an error, and must be
+                // NOT a session problem, but it's still an error, and must be
                 // reported as one rather than silently returned as a success.
                 if (!resp.ok) {
                     return { err: true, status: resp.status, ...responseData };
@@ -311,7 +311,7 @@ const fetchServer = async (method, rawBody, endpoint, server, signal) => {
             }
         }
         // On login (authenticateUser) keep the returned accessToken in memory only,
-        // for this tab's Authorization header use — the httpOnly cookie the server
+        // for this tab's Authorization header use, the httpOnly cookie the server
         // already set is the real, persistent session.
         if (!response.err && response.accessToken) {
             setInMemoryAccessToken(response.accessToken);

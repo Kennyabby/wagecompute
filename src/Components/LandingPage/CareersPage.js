@@ -66,6 +66,7 @@ const CareersPage = () => {
         eyebrow="Open roles"
         title="What we are hiring for"
         subtitle="If none of these fit but you think you should be here, say so anyway. We read every one of those."
+        rail
         split
         footer={(
           <ButtonRow>
@@ -103,7 +104,7 @@ const CareersPage = () => {
           ))}
         </Grid>
 
-        <div style={{ marginTop: 'clamp(48px, 6vw, 80px)' }}>
+        <div>
           <FiftyFifty
             eyebrow="The work itself"
             title="Correctness is the product, not a quality gate"

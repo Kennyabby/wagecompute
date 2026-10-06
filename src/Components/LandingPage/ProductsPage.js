@@ -1,5 +1,5 @@
 /* ============================================================================
-   /products — the product catalogue overview.
+   /products, the product catalogue overview.
    ----------------------------------------------------------------------------
    Structured like sap.com/products.html: portfolio categories first, then a
    promoted set, then the platform capabilities that cut across everything.
@@ -73,6 +73,7 @@ const ProductsPage = () => {
         eyebrow="Full catalogue"
         title="Four groups, nineteen modules"
         subtitle="Grouped by what they do rather than by how they are billed. Every module page explains what it covers, what it depends on, and what it posts to the ledger."
+        rail
         split
       >
         <div className="ds-stack lg">
@@ -125,6 +126,7 @@ const ProductsPage = () => {
         eyebrow="How they connect"
         title="One transaction, every consequence, automatically"
         subtitle="The reason to run these together rather than separately is that each operational event has financial and operational consequences that should not need a second person to record."
+        rail
         split
       >
         <Grid cols={3}>
@@ -147,7 +149,7 @@ const ProductsPage = () => {
             text="Gross cost, every deduction liability and net payable post to their accounts, attributed to the department that incurred them."
           />
         </Grid>
-        <div style={{ marginTop: 40 }}>
+        <div>
           <FiftyFifty
             eyebrow="Dependencies"
             title="Enabling one module brings what it needs"
@@ -179,6 +181,7 @@ const ProductsPage = () => {
         eyebrow="Pricing model"
         title="Per module, never per user"
         subtitle="Per-seat pricing makes customers ration logins, and shared accounts destroy the attribution the platform exists to provide. So the capability is what gets priced."
+        rail
         split
       >
         <Grid cols={3}>

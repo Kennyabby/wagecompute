@@ -69,6 +69,7 @@ const CommunityPage = () => {
         eyebrow="Where to go"
         title="Six places to get unstuck"
         subtitle="Ranked roughly by speed: documentation for a known question, the forum for a configuration one, office hours when it needs a conversation."
+        rail
         split
       >
         <Grid cols={3}>
@@ -82,9 +83,9 @@ const CommunityPage = () => {
               to={pillar.to}
               navigate={navigate}
             >
-              <ul style={{ listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
+              <ul className="ds-plain-list">
                 {pillar.links.map((link) => (
-                  <li key={link} className="ds-card-text" style={{ padding: '2px 0' }}>· {link}</li>
+                  <li key={link} className="ds-card-text">· {link}</li>
                 ))}
               </ul>
             </Card>
@@ -98,8 +99,9 @@ const CommunityPage = () => {
         variant="cream"
         eyebrow="Events"
         title="Coming up"
+        rail
         split
-        subtitle="Every session is free, whether you are a customer or still evaluating."
+        subtitle="Every session is free. You do not have to be a customer to come to one."
         footer={<TextLink to="/events" navigate={navigate}>All events and recordings</TextLink>}
       >
         <Grid cols={3}>
@@ -130,7 +132,7 @@ const CommunityPage = () => {
           <p className="ds-body">
             The public API, webhooks and bank-feed import are all on the roadmap, and the
             order they ship in is driven mostly by how many operators say they are blocked
-            on one. That is not a platitude. It is how a small team decides.
+            on one. We are not saying that to sound approachable. It is genuinely how a small team decides what to build next.
           </p>
           <p className="ds-body">
             The most useful thing you can send is not a feature name but the workflow it
@@ -145,6 +147,7 @@ const CommunityPage = () => {
       </Section>
 
       <Section
+        rail
         variant="alt"
         eyebrow="Reading"
         title="How the team thinks about the problems"

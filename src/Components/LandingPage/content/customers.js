@@ -7,7 +7,7 @@
    of outcome its mechanics produce, written as composites. No named business,
    person, logo or metric below corresponds to an actual customer.
 
-   Publishing invented testimonials as genuine is a real problem — it misleads
+   Publishing invented testimonials as genuine is a real problem, it misleads
    buyers and, in most markets, breaks advertising rules. So while
    `ILLUSTRATIVE` is true every page that renders this content also renders
    PLACEHOLDER_NOTICE. Replace the entries with approved, consented references

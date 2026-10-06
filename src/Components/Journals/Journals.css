@@ -254,7 +254,7 @@
     border-bottom: none;
 }
 
-/* Numeric columns — right-aligned */
+/* Numeric columns, right-aligned */
 .coa-table .num-col {
     text-align: right;
     font-variant-numeric: tabular-nums;
@@ -848,7 +848,7 @@
 
 .closing-toolbar.collapsed {
     /* Used to shrink to a bare 56px icon-only widget when collapsed, which
-       clipped away any title text — the section's buttons are already
+       clipped away any title text, the section's buttons are already
        hidden via their own inline display:none when collapsed, so this
        only needs to stop forcing the whole toolbar (title included) into
        that tiny width. */
@@ -866,7 +866,7 @@
 .closing-toggle {
     display: flex;
     align-items: center;
-    /* Was a fixed 40px square sized for just the arrow glyph — now also
+    /* Was a fixed 40px square sized for just the arrow glyph, now also
        carries the section's title (see closing-toolbar-title below), so it
        needs to size to its content instead of clipping the label. */
     width: auto;
@@ -1022,7 +1022,7 @@
 }
 
 /* =============================================
-   COA TABLE — scrollable + comfortable layout
+   COA TABLE, scrollable + comfortable layout
    ============================================= */
 .coa-table-wrapper {
     overflow-x: auto;
@@ -1038,14 +1038,14 @@
     white-space: nowrap;
 }
 
-/* G/L Code column — compact monospace */
+/* G/L Code column, compact monospace */
 .coa-table th:first-child,
 .coa-table td:first-child {
     width: 90px;
     min-width: 90px;
 }
 
-/* Account Name — allow wrapping */
+/* Account Name, allow wrapping */
 .coa-table .coa-name-cell {
     white-space: normal;
     min-width: 160px;

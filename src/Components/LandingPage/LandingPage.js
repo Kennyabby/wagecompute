@@ -9,7 +9,7 @@
    and a closing call to action.
 
    Every tile that SAP fills with a photograph or a product screenshot is
-   filled with one here too — see ds/landingImages.js for the registry.
+   filled with one here too, see ds/landingImages.js for the registry.
    ========================================================================= */
 
 import { useContext, useEffect } from 'react'
@@ -50,7 +50,7 @@ const LandingPage = () => {
   const featuredResources = RESOURCES.filter((r) => r.featured)
   const nextEvent = EVENTS.find((e) => e.featured)
 
-  /* The capability showcase — the equivalent of SAP's "when every function is
+  /* The capability showcase, the equivalent of SAP's "when every function is
      autonomous" block, but built from this platform's real module groups. */
   const showcase = [
     {
@@ -83,7 +83,7 @@ const LandingPage = () => {
     },
     {
       label: 'Accounting',
-      summary: 'A ledger written as you trade, not rebuilt at month-end',
+      summary: 'A ledger that gets written while you trade',
       title: 'The general ledger is the foundation, not a report',
       body: 'Sales, purchases, stock movement, payroll and expenses each generate real double-entry postings at the moment they happen. By the time anyone asks for a trial balance, it already exists.',
       image: img('accountantDesk', 'showcase'),
@@ -103,7 +103,7 @@ const LandingPage = () => {
       image: img('budgetPlanning', 'showcase'),
       points: [
         'Statutory and custom deductions applied consistently',
-        'Salary advances with recovery tracked, not remembered',
+        'Salary advances with the outstanding balance tracked for you',
         'Itemised payslips every run',
         'Gross cost, liabilities and net pay posted to the ledger',
       ],
@@ -118,7 +118,7 @@ const LandingPage = () => {
       points: [
         'Credit limits enforced at the point of order',
         'Proof of delivery captured at handover',
-        'Goods in transit visible rather than simply absent',
+        'Goods in transit stay visible the whole time they are out',
         'Receivables and ageing per customer, kept in step with the ledger',
       ],
       link: <TextLink to="/products/sales" navigate={navigate}>Explore Sales</TextLink>,
@@ -147,7 +147,7 @@ const LandingPage = () => {
         'Traces a figure through its real movement history',
         'Names the person who can approve a blocked transaction',
         'Generates reporting grounded in posted figures',
-        'Proposes, never writes, until someone authorised confirms',
+        'Drafts the change and waits for someone authorised to confirm it',
       ],
       link: <TextLink to="/products/epsilon" navigate={navigate}>Explore Epsilon</TextLink>,
     },
@@ -171,7 +171,7 @@ const LandingPage = () => {
           <Button variant="primary" size="lg" to="/signup" navigate={navigate}>Start a free 14-day trial</Button>
           <Button variant="secondary" size="lg" to="/contact" navigate={navigate}>Request a demo</Button>
         </ButtonRow>
-        <div style={{ marginTop: 28 }}>
+        <div className="ds-hero-checklist">
           <Checklist
             items={[
               'Every module unlocked during the trial',
@@ -189,6 +189,7 @@ const LandingPage = () => {
         eyebrow="Customer stories"
         title="What changes when the numbers stop disagreeing"
         subtitle="Operators who replaced disconnected tools with one ledger, and what they found when they could finally see the figures."
+        rail
         split
       >
         <Grid cols={2}>
@@ -219,7 +220,7 @@ const LandingPage = () => {
           </div>
         </Grid>
         {ILLUSTRATIVE && (
-          <p className="ds-body sm" style={{ marginTop: 24, marginBottom: 0 }}>{PLACEHOLDER_NOTICE}</p>
+          <p className="ds-note">{PLACEHOLDER_NOTICE}</p>
         )}
       </Section>
 
@@ -261,7 +262,7 @@ const LandingPage = () => {
           </p>
           <Checklist
             items={[
-              'Queries your live records, not a summary from last night',
+              'Queries your live records at the moment you ask',
               'Answers inside the asking person’s own permission scope',
               'Cites the transactions behind every answer, so it is checkable',
               'Proposes a purchase order or a correction, but never writes one alone',
@@ -279,14 +280,15 @@ const LandingPage = () => {
         variant="cream"
         eyebrow="Why it holds together"
         title="Three design decisions everything else follows from"
-        subtitle="Most business software gets these wrong in ways that are impossible to fix later, because they are architecture rather than features."
+        subtitle="Most business software gets these wrong in ways that are impossible to fix later, because they are decisions about architecture and you cannot patch architecture on afterwards."
+        rail
         split
       >
         <Grid cols={3}>
           <Card
             image={img('bookkeeping', 'card')}
             title="The ledger is written, not reconstructed"
-            text="Operational transactions generate their own balanced double-entry postings. Month-end becomes a review of figures that already exist rather than a rebuild from exports."
+            text="Operational transactions generate their own balanced double-entry postings, so month-end becomes a review of figures that already exist."
             link="Inside the accounting engine"
             to="/products/journals"
             navigate={navigate}
@@ -294,7 +296,7 @@ const LandingPage = () => {
           <Card
             image={img('shopkeeper', 'card')}
             title="Offline is a normal state, not an error"
-            text="A durable local queue, client transaction ids that make retries safe, and conflicts raised for a person rather than settled by whichever write landed last."
+            text="A durable local queue, client transaction ids that make retries safe, and clashing changes raised for a person to settle so nothing is quietly overwritten."
             link="How offline operation works"
             to="/products/offline-sync"
             navigate={navigate}
@@ -316,6 +318,7 @@ const LandingPage = () => {
         eyebrow="Products"
         title="Nineteen modules. Pay for the ones you run."
         subtitle="Core modules are free on every workspace forever. Everything else is priced individually, so a two-module business is not subsidising a twelve-module one."
+        rail
         split
         footer={(
           <ButtonRow>
@@ -326,9 +329,11 @@ const LandingPage = () => {
       >
         <div className="ds-stack lg">
           {PRODUCT_CATEGORIES.map((category) => (
-            <div key={category.key}>
-              <h3 className="ds-h3" style={{ marginBottom: 6 }}>{category.name}</h3>
-              <p className="ds-body" style={{ maxWidth: '70ch' }}>{category.blurb}</p>
+            <div className="ds-group" key={category.key}>
+              <div className="ds-group-head">
+                <h3 className="ds-h3">{category.name}</h3>
+                <p className="ds-body">{category.blurb}</p>
+              </div>
               <Tiles cols={4}>
                 {productsInCategory(category.key).map((product) => (
                   <Tile
@@ -387,7 +392,7 @@ const LandingPage = () => {
             Enterprise Compute was built the other way round: naira-native amounts, local
             tax treatment, receipt formats operators recognise, and a client that keeps
             taking money when the connection drops, plus a desktop build with a bundled
-            local database for sites where the problem is structural rather than occasional.
+            local database for sites where poor connectivity is the normal condition.
           </p>
           <ButtonRow>
             <Button variant="secondary" to="/about#story" navigate={navigate}>Read the full product story</Button>

@@ -1,6 +1,6 @@
 :root {
   /* Values now sourced from the shared platform tokens (src/styles/tokens.css)
-     instead of being duplicated here — same names, same visual result,
+     instead of being duplicated here, same names, same visual result,
      one real source of truth. */
   --ec-primary: var(--brand-primary);
   --ec-secondary: var(--brand-secondary);

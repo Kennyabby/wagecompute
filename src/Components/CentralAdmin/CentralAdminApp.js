@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import MODULE_ICONS from '../../Resources/moduleIcons'
 
-// Same single source of truth as the tenant app (App.js) — REACT_APP_API_URL.
-// Previously fell back to the hardcoded "https://api.epxcentral.com" — a
-// plausible-looking but not-yet-live domain — whenever the env var wasn't
+// Same single source of truth as the tenant app (App.js), REACT_APP_API_URL.
+// Previously fell back to the hardcoded "https://api.epxcentral.com", a
+// plausible-looking but not-yet-live domain, whenever the env var wasn't
 // set for whatever hosting target serves admin.epxcentral.com/admin.localhost.
 // That silently sent every request to a dead/parked address with no warning,
 // which the browser and this file's own catch block both report identically
@@ -14,7 +14,7 @@ import MODULE_ICONS from '../../Resources/moduleIcons'
 // into an obvious, diagnosable failure rather than a mysterious one.
 const SERVER = process.env.REACT_APP_API_URL || "http://localhost:3001"
 if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
-  console.error('CONFIGURATION ERROR: REACT_APP_API_URL is not set for this production build — Central Admin API calls will target localhost and fail.')
+  console.error('CONFIGURATION ERROR: REACT_APP_API_URL is not set for this production build. Central Admin API calls will target localhost and fail.')
 }
 const ADMIN_TOKEN_KEY = 'central-admin-access-token'
 
@@ -194,7 +194,7 @@ const CentralAdminApp = () => {
   const [epsilonTokensGrantDraft, setEpsilonTokensGrantDraft] = useState(null)
   const [isGrantingEpsilonTokens, setIsGrantingEpsilonTokens] = useState(false)
   const [epsilonOverview, setEpsilonOverview] = useState(null)
-  // Standalone tenant-picker form on the Epsilon AI Usage tab — grants seats
+  // Standalone tenant-picker form on the Epsilon AI Usage tab, grants seats
   // directly by database, without first drilling into the Tenants tab's
   // per-tenant detail view (where the same free-grant action already
   // existed, just hard to find). Deliberately separate state/handler from
@@ -202,37 +202,37 @@ const CentralAdminApp = () => {
   // own tenantDetails/epsilonSeatsGrantDraft state.
   const [epsilonSubForm, setEpsilonSubForm] = useState({ database: '', seats: 1 })
   const [isCreatingEpsilonSub, setIsCreatingEpsilonSub] = useState(false)
-  // Direct per-employee grant — a tenant's own super admin cannot edit their
+  // Direct per-employee grant, a tenant's own super admin cannot edit their
   // own profile from Settings > Team Access (that screen only edits other
   // employees), so a seat granted to them here from Central Admin had no
   // self-service way to actually reach them. This is the immediate fix.
   const [epsilonEmployeeGrantForm, setEpsilonEmployeeGrantForm] = useState({ database: '', emailid: '' })
   const [isGrantingEmployeeAccess, setIsGrantingEmployeeAccess] = useState(false)
-  // Holds the emailid currently being reset (or '' when idle) — a string,
+  // Holds the emailid currently being reset (or '' when idle), a string,
   // not a boolean, so only that one row's button shows "Resetting..." when
   // several rows each have their own reset button (see the tenant profiles
   // table below).
   const [isResettingEmployeeRateLimit, setIsResettingEmployeeRateLimit] = useState('')
   // Which employee's Epsilon seat is currently being granted/revoked from
-  // the tenant-detail table — an emailid string while in flight, '' when idle.
+  // the tenant-detail table, an emailid string while in flight, '' when idle.
   const [isTogglingAiAccess, setIsTogglingAiAccess] = useState('')
   // The tenant detail drill-down used to stack ~9 unrelated sections
   // (billing, modules, Epsilon seats/tokens/usage, WC + tenant profile
   // tables, employees, activity) into one continuous two-column scroll with
-  // no separation. Split into sub-tabs instead — the stats grid stays
+  // no separation. Split into sub-tabs instead, the stats grid stays
   // always visible above them since it's a genuine at-a-glance summary.
   const [tenantDetailTab, setTenantDetailTab] = useState('billing')
   // Admin Settings stacked 3 unrelated concerns (account security, pricing
-  // plans, global config) in one continuous scroll — split into sub-tabs.
+  // plans, global config) in one continuous scroll, split into sub-tabs.
   const [settingsSubTab, setSettingsSubTab] = useState('security')
-  // Controlled + explicit-save, replacing an earlier onBlur-triggered save —
-  // onBlur fired (and showed a "saved" notice) any time focus left the
+  // Controlled + explicit-save, replacing an earlier onBlur-triggered save.
+  // OnBlur fired (and showed a "saved" notice) any time focus left the
   // field for any reason, including just clicking a Refresh button
   // elsewhere on the same tab, which looked like a spontaneous, unrequested
   // save to anyone using the page.
   const [epsilonSeatPriceDraft, setEpsilonSeatPriceDraft] = useState(0)
   const [isSavingSeatPrice, setIsSavingSeatPrice] = useState(false)
-  // Deliberately NOT the shared isBusy flag — that's also toggled by
+  // Deliberately NOT the shared isBusy flag, that's also toggled by
   // unrelated background loads on this same tab (loadOfflineModulePricing,
   // loadEpsilonOverview), which made this button flash "Saving..." any time
   // one of those fired, not just when this action itself was in flight.
@@ -423,12 +423,12 @@ const CentralAdminApp = () => {
     }
   }
 
-  // "Refresh Central Data" previously only called loadSnapshot — the core
-  // tenants/payments/settings snapshot — leaving every section added since
+  // "Refresh Central Data" previously only called loadSnapshot, the core
+  // tenants/payments/settings snapshot, leaving every section added since
   // (offline licenses, offline module pricing, desktop releases, live
   // sessions, platform health) stale until its own tab was clicked again.
   // This refreshes everything the whole app can show, in parallel, from one
-  // button, regardless of which tab happens to be active — each loader
+  // button, regardless of which tab happens to be active, each loader
   // already sets only the state relevant to its own section, so calling
   // ones for tabs the admin isn't currently looking at is harmless.
   const refreshAllCentralAdminData = async () => {
@@ -501,8 +501,8 @@ const CentralAdminApp = () => {
   }, [adminUser])
 
   // Keeps the Epsilon seat-price field showing the live value whenever
-  // module pricing (re)loads, without fighting an admin who is mid-edit —
-  // see epsilonSeatPriceDraft's own comment for why this replaced onBlur.
+  // module pricing (re)loads, without fighting an admin who is mid-edit.
+  // See epsilonSeatPriceDraft's own comment for why this replaced onBlur.
   useEffect(() => {
     const row = offlineModulePricing.find((m) => m.key === 'epsilon')
     if (row) setEpsilonSeatPriceDraft(row.priceNaira || 0)
@@ -716,7 +716,7 @@ const CentralAdminApp = () => {
   }
 
   // Client-side optimistic dependency expansion only, for responsive
-  // checkbox behavior — wageserver's moduleCatalog.js's resolveModuleDependencies
+  // checkbox behavior, wageserver's moduleCatalog.js's resolveModuleDependencies
   // always re-resolves server-side before anything is actually saved.
   const resolveModuleDepsClientSide = (catalog, selection) => {
     const selected = new Set(selection)
@@ -743,11 +743,11 @@ const CentralAdminApp = () => {
     })
   }
 
-  // Shared by both offline-license admin forms (manual create + edit) — a
+  // Shared by both offline-license admin forms (manual create + edit), a
   // checkbox picker with the same automatic-dependency-expansion behavior
   // as toggleDraftModule above, plus an always-visible, non-interactive list
   // of essential/free modules (auto-granted to every tenant regardless of
-  // selection — see resolveEffectiveModules in moduleCatalog.js — so there's
+  // selection, see resolveEffectiveModules in moduleCatalog.js, so there's
   // nothing to check, just something worth showing so an admin isn't left
   // wondering why core modules aren't in the picker).
   const toggleOfflineFormModule = (currentModules, setModules, key) => {
@@ -761,9 +761,9 @@ const CentralAdminApp = () => {
     <div className='full'>
       <span style={{ display: 'block', marginBottom: 6 }}>Modules</span>
       <div style={{ fontSize: 12, color: 'var(--ca-text-muted)', marginBottom: 8 }}>
-        Essential (always included automatically, no selection needed): {offlineModulePricing.filter(m => m.tier === 'free').map(m => m.name).join(', ') || '—'}
+        Essential (always included automatically, no selection needed): {offlineModulePricing.filter(m => m.tier === 'free').map(m => m.name).join(', ') || 'none'}
       </div>
-      {/* Epsilon is never offered here — it's excluded from the Electron/
+      {/* Epsilon is never offered here, it's excluded from the Electron/
           offline build entirely (no Anthropic key, no per-seat billing
           concept there), so a desktop license could never actually use it
           even if selected. */}
@@ -825,7 +825,7 @@ const CentralAdminApp = () => {
   }
 
   // Same admin/billing/grantEpsilonSeats endpoint as handleGrantEpsilonSeats
-  // — a free grant that bypasses Paystack entirely, exactly like the manual
+  //, a free grant that bypasses Paystack entirely, exactly like the manual
   // "Create or extend tenant subscription" form does for the general
   // subscription. Setting seats to 0 here is how an admin revokes an
   // Epsilon subscription this same way, without a separate control.
@@ -843,7 +843,7 @@ const CentralAdminApp = () => {
       setIsCreatingEpsilonSub(false)
       return
     }
-    setNotice('success', `Epsilon subscription set for ${epsilonSubForm.database} — ${response.epsilonSeats} seat(s) granted.`)
+    setNotice('success', `Epsilon subscription set for ${epsilonSubForm.database}. ${response.epsilonSeats} seat(s) granted.`)
     // Keep the drill-down view in sync if the admin already has this same
     // tenant open there.
     if (epsilonSubForm.database === selectedTenant) {
@@ -878,11 +878,11 @@ const CentralAdminApp = () => {
   }
 
   // Deliberately platform-operator-only (see epsilonBilling.js's route
-  // comment) — a workspace's own admin can't self-serve an early rate-limit
+  // comment), a workspace's own admin can't self-serve an early rate-limit
   // reset, since that would defeat the point of the limit. Takes explicit
   // database/emailid so it works both from the standalone form below AND
   // from a per-row button next to every actual AI-seat holder in the
-  // tenant detail view (Profile.aiAccess) — not just whichever email
+  // tenant detail view (Profile.aiAccess), not just whichever email
   // happens to be typed into the form, so the action is genuinely
   // available for every seated user, not only the one the operator already
   // knows to look for.
@@ -903,16 +903,16 @@ const CentralAdminApp = () => {
   }
 
   // Operator-level grant/revoke of one employee's Epsilon seat, straight
-  // from the tenant-detail table — the platform side of the same toggle a
+  // from the tenant-detail table, the platform side of the same toggle a
   // tenant's own admin already has in their Settings > Team Access screen
   // (Profile.aiAccess). Deliberately does NOT check the tenant's purchased
   // seat count/usedSeats here: this is a support/override action (same
   // spirit as Reset Rate Limit above, which a tenant can't self-serve
-  // either), not the normal per-tenant seat-purchase flow — an operator
+  // either), not the normal per-tenant seat-purchase flow, an operator
   // granting access is an intentional exception, not something that should
   // be silently blocked by a seat count a tenant admin would also be bound
   // by. Reuses the existing /admin/billing/epsilon/grant-employee-access
-  // route (billing.js) — already supported true/false, it just had no
+  // route (billing.js), already supported true/false, it just had no
   // general-purpose UI in Central Admin before this.
   const handleToggleEmployeeAiAccess = async (database, emailid, nextAiAccess) => {
     if (!database || !emailid) {
@@ -929,7 +929,7 @@ const CentralAdminApp = () => {
     setNotice('success', `Epsilon access ${nextAiAccess ? 'granted to' : 'revoked from'} ${emailid}.`)
     // Refetch the whole tenant-detail view (same pattern the tenant-facing
     // Settings screen uses after its own aiAccess toggle) rather than
-    // patching tenantDetails.tenantProfiles locally — keeps this in sync
+    // patching tenantDetails.tenantProfiles locally, keeps this in sync
     // with whatever else loadTenantDetails already bundles for this tenant.
     await loadTenantDetails(database)
     setIsTogglingAiAccess('')
@@ -1064,7 +1064,7 @@ const CentralAdminApp = () => {
   }
 
   // ================================================================
-  // Offline licenses — full visibility + direct edit, per requirement.
+  // Offline licenses, full visibility + direct edit, per requirement.
   // ================================================================
   const loadOfflineLicenses = async () => {
     setIsBusy(true)
@@ -1095,7 +1095,7 @@ const CentralAdminApp = () => {
   const handleDeleteDesktopRelease = async (version) => {
     if (!window.confirm(
       `Permanently delete desktop release v${version}? This removes its installer and blockmap from Google Drive and its record from the database. This cannot be undone.` +
-      (desktopReleases[0]?.version === version ? '\n\nThis is the CURRENT version — deleting it means the next most recent release becomes what desktop installs auto-update to.' : '')
+      (desktopReleases[0]?.version === version ? '\n\nThis is the CURRENT version. Deleting it means the next most recent release becomes what desktop installs auto-update to.' : '')
     )) return;
 
     setDeletingReleaseVersion(version);
@@ -1108,7 +1108,7 @@ const CentralAdminApp = () => {
         setNotice('success', response.mess || 'Release deleted.');
         await loadDesktopReleases();
       } else {
-        setNotice('error', response.mess || 'Some files could not be deleted — see details below.');
+        setNotice('error', response.mess || 'Some files could not be deleted. See the details below.');
       }
     } catch (error) {
       setDeleteReleaseResults((prev) => ({ ...prev, [version]: { ok: false, mess: error.message, results: [] } }));
@@ -1119,7 +1119,7 @@ const CentralAdminApp = () => {
   }
 
   // Per-file success/failure with reasons for the most recent delete attempt
-  // on this version — stays visible until the next attempt or a page
+  // on this version, stays visible until the next attempt or a page
   // navigation, rather than the 4-second auto-clearing toast, since a
   // partial failure needs the admin to actually read which file failed and
   // why before retrying.
@@ -1130,7 +1130,7 @@ const CentralAdminApp = () => {
       <div style={{ marginTop: 6, fontSize: 12 }}>
         {(result.results || []).map((r) => (
           <div key={r.name} style={{ color: r.success ? '#2e7d32' : '#c62828' }}>
-            {r.success ? '✓' : '✗'} {r.name} — {r.reason}
+            {r.success ? '✓' : '✗'} {r.name}: {r.reason}
           </div>
         ))}
         {!result.ok && <p style={{ color: '#c62828', margin: '4px 0 0' }}>{result.mess}</p>}
@@ -1295,7 +1295,7 @@ const CentralAdminApp = () => {
       if (response.err || !response.ok) return
       setEpsilonOverview(response)
     } catch (error) {
-      // Non-fatal — the overview cards just stay empty; the rest of the
+      // Non-fatal, the overview cards just stay empty; the rest of the
       // dashboard doesn't depend on this.
     }
   }
@@ -1660,7 +1660,7 @@ const CentralAdminApp = () => {
                             <span>Only checked modules are available to this tenant's admin and employees. Dependencies are selected automatically.</span>
                           </div>
                           <div className='ca-module-grid'>
-                            {/* Epsilon is deliberately excluded here — unlike every
+                            {/* Epsilon is deliberately excluded here, unlike every
                                 other module, its real entitlement isn't
                                 enabledModules membership at all, but a dedicated
                                 seat count (see the Epsilon AI tab). Checking it
@@ -1702,7 +1702,7 @@ const CentralAdminApp = () => {
                           <div>
                             <strong>Epsilon AI seats (free grant)</strong>
                             <span>
-                              Sets this tenant's Epsilon seat count directly, bypassing payment — the other way a
+                              Sets this tenant's Epsilon seat count directly, bypassing payment. The other way a
                               tenant gets seats is the tenant admin purchasing them from Settings &gt; Billing.
                               Currently: {Number(tenantDetails.companyProfile?.epsilonSeats || 0)} seat(s).
                             </span>
@@ -1730,7 +1730,7 @@ const CentralAdminApp = () => {
                           <div>
                             <strong>Epsilon AI token balance (free grant)</strong>
                             <span>
-                              Sets this tenant's token balance directly, bypassing payment — separate from seats. The
+                              Sets this tenant's token balance directly, bypassing payment, and separate from seats. The
                               other way a tenant gets tokens is a seat purchase, which also funds the wallet at the
                               configured ₦-per-1000-tokens rate (Settings tab). Currently: {(epsilonUsage?.epsilonTokenBalance ?? 0).toLocaleString()} token(s).
                             </span>
@@ -1757,7 +1757,7 @@ const CentralAdminApp = () => {
                         <section className='ca-panel'>
                           <div className='ca-panel-head'>
                             <div className='ca-panel-title'>
-                              <h3>Epsilon AI usage — this tenant</h3>
+                              <h3>Epsilon AI usage for this tenant</h3>
                               <p>Lifetime purchased: {(epsilonUsage?.epsilonTokensPurchasedTotal ?? 0).toLocaleString()} tokens · consumed: {(epsilonUsage?.epsilonTokensConsumedTotal ?? 0).toLocaleString()} tokens</p>
                             </div>
                             <button className='ca-inline-btn' onClick={() => loadEpsilonTenantUsage(selectedTenant)} disabled={epsilonUsageLoading}>
@@ -1829,8 +1829,8 @@ const CentralAdminApp = () => {
                         </div>
 
                         {(() => {
-                          // Computed straight from what's already loaded — no
-                          // extra fetch — and reused by both the summary line
+                          // Computed straight from what's already loaded, no
+                          // extra fetch, and reused by both the summary line
                           // and the Grant button's disabled state right below,
                           // so they can never disagree with each other.
                           const epsilonSeatsTotal = Number(tenantDetails.companyProfile?.epsilonSeats || 0)
@@ -1841,8 +1841,8 @@ const CentralAdminApp = () => {
                               <div style={{ padding: '10px 14px', fontSize: '13px', color: '#5b6b63' }}>
                                 Epsilon seats: <strong>{epsilonSeatsUsed} of {epsilonSeatsTotal}</strong> in use
                                 {epsilonSeatsFull && (epsilonSeatsTotal > 0
-                                  ? ' — all seats are in use; revoke one below before granting another.'
-                                  : ' — this tenant has not purchased/been granted any Epsilon seats yet.')}
+                                  ? '. All seats are in use, so revoke one below before granting another.'
+                                  : '. This tenant has not purchased or been granted any Epsilon seats yet.')}
                               </div>
                               <table className='ca-table'>
                                 <thead>
@@ -1870,7 +1870,7 @@ const CentralAdminApp = () => {
                                           profile.aiAccess
                                             ? 'Revoke this employee\'s Epsilon seat'
                                             : epsilonSeatsFull
-                                              ? 'No spare seats — revoke one from another employee first, or purchase more.'
+                                              ? 'No spare seats. Revoke one from another employee first, or purchase more.'
                                               : 'Grant this employee an Epsilon seat'
                                         }
                                       >
@@ -2220,7 +2220,7 @@ const CentralAdminApp = () => {
                 <p className='ca-panel-description'>
                   Backfills a real, sequential documentNo and a clientTxnId idempotency key onto every existing
                   Sales/Purchase/Expenses/Approvals/Departments/Positions/Accommodations/Rentals/Attendance/POSSessions/SessionManagers/InventoryTransactions
-                  record, and builds the new unique index that prevents duplicate postings. Safe to re-run — already-migrated
+                  record, and builds the new unique index that prevents duplicate postings. Safe to re-run, because already-migrated
                   records are left untouched, so this can be run repeatedly against live production data before the
                   corresponding app update is published (each run just catches up anything created since the last run).
                 </p>
@@ -2254,7 +2254,7 @@ const CentralAdminApp = () => {
                     checked={migrationDropOldIndexes}
                     onChange={(e) => setMigrationDropOldIndexes(e.target.checked)}
                   />
-                  <span>Also drop old indexes (one-way — only after the new app build is confirmed live)</span>
+                  <span>Also drop old indexes (one-way, so only after the new app build is confirmed live)</span>
                 </label>
 
                 <button
@@ -2283,10 +2283,10 @@ const CentralAdminApp = () => {
                               {tenantResult.results.map((r, idx) => (
                                 <tr key={`${r.collection}-${idx}`}>
                                   <td>{r.collection}</td>
-                                  <td>{r.docs ?? '—'}</td>
-                                  <td>{r.backfilledTxnId ?? '—'}</td>
-                                  <td>{r.backfilledDocNo ?? '—'}</td>
-                                  <td>{r.counterAdvancedTo ?? '—'}</td>
+                                  <td>{r.docs ?? '-'}</td>
+                                  <td>{r.backfilledTxnId ?? '-'}</td>
+                                  <td>{r.backfilledDocNo ?? '-'}</td>
+                                  <td>{r.counterAdvancedTo ?? '-'}</td>
                                   <td>{r.droppedOldIndex ? <span className='ca-badge active'>Yes</span> : <span className='ca-badge unconfigured'>No</span>}</td>
                                 </tr>
                               ))}
@@ -2311,15 +2311,15 @@ const CentralAdminApp = () => {
             <section className='ca-panel' style={{ marginBottom: 24 }}>
               <div className='ca-panel-head'><h3>Current version</h3></div>
               <div className='ca-panel-content'>
-                {!desktopReleases.length && <p>No desktop release published yet — run "npm run release" from the Electron wrapper project.</p>}
+                {!desktopReleases.length && <p>No desktop release published yet. Run "npm run release" from the Electron wrapper project.</p>}
                 {desktopReleases[0] && (
                   <div className='ca-tenant-card'>
                     <h4>v{desktopReleases[0].version}</h4>
                     <p>Published {formatDateTime(desktopReleases[0].publishedAt)} by {desktopReleases[0].publishedBy || '--'}</p>
-                    <p>Download method: <strong>{desktopReleases[0].downloadMethod || 'direct'}</strong>{desktopReleases[0].downloadMethod === 'proxy' && ' (Drive public links didn\'t work for this release — routed through wageserver instead)'}</p>
+                    <p>Download method: <strong>{desktopReleases[0].downloadMethod || 'direct'}</strong>{desktopReleases[0].downloadMethod === 'proxy' && ' (Drive public links didn\'t work for this release, so it is routed through wageserver instead)'}</p>
                     {(desktopReleases[0].files || []).map((f) => (
                       <div key={f.name} style={{ padding: '4px 0' }}>
-                        {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) — <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
+                        {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) &middot; <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
                       </div>
                     ))}
                     <button
@@ -2342,10 +2342,10 @@ const CentralAdminApp = () => {
                 {desktopReleases.slice(1).map((release) => (
                   <div key={release.version} className='ca-tenant-card'>
                     <h4>v{release.version}</h4>
-                    <p>Published {formatDateTime(release.publishedAt)} by {release.publishedBy || '--'} — download method: {release.downloadMethod || 'direct'}</p>
+                    <p>Published {formatDateTime(release.publishedAt)} by {release.publishedBy || 'unknown'}. Download method: {release.downloadMethod || 'direct'}</p>
                     {(release.files || []).map((f) => (
                       <div key={f.name} style={{ padding: '4px 0' }}>
-                        {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) — <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
+                        {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB) &middot; <a href={f.downloadLink} target='_blank' rel='noreferrer'>Download</a>
                       </div>
                     ))}
                     <button
@@ -2378,7 +2378,7 @@ const CentralAdminApp = () => {
                 {offlineAccounts.length === 0 && <p>No offline license accounts yet.</p>}
                 {offlineAccounts.map((account) => (
                   <div key={account.accountId} className='ca-tenant-card'>
-                    <h4>{account.companyName} — {account.email}</h4>
+                    <h4>{account.companyName} ({account.email})</h4>
                     <p>Primary subdomain: {account.primarySubdomain} | Account status: {account.status}</p>
                     {(account.licenses || []).map((license) => (
                       <div key={license.licenseId} style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 8, padding: 10, marginTop: 8 }}>
@@ -2697,11 +2697,11 @@ const CentralAdminApp = () => {
                       value={globalSettingsForm.epsilonModel}
                       onChange={(e) => setGlobalSettingsForm({ ...globalSettingsForm, epsilonModel: e.target.value })}
                       placeholder='claude-sonnet-5'
-                      title="Must be a model that supports thinking:{type:'adaptive'} — epsilon.js's getCompletion always requests it. An older model that only supports thinking via budget_tokens (or none at all) will reject every request outright."
+                      title="Must be a model that supports thinking:{type:'adaptive'}, which epsilon.js's getCompletion always requests. An older model that only supports thinking via budget_tokens (or none at all) will reject every request outright."
                     />
                   </label>
                   {/* Epsilon token price lives on the Epsilon AI Usage tab
-                      now, next to the per-seat price it's priced alongside —
+                      now, next to the per-seat price it's priced alongside.
                       editing it here too would be two places for the same
                       value with no indication either was just changed
                       elsewhere. */}
@@ -3149,8 +3149,8 @@ const CentralAdminApp = () => {
                   <strong>₦{(epsilonOverview?.month?.marginNaira || 0).toLocaleString()}</strong>
                   <p>
                     ₦{(epsilonOverview?.month?.totalNaira || 0).toLocaleString()} charged − real Anthropic cost
-                    (${(epsilonOverview?.month?.totalUsd || 0).toLocaleString()} ≈ ₦{(epsilonOverview?.month?.totalNgnEquivalent || 0).toLocaleString()} at ₦{epsilonOverview?.usdToNgn || '—'}/$).
-                    {(epsilonOverview?.month?.costCoveredTokens || 0) < (epsilonOverview?.month?.totalTokens || 0) && ' Some tokens predate cost tracking and are excluded — this is a floor, not the exact figure.'}
+                    (${(epsilonOverview?.month?.totalUsd || 0).toLocaleString()} ≈ ₦{(epsilonOverview?.month?.totalNgnEquivalent || 0).toLocaleString()} at ₦{epsilonOverview?.usdToNgn || '-'}/$).
+                    {(epsilonOverview?.month?.costCoveredTokens || 0) < (epsilonOverview?.month?.totalTokens || 0) && ' Some tokens predate cost tracking and are excluded, so this is a floor rather than the exact figure.'}
                   </p>
                 </div>
               </div>
@@ -3179,7 +3179,7 @@ const CentralAdminApp = () => {
                 </div>
                 <div className='ca-panel-content'>
                   <p className='ca-panel-note'>
-                    Free grant, bypasses Paystack entirely — same as the manual subscription/offline-license forms.
+                    Free grant, bypasses Paystack entirely, the same as the manual subscription and offline-license forms.
                     Set seats to 0 to revoke.
                   </p>
                   <div className='ca-form-grid'>
@@ -3209,7 +3209,7 @@ const CentralAdminApp = () => {
                 </div>
                 <div className='ca-panel-content'>
                   <p className='ca-panel-note'>
-                    What every tenant actually pays for Epsilon — both figures feed the pricing page and the
+                    What every tenant actually pays for Epsilon. Both figures feed the pricing page and the
                     in-app purchase flow directly. These were previously only editable from Offline Licenses
                     (per-seat price) and Admin Settings (token rate); consolidated here since they are both
                     Epsilon-specific.
@@ -3260,7 +3260,7 @@ const CentralAdminApp = () => {
                 </div>
                 <div className='ca-panel-content'>
                   <p className='ca-panel-note'>
-                    What Epsilon actually costs from Anthropic, vs. the token price charged above — the gap is
+                    What Epsilon actually costs from Anthropic, vs. the token price charged above. The gap is
                     real margin (see the "Real Margin This Month" card). Manually maintained: Anthropic's rates
                     and the exchange rate both drift over time and aren't fetched automatically, so keep these
                     current yourself.
@@ -3297,7 +3297,7 @@ const CentralAdminApp = () => {
                   </div>
                   {Object.entries(globalSettingsForm.epsilonModelRatesUsd || {}).map(([modelId, rates]) => (
                     <div key={modelId} style={{ marginTop: 16 }}>
-                      <p className='ca-panel-note' style={{ marginBottom: 4 }}><strong>{modelId}</strong> — USD per 1,000,000 tokens</p>
+                      <p className='ca-panel-note' style={{ marginBottom: 4 }}><strong>{modelId}</strong>, USD per 1,000,000 tokens</p>
                       <div className='ca-form-grid'>
                         {['inputPerM', 'outputPerM', 'cacheWritePerM', 'cacheReadPerM'].map((field) => (
                           <label key={field}>
@@ -3334,10 +3334,10 @@ const CentralAdminApp = () => {
                 </div>
                 <div className='ca-panel-content'>
                   <p className='ca-panel-note'>
-                    Bypasses Team Access entirely — use this when a tenant's own super admin needs a seat right
+                    Bypasses Team Access entirely. Use this when a tenant's own super admin needs a seat right
                     now (they cannot edit their own profile from Settings, so a seat granted to them above has
                     no self-service way to actually reach them). The rate-limit reset below uses the same
-                    tenant/email fields — deliberately platform-operator-only: a workspace admin resetting their
+                    tenant/email fields. Deliberately platform-operator-only: a workspace admin resetting their
                     own limit would defeat the point of having one.
                   </p>
                   <div className='ca-form-grid'>
@@ -3378,7 +3378,7 @@ const CentralAdminApp = () => {
                   <div className='ca-panel-head'>
                     <div className='ca-panel-title'>
                       <h3>Top tenants using Epsilon (last 30 days)</h3>
-                      <p>Who's actually using the AI assistant — click a tenant in the Tenants tab for the full per-user breakdown and chart.</p>
+                      <p>Who's actually using the AI assistant. Click a tenant in the Tenants tab for the full per-user breakdown and chart.</p>
                     </div>
                     <button className='ca-inline-btn' onClick={loadEpsilonOverview}>🔄 Refresh</button>
                   </div>
@@ -3594,7 +3594,7 @@ const CentralAdminApp = () => {
                               {' · '}
                               {isVisitorReply
                                 ? `${reply.fromName || reply.from || selectedEnquiry.name} (via email)`
-                                : `Admin${reply.repliedBy ? ` — ${reply.repliedBy}` : ''}`}
+                                : `Admin${reply.repliedBy ? `: ${reply.repliedBy}` : ''}`}
                             </span>
                           </div>
                         </div>

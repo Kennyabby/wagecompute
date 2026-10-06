@@ -1,11 +1,11 @@
-/* Single source of truth for the platform visual identity — color,
+/* Single source of truth for the platform visual identity, color,
    spacing, type, radius, shadow, and the shared responsive breakpoint
    scale every page should design against. Imported once from index.css,
    before any component CSS, so every value below is available everywhere.
 
    Existing per-page :root blocks (LandingPage.css --ec-*, Login.css
    --login-*, Settings.css --settings-*, etc.) keep their own variable
-   NAMES on purpose — every existing var(--ec-primary) call site across
+   NAMES on purpose, every existing var(--ec-primary) call site across
    the app keeps working unchanged. Only their VALUES get repointed to
    reference these shared tokens (e.g. --ec-primary: var(--brand-primary))
    so there is one real source of truth for the actual color instead of
@@ -15,19 +15,19 @@
    Shared breakpoint scale (CSS cannot share @media values without a
    preprocessor, so this is a documented convention every migrated file
    follows, not an enforced mechanism):
-     1280px — large desktop / small laptop
-     1024px — tablet landscape / small laptop (account for a ~310px sidebar
+     1280px, large desktop / small laptop
+     1024px, tablet landscape / small laptop (account for a ~310px sidebar
               eating into the visible content column on authenticated pages)
-     768px  — tablet portrait
-     480px  — phone
+     768px , tablet portrait
+     480px , phone
 */
 :root {
-  /* ---- Brand (tenant-facing app) — the real, existing identity, not a
+  /* ---- Brand (tenant-facing app), the real, existing identity, not a
      new one: ported 1:1 from LandingPage.css/Login.css/Settings.css. ---- */
-  --brand-primary: #173829;      /* deep forest green — primary text, headers */
-  --brand-secondary: #2b6a4b;    /* mid green — buttons, links, accents */
-  --brand-accent: #6af2ad;       /* mint — highlights, active states */
-  --brand-gold: #ffe29a;         /* gold — premium/callout accents */
+  --brand-primary: #173829;      /* deep forest green, primary text, headers */
+  --brand-secondary: #2b6a4b;    /* mid green, buttons, links, accents */
+  --brand-accent: #6af2ad;       /* mint, highlights, active states */
+  --brand-gold: #ffe29a;         /* gold, premium/callout accents */
   --brand-bg: #f7f4eb;           /* cream page background (landing) */
   --brand-bg-alt: #f5f8f6;       /* alternate cream, slightly cooler (login) */
   --brand-bg-soft: #f8faf9;      /* softest cream, card-adjacent (settings) */
@@ -105,7 +105,7 @@
    the live customer product) but is built on the same spacing/type/radius/
    shadow system above. Scoped to .central-admin-app so it can never leak
    into the tenant-facing app. Values are the existing CentralAdminApp
-   emerald/indigo/slate identity, refined rather than replaced — wired up
+   emerald/indigo/slate identity, refined rather than replaced, wired up
    when the Central Admin redesign stage lands.
 */
 .central-admin-app {

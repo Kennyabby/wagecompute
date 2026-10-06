@@ -3,8 +3,8 @@
    ----------------------------------------------------------------------------
    Articles carry their full body here as an array of blocks, so /blog/:slug
    renders real long-form content rather than a stub that links elsewhere. The
-   subject matter is deliberately operational — how the mechanics work and why
-   they were built that way — because that is what this platform can write
+   subject matter is deliberately operational, how the mechanics work and why
+   they were built that way, because that is what this platform can write
    about credibly.
 
    Press items are product and company announcements. Dates are written as

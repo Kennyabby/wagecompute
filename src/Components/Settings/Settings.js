@@ -46,7 +46,7 @@ const Settings = () => {
     } = useContext(ContextProvider)
 
     const Navigate = useNavigate()
-    // Electron desktop build only — the installed app's own version, shown
+    // Electron desktop build only, the installed app's own version, shown
     // in the About panel so the user always has a straightforward way to
     // see what they're running (e.g. before reporting an issue).
     const [appVersion, setAppVersion] = useState('')
@@ -54,15 +54,15 @@ const Settings = () => {
         window.electronAPI?.getAppVersion?.().then((v) => setAppVersion(v || '')).catch(() => {})
     }, [])
 
-    // Epsilon AI seat entitlement — a paid, per-seat add-on tracked
+    // Epsilon AI seat entitlement, a paid, per-seat add-on tracked
     // separately from enabledModules (see the Epsilon plan/moduleCatalog.js);
     // fetched here purely to render "X of Y seats used" and to disable the
     // per-employee toggle below once every purchased/granted seat is spoken
-    // for. Never fetched on the Electron build — epsilonBilling's routes
+    // for. Never fetched on the Electron build, epsilonBilling's routes
     // aren't even registered on that backend.
     const [epsilonSeatInfo, setEpsilonSeatInfo] = useState({ epsilonSeats: 0, usedSeats: 0, priceNaira: 0 })
     // Session-scoped cache (survives a page refresh within the same tab,
-    // unlike a plain JS variable) — same useCache opt-in pattern as the
+    // unlike a plain JS variable), same useCache opt-in pattern as the
     // App.js context fetches: default false means every existing call site
     // (right after granting/revoking an employee's AI access) keeps getting
     // genuinely fresh seat counts, never a stale cached number.
@@ -80,7 +80,7 @@ const Settings = () => {
                     }
                 }
             } catch (e) {
-                // sessionStorage is a best-effort cache — fall through to a live fetch
+                // sessionStorage is a best-effort cache, fall through to a live fetch
             }
         }
         const resp = await fetchServer('GET', {}, 'billing/epsilon/seat-info', server)
@@ -94,7 +94,7 @@ const Settings = () => {
             try {
                 window.sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }))
             } catch (e) {
-                // best-effort — quota exceeded or private-mode storage block
+                // best-effort, quota exceeded or private-mode storage block
             }
         }
     }
@@ -117,7 +117,7 @@ const Settings = () => {
     const [selectedEmployee, setSelectedEmployee] = useState(null)
     const [currentSetting, setCurrentSetting] = useState(null)
     const [billingTab, setBillingTab] = useState('billing')
-    // Bumped by the Refresh button — used as BillingSettingsPanel/
+    // Bumped by the Refresh button, used as BillingSettingsPanel/
     // EpsilonBillingCard's `key`, so React remounts whichever is active and
     // its own internal fetch effect runs fresh, without touching either
     // child component's own fetch logic.
@@ -158,7 +158,7 @@ const Settings = () => {
         name: '',
         type: '',
         account: '',
-        // Which modules this payment method is available for — replaces the
+        // Which modules this payment method is available for, replaces the
         // old isSalesAccount/isExpenseAccount booleans with a real per-module
         // assignment so, e.g., a bank account used only for rent collection
         // doesn't also show up as a Product Sales checkout option.
@@ -166,7 +166,7 @@ const Settings = () => {
         // Whether Purchase/Expenses/Vendor payments from this account are
         // allowed to go through even if the account's GL balance can't
         // cover them. Defaults to true (unrestricted) to match today's
-        // actual behavior — no balance check exists until an admin
+        // actual behavior, no balance check exists until an admin
         // explicitly turns this off for a specific account. Journal
         // postings never consult this field at all.
         allowOverdraft: true,
@@ -211,7 +211,7 @@ const Settings = () => {
         })
         .sort((first, second) => Number(first?.['g/l code'] || 0) - Number(second?.['g/l code'] || 0))
     // Only modules this tenant actually has enabled can be granted to an
-    // employee — an admin can't hand out access to something the workspace
+    // employee, an admin can't hand out access to something the workspace
     // itself hasn't purchased.
     const modulePermissions = dashList.filter((moduleKey) => (enabledModules || dashList).includes(moduleKey))
     const [salesPostsPermissions, setSalesPostsPermissions] = useState([])
@@ -267,7 +267,7 @@ const Settings = () => {
                             setting.prop = 'warehouses'
                             // Only pick Warehouses as the default landing
                             // section on first load (currentSetting still
-                            // null) — this whole block re-runs every time
+                            // null), this whole block re-runs every time
                             // `settings` refreshes (i.e. after every save),
                             // and without this guard it was jumping back to
                             // Warehouses after saving anywhere else.
@@ -293,14 +293,14 @@ const Settings = () => {
                         case 'approvalConfig':
                             // Already has its own dedicated "Approval Rules"
                             // top-level tab (see currentView === 'approvals')
-                            // — excluded here for the same reason
+                            //, excluded here for the same reason
                             // posReconciliation is: avoid a duplicate entry.
                             return false
                         case 'remediationFlags':
                             // Internal engineering feature flags for a phased
-                            // backend rollout (see remediationFlags.js) —
-                            // never meant to be shown to any tenant, online
-                            // or offline. Its own "(internal — do not
+                            // backend rollout (see remediationFlags.js).
+                            // Never meant to be shown to any tenant, online
+                            // or offline. Its own "(internal, do not
                             // remove)" description is a note to developers
                             // not to delete the underlying flag mechanism,
                             // not a hint that it belongs in this list.
@@ -317,7 +317,7 @@ const Settings = () => {
             // otherwise the list on screen (currentSetting[currentSetting.prop])
             // keeps showing pre-save data until you navigate away and back.
             // Only for the normal list-based sections (the switch above
-            // tagged them with a `.prop`) — posReconciliation and other
+            // tagged them with a `.prop`), posReconciliation and other
             // one-off sidebar entries build their own currentSetting object
             // and aren't part of this array-backed list.
             setCurrentSetting((prev) => {
@@ -547,8 +547,8 @@ const Settings = () => {
     }, [wrhs])
 
     // useCache=true (mount + the periodic timer's leading edge is fine to
-    // skip re-fetching everything the settings page pulls in — employees,
-    // profiles, chart of accounts — none of which change every few seconds)
+    // skip re-fetching everything the settings page pulls in, employees,
+    // profiles, chart of accounts, none of which change every few seconds)
     // lets each fetch skip its live call entirely when data already cached
     // within the last few minutes is fresh enough, instead of the page
     // always blocking on 5 full live fetches on every mount/refresh no
@@ -577,7 +577,7 @@ const Settings = () => {
         refreshSettingsData(cmp_val, true)
 
         // Periodic real-time-ish refresh while the Settings page stays open
-        // — genuinely live (bypasses the cache), not just re-checking it.
+        //, genuinely live (bypasses the cache), not just re-checking it.
         const intervalId = setInterval(() => {
             refreshSettingsData(window.localStorage.getItem('sessn-cmp'), false)
         }, 5 * 60 * 1000)
@@ -588,7 +588,7 @@ const Settings = () => {
         const params = new URLSearchParams(window.location.search)
         // wantsEpsilonSeats is set by Signup.js right before redirecting a
         // brand-new admin to /login, when they opted in to Epsilon during
-        // registration — signupNewCompany never grants seats for free, so
+        // registration, signupNewCompany never grants seats for free, so
         // this just lands them straight on the purchase card to finish that
         // request with real payment. One-shot: cleared immediately so it
         // doesn't keep reopening Billing on every later Settings visit.
@@ -720,7 +720,7 @@ const Settings = () => {
 
     // `status` and `access` have been used inconsistently for "is this
     // profile a tenant admin" across the app (seed.js sets both on the
-    // founding admin, but other admin-creation paths only set one) — check
+    // founding admin, but other admin-creation paths only set one), check
     // both everywhere, matching the pattern already established just below
     // for Approval Rules, rather than each gate picking a different single
     // field and silently hiding the tab for admins missing that one field.
@@ -847,7 +847,7 @@ const Settings = () => {
         })
     }
 
-    // window.prompt used to be used here — Electron's renderer doesn't
+    // window.prompt used to be used here, Electron's renderer doesn't
     // reliably support it (confirmed: it just silently does nothing there,
     // whereas it shows a real native OS dialog on the web build), so this
     // needs to work identically on both without relying on any native
@@ -932,8 +932,8 @@ const Settings = () => {
                         productCategories: selectedCategories,
                         paymentMethods: selectedPaymentMethods
                     }
-                    // Only one warehouse can be the Primary Purchase Location —
-                    // making this one primary demotes any other that held it.
+                    // Only one warehouse can be the Primary Purchase Location.
+                    // Making this one primary demotes any other that held it.
                     const existingWarehouses = newWarehouse.purchase
                         ? wrhs.map((wrh) => (wrh.purchase ? { ...wrh, purchase: false } : wrh))
                         : wrhs
@@ -957,8 +957,8 @@ const Settings = () => {
                         }, 3000)
                     }
                 } else {
-                    // Only one warehouse can be the Primary Purchase Location —
-                    // making this one primary demotes any other that held it.
+                    // Only one warehouse can be the Primary Purchase Location.
+                    // Making this one primary demotes any other that held it.
                     const updatedWarehouses = wrhs.map((wrh) => {
                         if (wrh.name === curPropSet.name) {
                             return {
@@ -1098,7 +1098,7 @@ const Settings = () => {
                     // Every module that records a payment (Orders, POS/Delivery
                     // session totals, GL posting, reports) stores it keyed by
                     // this method's `name` string at the time the payment was
-                    // made — there's no stable id on those historical records.
+                    // made, there's no stable id on those historical records.
                     // Renaming the method here would silently orphan all of
                     // that prior data (it'd stop showing up anywhere, and stop
                     // posting to the right GL account) unless the old name is
@@ -1136,7 +1136,7 @@ const Settings = () => {
             case "posSettings":
                 if (propState === 'view') {
                     // Only one POS mode (Shop or Restaurant) can be active at
-                    // once — activating this one deactivates any other.
+                    // once, activating this one deactivates any other.
                     const updatedPosSetting = posSettings.map((pos) => {
                         if (pos.name === curPropSet.name) {
                             return curPropSet
@@ -1353,8 +1353,8 @@ const Settings = () => {
                     permissions: loginDetails.permissions,
                     enableLogin: loginDetails.enableLogin,
                     enableDebtRecovery: loginDetails.enableDebtRecovery,
-                    // Explicitly overridden, not inherited from the spread above —
-                    // defaultCompanyRecord is a clone of the ADMIN's own profile,
+                    // Explicitly overridden, not inherited from the spread above.
+                    // DefaultCompanyRecord is a clone of the ADMIN's own profile,
                     // which could itself have aiAccess:true; without this override
                     // a brand-new employee would silently inherit an Epsilon seat
                     // instead of the admin explicitly granting one via this toggle.
@@ -1366,7 +1366,7 @@ const Settings = () => {
                 // postUserDetails now creates BOTH the per-company Profile
                 // (permissions, this newProfile payload) AND the cross-tenant
                 // login-routing record (WCDatabase/Profiles) in one server-side
-                // call — a separate /createDoc call for WCDatabase/Profiles used
+                // call, a separate /createDoc call for WCDatabase/Profiles used
                 // to follow this one, but the generic gateway's collection
                 // allowlist deliberately rejects that cross-tenant target
                 // (403 "not permitted... use the dedicated route"), so that
@@ -1414,7 +1414,7 @@ const Settings = () => {
             if (selectedEmployee) {
                 // One dedicated server-side call that deletes the per-company
                 // Profile AND (only once no duplicate Profile remains for this
-                // emailid) the cross-tenant login record — a second /removeDoc
+                // emailid) the cross-tenant login record, a second /removeDoc
                 // call for WCDatabase/Profiles used to follow this one, but the
                 // generic gateway's collection allowlist deliberately rejects
                 // that cross-tenant target, so it could never actually succeed
@@ -2027,7 +2027,7 @@ const Settings = () => {
                                                 <span className='slider'></span>
                                             </label>
                                         </div>
-                                        {/* Epsilon is online-only — its backend needs a live Anthropic
+                                        {/* Epsilon is online-only, its backend needs a live Anthropic
                                             API key, which the desktop build deliberately never ships
                                             with (see the .env exclusion in the electron package build).
                                             Showing a toggle for a feature that can't work on this
@@ -2056,17 +2056,17 @@ const Settings = () => {
                                                 </label>
                                                 {epsilonSeatInfo.epsilonSeats <= 0 && (
                                                     <div className='settings-toggle-hint'>
-                                                        No Epsilon AI seats yet — purchase seats from Settings &gt; Billing, or ask the platform admin to grant some.
+                                                        No Epsilon AI seats yet. Purchase seats from Settings &gt; Billing, or ask the platform admin to grant some.
                                                     </div>
                                                 )}
                                                 {epsilonSeatInfo.epsilonSeats > 0 && !selectedEmployee?.aiAccess && epsilonSeatInfo.usedSeats >= epsilonSeatInfo.epsilonSeats && (
                                                     <div className='settings-toggle-hint'>
-                                                        All {epsilonSeatInfo.epsilonSeats} seat(s) are in use — free one up or purchase more before granting this employee access.
+                                                        All {epsilonSeatInfo.epsilonSeats} seat(s) are in use. Free one up or purchase more before granting this employee access.
                                                     </div>
                                                 )}
                                                 {selectedEmployee?.aiAccess && (
                                                     <div className='settings-toggle-hint'>
-                                                        Locked out of Epsilon until the usage window resets? Only the platform admin can reset that early (Central Admin) — this is a deliberate cost control, not something a workspace can bypass on its own.
+                                                        Locked out of Epsilon until the usage window resets? Only the platform admin can reset that early (Central Admin). This is a deliberate cost control, not something a workspace can bypass on its own.
                                                     </div>
                                                 )}
                                             </div>
@@ -2094,7 +2094,7 @@ const Settings = () => {
                 return window.electronAPI?.isElectron
                     ? <DesktopLicensePanel variants={variants} />
                     : (
-                        // Tab-switched rather than stacked — Plan & Billing and
+                        // Tab-switched rather than stacked, Plan & Billing and
                         // Epsilon are unrelated billing concerns with their own
                         // stat grids; showing both at once meant scrolling past
                         // one to reach the other. Only the active one renders.
@@ -2127,7 +2127,7 @@ const Settings = () => {
                                 </button>
                             </div>
                             {/* Both panels stay mounted the whole time the Billing view is
-                                active — only their visibility toggles with billingTab. Each
+                                active, only their visibility toggles with billingTab. Each
                                 panel fetches its own data once (with IndexedDB caching that
                                 paints instantly on future mounts, plus its own periodic
                                 background auto-refresh), so switching between "Plan & Billing"
@@ -2267,7 +2267,7 @@ const Settings = () => {
                                         {setting.desc}
                                     </div>
                                 ))}
-                                {/* Singleton config, not a list — always shown rather than
+                                {/* Singleton config, not a list, always shown rather than
                                     only once a matching Settings doc happens to already exist. */}
                                 <div
                                     className={'profile-item ' + (currentSetting?.name === 'posReconciliation' ? 'profile-item-active' : '')}
@@ -2456,7 +2456,7 @@ const Settings = () => {
                                                 ))}
                                             </div>
                                             {!(curPropSet.modules || []).length && (
-                                                <div className='settings-toggle-hint'>Not assigned to any module yet — it won't be selectable anywhere until you check at least one above.</div>
+                                                <div className='settings-toggle-hint'>Not assigned to any module yet, so it won't be selectable anywhere until you check at least one above.</div>
                                             )}
                                             <div className='inpcov toggle-row' style={{ marginTop: '16px' }}>
                                                 <div>
@@ -2736,7 +2736,7 @@ const Settings = () => {
                             Switching requires the master password set up for this
                             installation. Databases you don't explicitly log out of, and
                             whose session hasn't expired, resume instantly without logging
-                            in again — switching here never logs out any other database.
+                            in again. Switching here never logs out any other database.
                         </p>
                         <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                             <button className='savebtn' onClick={() => Navigate('/?desktopSwitch=1')}>

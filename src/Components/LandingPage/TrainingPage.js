@@ -1,5 +1,5 @@
 /* ============================================================================
-   /training — learning paths and certification.
+   /training, learning paths and certification.
    ========================================================================= */
 
 import { useContext, useEffect } from 'react'
@@ -68,6 +68,7 @@ const TrainingPage = () => {
         eyebrow="Learning paths"
         title="Four audiences, four curricula"
         subtitle="Each path assumes no prior knowledge of the platform and ends with the person able to do their actual job unsupervised."
+        rail
         split
       >
         <div className="ds-stack lg">
@@ -98,6 +99,7 @@ const TrainingPage = () => {
         eyebrow="Certification"
         title="Prove it, for yourself or for a client"
         subtitle="Useful for staff moving between sites, for practices advising clients, and for partners delivering implementations."
+        rail
         split
       >
         <Tiles cols={4}>
@@ -124,6 +126,7 @@ const TrainingPage = () => {
         eyebrow="Live sessions"
         title="Learn alongside other operators"
         subtitle="Monthly workshops and webinars covering the same ground as the paths above, with the advantage that you can ask questions."
+        rail
         split
         footer={<TextLink to="/events" navigate={navigate}>All events and recordings</TextLink>}
       >

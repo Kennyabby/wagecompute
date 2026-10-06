@@ -36,7 +36,7 @@ const Attendance = () => {
 
     const [attendanceApprovals, setAttendanceApprovals] = useState([])
     // Split, badge-facing counterparts to attendanceApprovals (left
-    // untouched — it mixes pending+approved). Approved is visible only to
+    // untouched, it mixes pending+approved). Approved is visible only to
     // whoever raised the request or an admin, matching SideNav's
     // green-badge visibility rule.
     const [attendancePending, setAttendancePending] = useState([])

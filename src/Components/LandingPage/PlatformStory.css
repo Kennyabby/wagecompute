@@ -1,5 +1,5 @@
 /* Visual language ported directly from the platform's detailed pitch
-   document (the "Design" canvas artifact) — same palette, same type
+   document (the "Design" canvas artifact), same palette, same type
    choices, same component shapes (kicker labels, pillar cards, note and
    quote asides, the before/after table), just sized for on-screen reading
    instead of a printed page. Keep this in step with the pitch document. */
@@ -337,3 +337,57 @@
 }
 .ds-page .ps-table td { color: var(--ds-text-muted); }
 .ds-page .ps-table tbody tr:last-child td { border-bottom: none; }
+
+/* ---- Spacing pass -------------------------------------------------------
+   The story renders inside the About page's own section, so it should not
+   add another full section's worth of padding on top. Its internal rhythm
+   moves onto the shared scale, and the chapters gain real separation from
+   each other rather than running together as one wall of text.
+   ---------------------------------------------------------------------- */
+
+.ds-page .ps-root { padding: 0; }
+.ds-page .ps-page { max-width: 76ch; margin: 0; }
+
+.ds-page .ps-kicker { margin: 0 0 var(--ds-s3); }
+.ds-page .ps-title { margin: 0 0 var(--ds-s5); }
+.ds-page .ps-lede { margin: 0 0 var(--ds-s5); }
+.ds-page .ps-p { margin: 0 0 var(--ds-s5); }
+.ds-page .ps-h2 { margin: 0 0 var(--ds-s4); }
+.ds-page .ps-h3 { margin: var(--ds-s8) 0 var(--ds-s3); }
+.ds-page .ps-bridge { margin: var(--ds-s6) 0 0; }
+
+.ds-page .ps-divider { margin: var(--ds-block-gap) 0; }
+.ds-page .ps-chapter { scroll-margin-top: calc(var(--ds-header-h) + var(--ds-subnav-h) + var(--ds-s6)); }
+
+.ds-page .ps-pillar-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ds-s6);
+  margin: var(--ds-s8) 0 0;
+}
+.ds-page .ps-pillar { padding-top: var(--ds-s4); }
+.ds-page .ps-pillar-num { margin: 0 0 var(--ds-s2); }
+.ds-page .ps-pillar-title { margin: 0 0 var(--ds-s2); }
+.ds-page .ps-pillar-body { margin: 0; }
+
+.ds-page .ps-nav-label { margin: 0 0 var(--ds-s3); }
+.ds-page .ps-chapter-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-s2);
+  margin: 0 0 var(--ds-s4);
+}
+
+.ds-page .ps-quote-box { margin: var(--ds-s7) 0; }
+.ds-page .ps-table { margin: var(--ds-s6) 0 0; }
+
+@media (max-width: 768px) {
+  .ds-page .ps-pillar-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ds-s5); }
+  .ds-page .ps-h3 { margin-top: var(--ds-s6); }
+  /* A table of this width cannot shrink to a phone, so it scrolls in place
+     rather than widening the page. */
+  .ds-page .ps-table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+@media (max-width: 480px) {
+  .ds-page .ps-pillar-row { grid-template-columns: minmax(0, 1fr); }
+}

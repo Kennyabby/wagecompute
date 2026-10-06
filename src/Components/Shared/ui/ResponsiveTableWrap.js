@@ -1,6 +1,6 @@
 import './ui.css'
 
-// Codifies the ONE correct horizontal-scroll pattern in this app — wide
+// Codifies the ONE correct horizontal-scroll pattern in this app, wide
 // data tables genuinely need to scroll sideways on narrow screens (unlike
 // stat cards, which should wrap via StatCardGrid instead). Central Admin
 // already does this correctly per-table; this makes that pattern reusable

@@ -16,7 +16,7 @@ const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100
 
 const JOURNAL_IMPORT_HEADERS = ['Posting Group', 'Posting Date', 'Reference', 'Notes', 'Account Code', 'Debit', 'Credit']
 
-// Where each real GL sourceCollection value can be browsed today — see the
+// Where each real GL sourceCollection value can be browsed today, see the
 // GL-table navigation-tier research this feature was built from. A module
 // with no working id-keyed detail view at all (Employees debt-recovery) is
 // intentionally left unmapped: landing on that module's page without
@@ -27,7 +27,7 @@ const GL_SOURCE_ROUTE_MAP = {
     Accommodations: '/accommodations',
     Rentals: '/sales',
     // Session-level only (no stable per-row id for one debt/recovery line
-    // in the legacy Sales collection today) — see Sales.js's deep-link effect.
+    // in the legacy Sales collection today), see Sales.js's deep-link effect.
     Sales: '/sales',
     Expenses: '/expenses',
     FixedAssets: '/assets',
@@ -39,7 +39,7 @@ const GL_SOURCE_ROUTE_MAP = {
     VendorPayments: '/business-partners',
     InventoryTransactions: '/inventory',
     // Every POSSessions-sourced GL entry is an inventory shortage charge or
-    // recovery (deriveInventoryShortageRecoveryEntries) — its home is the
+    // recovery (deriveInventoryShortageRecoveryEntries), its home is the
     // Inventory Reconciliation review, not the live POS terminal.
     POSSessions: '/delivery',
 }
@@ -84,7 +84,7 @@ const Journals = () => {
 
     const [activeTab, setActiveTab] = useState('COA') // 'COA', 'JOURNALS', or 'REPORTS'
     
-    // COA State — coaData is the context chartOfAccounts (always fresh via SSE + cache)
+    // COA State, coaData is the context chartOfAccounts (always fresh via SSE + cache)
     const coaData = chartOfAccounts || []
     const [searchTerm, setSearchTerm]   = useState('')
     const [filterCategory, setFilterCategory] = useState('All')
@@ -474,12 +474,12 @@ const Journals = () => {
 
     // One-click historical backlog: posts a real GeneralLedgerEntries record
     // for every existing Purchase/Inventory/Assets/BusinessPartners document
-    // that doesn't already have one — safe to re-run (server-side dedup
+    // that doesn't already have one, safe to re-run (server-side dedup
     // skips anything already posted), so this can also be used later to pick
     // up any gap after new historical data is imported.
     //
     // The server responds immediately with an operationId and keeps running
-    // in the background — progress comes from the PostingOperations SSE feed
+    // in the background, progress comes from the PostingOperations SSE feed
     // (usePostingOperationProgress below), and the operationId is persisted
     // to localStorage so reloading this page mid-run reattaches to the same
     // operation instead of losing all visibility (or, worse, tempting a
@@ -489,8 +489,8 @@ const Journals = () => {
         try { return window.localStorage.getItem(glBacklogStorageKey) || null; } catch (e) { return null; }
     });
     const glBacklogOperation = usePostingOperationProgress(glBacklogOperationId);
-    // usePostingOperationProgress only ever updates from a live SSE event —
-    // right after a page reload it starts back at null and stays that way
+    // usePostingOperationProgress only ever updates from a live SSE event.
+    // Right after a page reload it starts back at null and stays that way
     // until the next document-processed broadcast, which for a large run can
     // be a real, visible gap ("connecting…" for no good reason when the
     // actual progress was known all along). Seeded from the one-off status
@@ -500,7 +500,7 @@ const Journals = () => {
     const [glBacklogSeed, setGlBacklogSeed] = useState(null);
     const glBacklogDisplay = glBacklogOperation || glBacklogSeed;
 
-    // Generic in-app confirm modal — window.confirm doesn't reliably work in
+    // Generic in-app confirm modal, window.confirm doesn't reliably work in
     // Electron's renderer (confirmed, same class of issue as window.prompt
     // elsewhere in this app), so anything here that used to gate a real
     // action behind it needs a real modal instead. { message, onConfirm } | null.
@@ -540,10 +540,10 @@ const Journals = () => {
     // a slow machine, a big backlog) and the user wants their controls back
     // right now rather than keep waiting. This can't safely abort whatever
     // record is actually mid-write server-side (see forceReleasePostingOperation's
-    // own comment — that's deliberate, not a limitation of this button), but it
+    // own comment, that's deliberate, not a limitation of this button), but it
     // does immediately let go of this operationId on the frontend, which is
-    // what's actually keeping the buttons disabled and the progress panel up —
-    // so the run controls are free again at once, and a fresh run can be
+    // what's actually keeping the buttons disabled and the progress panel up.
+    // So the run controls are free again at once, and a fresh run can be
     // started right away if wanted.
     const handleForceStopBacklog = async () => {
         if (!glBacklogOperationId) return;
@@ -564,7 +564,7 @@ const Journals = () => {
 
     useEffect(() => {
         if (!glBacklogOperation || glBacklogOperation.status === 'in-progress') return;
-        // Finished (completed, cancelled, or failed) — surface a final
+        // Finished (completed, cancelled, or failed), surface a final
         // summary and clear the reattach pointer so a fresh run starts clean
         // next time.
         const statusLabel = glBacklogOperation.status === 'completed' ? 'completed'
@@ -579,7 +579,7 @@ const Journals = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [glBacklogOperation?.status]);
 
-    // The actual "start the backlog run" call — shared by both entry points
+    // The actual "start the backlog run" call, shared by both entry points
     // below (the general Populate GL Backlog button, and the desktop-only
     // Migrate Old Data button). Only the confirmation message differs;
     // everything after that is the exact same server call and progress
@@ -591,7 +591,7 @@ const Journals = () => {
             if (resp && resp.ok) {
                 try { window.localStorage.setItem(glBacklogStorageKey, resp.operationId || operationId); } catch (e) {}
                 setGlBacklogOperationId(resp.operationId || operationId);
-                setAlertState('success'); setAlert(`Backlog run started — ${resp.total || 0} records to process.`); setAlertTimeout(4000);
+                setAlertState('success'); setAlert(`Backlog run started. ${resp.total || 0} records to process.`); setAlertTimeout(4000);
             } else {
                 setAlertState('error'); setAlert(resp?.mess || 'Failed to start General Ledger backlog'); setAlertTimeout(4000);
             }
@@ -610,9 +610,9 @@ const Journals = () => {
         })
     }
 
-    // Desktop build only — see Settings > Accounting Migration. Same
+    // Desktop build only, see Settings > Accounting Migration. Same
     // underlying operation as above (populateGeneralLedgerBacklog now also
-    // covers Orders — see that route's own comment), just framed for the
+    // covers Orders, see that route's own comment), just framed for the
     // scenario it actually exists for: an old local install upgraded from a
     // pre-accounting version of the app, whose historical Orders/Purchase/
     // Inventory records never posted to the General Ledger at all.
@@ -620,7 +620,7 @@ const Journals = () => {
         if (!company) return;
         setConfirmModal({
             title: 'Migrate Old Desktop Data',
-            message: "This scans every historical Sale, Purchase, and Inventory record on this computer and posts whatever hasn't been recorded in the General Ledger yet — fixing dashboard totals (like Sales Amount) that were missing anything from before this app's accounting engine existed. Safe to run more than once; already-posted records are left untouched. It can take a while. Continue?",
+            message: "This scans every historical Sale, Purchase, and Inventory record on this computer and posts whatever hasn't been recorded in the General Ledger yet, fixing dashboard totals (like Sales Amount) that were missing anything from before this app's accounting engine existed. Safe to run more than once; already-posted records are left untouched. It can take a while. Continue?",
             onConfirm: runGeneralLedgerBacklog,
         })
     }
@@ -864,7 +864,7 @@ const Journals = () => {
         const safeFileName = (name) => String(name || 'Report').replace(/[\\/:*?"<>|]+/g, '_');
 
         // Loaded once up front (addHeader below runs synchronously, repeated
-        // on every page) — only drawn if the tenant actually uploaded a logo,
+        // on every page), only drawn if the tenant actually uploaded a logo,
         // never this platform's own.
         const logo = await loadPdfImage(centralCompany?.logoUrl);
         const headerTextX = margin + (logo ? 18 : 0);
@@ -1094,7 +1094,7 @@ const Journals = () => {
         type: 'Balance Sheet'
     })
 
-    // Journals Form State — an array of independently-balanced postings.
+    // Journals Form State, an array of independently-balanced postings.
     // One posting is the common case (looks identical to the old single-entry
     // form); "Add Another Posting" appends a second linked posting so the
     // whole submission becomes a batch (see createJournalBatch), reversible
@@ -1133,7 +1133,7 @@ const Journals = () => {
         documentNo: '',
     }
     const [glFilters, setGlFilters] = useState(emptyGlFilters)
-    // Draft mirrors of the applied GL filters/date-range — every filter
+    // Draft mirrors of the applied GL filters/date-range, every filter
     // input below is bound to these so editing them live-filters whatever
     // rows are already on screen (see displayedGlRows) without hitting the
     // server on every keystroke; Apply/Refresh commits them into
@@ -1164,7 +1164,7 @@ const Journals = () => {
         }
     }, [company, activeTab])
 
-    // Reload balances whenever accounting views or dates change — force refresh to avoid stale stored summaries
+    // Reload balances whenever accounting views or dates change, force refresh to avoid stale stored summaries
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (company && ['COA', 'REPORTS'].includes(activeTab)) {
@@ -1338,7 +1338,7 @@ const Journals = () => {
         }
     }
 
-    // Flatten COA data for table — include headers, sub-headers and leaf accounts
+    // Flatten COA data for table, include headers, sub-headers and leaf accounts
     const flattenedAccounts = useMemo(() => {
         let accounts = [];
         
@@ -2383,7 +2383,7 @@ const Journals = () => {
     }
 
     const handleSaveJournal = async () => {
-        // Each posting must independently balance — a batch doesn't average
+        // Each posting must independently balance, a batch doesn't average
         // out across postings, every one of them is its own real document.
         for (let i = 0; i < journalForm.postings.length; i += 1) {
             const { totalDebit, totalCredit } = journalPostingTotals(journalForm.postings[i]);
@@ -2428,7 +2428,7 @@ const Journals = () => {
     }
 
     // "Posting Group" is what lets several flat spreadsheet rows become
-    // several independently-balanced postings in one batch — rows sharing
+    // several independently-balanced postings in one batch, rows sharing
     // the same group value become one posting's lines[], matching
     // createJournalBatch's shape exactly (see handleImportJournalFile).
     const handleExportJournalTemplate = () => {
@@ -2479,7 +2479,7 @@ const Journals = () => {
                 && JOURNAL_IMPORT_HEADERS.every((h, i) => headerRow[i] === h)
             if (!headersMatch) {
                 setJournalImportErrors([
-                    'Column headers do not match the expected template — export a fresh template and fill that in rather than changing column names/order.',
+                    'Column headers do not match the expected template. Export a fresh template and fill that in rather than changing the column names or their order.',
                     `Expected columns (in this exact order): ${JOURNAL_IMPORT_HEADERS.join(' | ')}`,
                     `Found columns: ${headerRow.filter(Boolean).join(' | ') || '(none)'}`,
                 ])
@@ -2534,7 +2534,7 @@ const Journals = () => {
                 const debit = Number(debitRaw) || 0
                 const credit = Number(creditRaw) || 0
                 if ((debit > 0 && credit > 0) || (debit <= 0 && credit <= 0)) {
-                    errors.push(`Row ${rowNum} (Posting Group ${group}): must contain either a Debit or a Credit amount — not both, and not neither (incompatible entry).`)
+                    errors.push(`Row ${rowNum} (Posting Group ${group}): must contain either a Debit or a Credit amount, but not both and not neither (incompatible entry).`)
                 }
 
                 if (!groups.has(group)) {
@@ -2573,7 +2573,7 @@ const Journals = () => {
             loadGeneralLedger(0).catch(() => {})
             hydrateFullAccountingSnapshot(true).catch(() => {})
         } catch (error) {
-            setJournalImportErrors([error.message || 'Failed to parse the uploaded file — make sure it is a valid .xlsx file exported from the template.'])
+            setJournalImportErrors([error.message || 'Failed to parse the uploaded file. Make sure it is a valid .xlsx file exported from the template.'])
         } finally {
             setJournalImporting(false)
             if (journalImportFileRef.current) journalImportFileRef.current.value = ''
@@ -2676,7 +2676,7 @@ const Journals = () => {
                     </div>
                     <div className="journals-modal-body">
                         {isBatch && (
-                            <p className="dd-subtitle">{journalForm.postings.length} linked postings — each balances independently, and reversing any one later reverses the whole batch together.</p>
+                            <p className="dd-subtitle">{journalForm.postings.length} linked postings. Each balances independently, and reversing any one later reverses the whole batch together.</p>
                         )}
                         {journalForm.postings.map((posting, postingIdx) => {
                             const { totalDebit: tDebit, totalCredit: tCredit } = postingTotals[postingIdx]
@@ -3218,7 +3218,7 @@ const Journals = () => {
                     <div className="report-card-header">
                         <div className="report-titles">
                             <h2>{reportType === 'PL' ? 'Income Statement' : reportType === 'BS' ? 'Balance Sheet' : 'Trial Balance'}</h2>
-                            <p className="report-period">Period: {new Date(fromDate).toLocaleDateString()} — {new Date(toDate).toLocaleDateString()}</p>
+                            <p className="report-period">Period: {new Date(fromDate).toLocaleDateString()} to {new Date(toDate).toLocaleDateString()}</p>
                         </div>
                         <div className="report-btns">
                             <button className="j-btn-secondary" onClick={exportToExcel}><FaFileExcel /> Excel</button>
@@ -3368,18 +3368,18 @@ const Journals = () => {
         )
     }
 
-    // Build Closing / Build with Ledger used to be here — removed, not just
+    // Build Closing / Build with Ledger used to be here, removed, not just
     // hidden: confirmed by tracing the actual backend routes that
     // compute-closings-range (Build Monthly Closings / Build Monthly +
     // Ledgers) explicitly reuses compute-closing's exact per-month logic
     // while walking every month from the earliest posting through the
-    // current one — a strict superset, always including whatever month
+    // current one, a strict superset, always including whatever month
     // these two single-month buttons targeted. handleComputeClosing (their
     // only caller) was removed with them.
     //
     // Single source of truth for every button in the Monthly Closing/GL
     // toolbar's tooltip AND its "What do these actions do?" help panel below
-    // (which just renders this whole array) — every button's `title` prop
+    // (which just renders this whole array), every button's `title` prop
     // pulls from here via getActionHelp(label) instead of a separately
     // hand-written string, so the two can never drift out of sync, including
     // for whatever gets added here next: add one entry, reference it from
@@ -3401,11 +3401,11 @@ const Journals = () => {
         },
         {
             label: 'Build Monthly Closings',
-            title: 'Build missing month-end closing snapshots (from the earliest posting through the selected period) so opening balances load from saved closings instead of recalculating all history. Uses the real General Ledger — the same source every report and dashboard total reads from.',
+            title: 'Build missing month-end closing snapshots (from the earliest posting through the selected period) so opening balances load from saved closings instead of recalculating all history. Uses the real General Ledger, the same source every report and dashboard total reads from.',
         },
         {
             label: 'Build Monthly + Ledgers',
-            title: 'Same as Build Monthly Closings, and also stores raw ledger traces in each closing snapshot for audit drill-down. Heavier to run — use when you need proof lines, not for routine catch-up.',
+            title: 'Same as Build Monthly Closings, and also stores raw ledger traces in each closing snapshot for audit drill-down. Heavier to run, so use it when you need proof lines rather than for routine catch-up.',
         },
         {
             label: 'Monthly Closing List',
@@ -3429,12 +3429,12 @@ const Journals = () => {
         },
         {
             label: 'Populate GL Backlog',
-            title: "One-time (re-runnable) tool: posts real General Ledger entries for existing Sales/Orders, Purchase, Inventory, Asset, and Business Partner records that don't have one yet, including into already-locked historical periods. Safe to run more than once — already-posted records are skipped, never duplicated.",
+            title: "One-time (re-runnable) tool: posts real General Ledger entries for existing Sales/Orders, Purchase, Inventory, Asset, and Business Partner records that don't have one yet, including into already-locked historical periods. Safe to run more than once, already-posted records are skipped, never duplicated.",
         },
         {
             label: 'Migrate Old Desktop Data',
             desktopOnly: true,
-            title: "Desktop build only, tenant super admin only. One-time (re-runnable) tool for an old local install upgraded from a pre-accounting version of this app: posts missing General Ledger entries for this computer's historical Sales, Purchase, and Inventory records from before this app's accounting engine existed — fixing dashboard totals (like Sales Amount) that silently omitted anything from before the upgrade.",
+            title: "Desktop build only, tenant super admin only. One-time (re-runnable) tool for an old local install upgraded from a pre-accounting version of this app: posts missing General Ledger entries for this computer's historical Sales, Purchase, and Inventory records from before this app's accounting engine existed, fixing dashboard totals (like Sales Amount) that silently omitted anything from before the upgrade.",
         },
     ]
 
@@ -3455,7 +3455,7 @@ const Journals = () => {
     })
 
     // A human-readable summary of every active filter, for the exported
-    // report's "Filters Applied" block — kept in sync with buildGlQueryFilters
+    // report's "Filters Applied" block, kept in sync with buildGlQueryFilters
     // by construction (same source fields), just labeled for display.
     const buildGlFiltersSummary = () => {
         const sourceLabel = glFilters.sourceCollection === '__journal__' ? 'Journal (manual) only' : (glFilters.sourceCollection || '')
@@ -3501,9 +3501,9 @@ const Journals = () => {
     }
 
     // Commits the draft filters/date-range (freely editable, live-filtering
-    // whatever's already on screen — see displayedGlRows) into the applied
+    // whatever's already on screen, see displayedGlRows) into the applied
     // state that actually queries the server. This is the only thing that
-    // should trigger a GL fetch from filter changes — the effect below no
+    // should trigger a GL fetch from filter changes, the effect below no
     // longer depends on glFilters/fromDate/toDate directly, so editing a
     // dropdown alone never hits the network.
     const applyGlFilters = () => {
@@ -3514,7 +3514,7 @@ const Journals = () => {
     }
 
     // Client-side pass over whatever page of GL rows is already loaded, using
-    // the DRAFT filters — gives instant feedback while typing/selecting,
+    // the DRAFT filters, gives instant feedback while typing/selecting,
     // without waiting for Apply/Refresh's server round trip. Only covers
     // fields present on the flattened row shape the server already returns;
     // anything not comparable here just isn't narrowed until Apply commits
@@ -3540,8 +3540,8 @@ const Journals = () => {
         return true
     })
 
-    // Export needs every row matching the filters, not the current page —
-    // a separate fetch (exportAll:true bypasses the interactive pagination
+    // Export needs every row matching the filters, not the current page.
+    // A separate fetch (exportAll:true bypasses the interactive pagination
     // cap server-side) that doesn't touch the on-screen table's state.
     const fetchAllMatchingGlRows = async () => {
         const resp = await fetchServer("POST", {
@@ -3554,8 +3554,8 @@ const Journals = () => {
         return Array.isArray(resp.rows) ? resp.rows : []
     }
 
-    // Only re-fetches on tab entry/company switch or a page-size change —
-    // filter/date-range edits no longer trigger a server round trip on their
+    // Only re-fetches on tab entry/company switch or a page-size change.
+    // Filter/date-range edits no longer trigger a server round trip on their
     // own; they sit in draftGlFilters/draftFromDate/draftToDate (live-
     // filtering whatever's already loaded, see displayedGlRows) until Apply
     // or Refresh commits them via applyGlFilters.
@@ -3570,13 +3570,13 @@ const Journals = () => {
         const route = GL_SOURCE_ROUTE_MAP[row.source]
         if (!route) {
             setAlertState('info')
-            setAlert('This entry\'s module has no dedicated browsable record view yet — see the details panel for everything we know about it.')
+            setAlert('This entry\'s module has no dedicated browsable record view yet. See the details panel for everything we know about it.')
             setAlertTimeout(4000)
             return;
         }
         const params = new URLSearchParams({ openGlSource: `${row.source}:${row.sourceId || ''}`, openGlDate: row.postingDate || '' })
         // A shortage charge/recovery is identified in the reconciliation record
-        // by which employee it's charged to, not by the GL entry's sourceId —
+        // by which employee it's charged to, not by the GL entry's sourceId.
         // Delivery.js/ReconciliationReview.js match on this instead.
         if (row.source === 'POSSessions' && row.handlerId) {
             params.set('openGlHandler', row.handlerId)
@@ -3587,7 +3587,7 @@ const Journals = () => {
     const handleReverseGlRow = async (row) => {
         if (!row.canReverse) return;
         const confirmMsg = row.journalBatchId
-            ? 'This posting is part of a linked Journal batch — reversing it will reverse every posting in that batch together. Continue?'
+            ? 'This posting is part of a linked Journal batch. Reversing it will reverse every posting in that batch together. Continue?'
             : 'Reverse this Journal entry? This posts a new offsetting entry; nothing is edited or deleted.'
         // eslint-disable-next-line no-alert
         if (!window.confirm(confirmMsg)) return;
@@ -3621,7 +3621,7 @@ const Journals = () => {
             <div className="journals-modal-overlay" style={getModalOverlayStyle()} onClick={() => setJournalImportErrors(null)}>
                 <div className="journals-modal modal-large" onClick={e => e.stopPropagation()}>
                     <div className="journals-modal-header">
-                        <h2>Import rejected — nothing was posted</h2>
+                        <h2>Import rejected, nothing was posted</h2>
                         <button className="journals-modal-close" onClick={() => setJournalImportErrors(null)}><MdClose /></button>
                     </div>
                     <div className="journals-modal-body">
@@ -3695,8 +3695,8 @@ const Journals = () => {
         )
     }
 
-    // Shared by the Journals-tab GL table and the COA drill-down modal —
-    // same columns, same actions, so the two views can never drift apart
+    // Shared by the Journals-tab GL table and the COA drill-down modal.
+    // Same columns, same actions, so the two views can never drift apart
     // again the way the drill-down's old narrower table had.
     const renderGlRowsTable = (rows, { emptyTitle = 'No General Ledger entries found', emptyBody = 'No entries match the current filters.', showTotals = false } = {}) => {
         if (!rows.length) {
@@ -3818,7 +3818,7 @@ const Journals = () => {
                             className="j-btn-secondary"
                             onClick={() => journalImportFileRef.current?.click()}
                             disabled={journalImporting}
-                            title="Import a filled-in journal template — validated strictly before anything is posted"
+                            title="Import a filled-in journal template, validated strictly before anything is posted"
                         >
                             {journalImporting ? 'Importing...' : 'Import from Excel'}
                         </button>
@@ -4019,7 +4019,7 @@ const Journals = () => {
                                         {glBacklogOperationId ? 'Backlog Running…' : 'Populate GL Backlog'}
                                     </button>
                                 )}
-                                {/* Desktop build only, and only the tenant's own super admin — see
+                                {/* Desktop build only, and only the tenant's own super admin, see
                                     this action's own entry in closingActionHelp for why. Not shown
                                     on the web build at all: an online tenant's data has never gone
                                     through that kind of version gap. */}
@@ -4030,14 +4030,14 @@ const Journals = () => {
                                 )}
                             </div>
                             {glBacklogOperationId && (() => {
-                                // Genuinely real-time — updatePostingOperation (server) broadcasts
+                                // Genuinely real-time, updatePostingOperation (server) broadcasts
                                 // over SSE after every single source document it processes, and
                                 // usePostingOperationProgress re-renders this from that same feed;
                                 // there's no polling involved. Rendered as an actual percentage bar
                                 // now instead of only the text line, so progress reads at a glance
                                 // during a run that can process tens of thousands of records.
                                 // glBacklogDisplay (SSE data, falling back to the one-off reattach
-                                // fetch) instead of glBacklogOperation alone — see its own comment:
+                                // fetch) instead of glBacklogOperation alone, see its own comment:
                                 // otherwise a page reload mid-run shows "connecting…" until the next
                                 // document happens to finish, even though the real progress was
                                 // already known from the reattach check.
@@ -4045,7 +4045,7 @@ const Journals = () => {
                                 const completed = glBacklogDisplay?.completed || 0;
                                 const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
                                 const isDone = glBacklogDisplay?.status && glBacklogDisplay.status !== 'in-progress';
-                                // "InventoryTransactions" -> "Inventory Transactions" — the phase
+                                // "InventoryTransactions" -> "Inventory Transactions", the phase
                                 // name is the raw collection name server-side (see
                                 // setPostingOperationPhase's callers); spacing it out here is purely
                                 // cosmetic and never needs to match anything the server checks.
@@ -4056,7 +4056,7 @@ const Journals = () => {
                                     <div className="closing-meta" style={{ display: 'block' }}>
                                         <div className="closing-line">
                                             {glBacklogDisplay
-                                                ? `${isDone ? 'Finished' : 'Running'}${phaseLabel && !isDone ? ` — working on: ${phaseLabel}` : ''}: ${completed} / ${total || '?'} processed (${percent}%) — ${glBacklogDisplay.posted || 0} posted, ${glBacklogDisplay.alreadyPresent || 0} already present, ${glBacklogDisplay.skipped || 0} skipped${glBacklogDisplay.errors?.length ? `, ${glBacklogDisplay.errors.length} errors` : ''}`
+                                                ? `${isDone ? 'Finished' : 'Running'}${phaseLabel && !isDone ? `, working on: ${phaseLabel}` : ''}: ${completed} / ${total || '?'} processed (${percent}%), ${glBacklogDisplay.posted || 0} posted, ${glBacklogDisplay.alreadyPresent || 0} already present, ${glBacklogDisplay.skipped || 0} skipped${glBacklogDisplay.errors?.length ? `, ${glBacklogDisplay.errors.length} errors` : ''}`
                                                 : 'connecting…'}
                                             {!isDone && (
                                                 <button
@@ -4064,7 +4064,7 @@ const Journals = () => {
                                                     style={{ marginLeft: 12 }}
                                                     onClick={handleCancelBacklog}
                                                     disabled={glBacklogDisplay?.cancelRequested === true}
-                                                    title="Stops after whatever record is currently being posted finishes — never mid-record."
+                                                    title="Stops after whatever record is currently being posted finishes, never mid-record."
                                                 >
                                                     {glBacklogDisplay?.cancelRequested ? 'Stopping…' : 'Stop'}
                                                 </button>
@@ -4074,7 +4074,7 @@ const Journals = () => {
                                                     className="j-btn-danger btn-sm"
                                                     style={{ marginLeft: 8 }}
                                                     onClick={handleForceStopBacklog}
-                                                    title="Frees up the controls right away instead of waiting — whatever record is currently mid-post still finishes safely in the background, it just won't keep you waiting for it. Safe to start a new run immediately after."
+                                                    title="Frees up the controls right away instead of waiting. Whatever record is currently mid-post still finishes safely in the background, it just won't keep you waiting for it. Safe to start a new run immediately after."
                                                 >
                                                     Force Stop
                                                 </button>

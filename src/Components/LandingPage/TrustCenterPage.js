@@ -1,10 +1,10 @@
 /* ============================================================================
-   /trust-center — security, privacy, availability and governance.
+   /trust-center, security, privacy, availability and governance.
    ----------------------------------------------------------------------------
    SAP's Trust Center is one of the genuinely good patterns on their site:
    everything a security reviewer needs in one destination rather than
    scattered across legal pages. This follows it, including the honest
-   statement about formal certification — see content/trust.js.
+   statement about formal certification, see content/trust.js.
    ========================================================================= */
 
 import { useContext, useEffect } from 'react'
@@ -72,7 +72,8 @@ const TrustCenterPage = () => {
           eyebrow={pillar.name}
           title={pillar.headline}
           subtitle={pillar.text}
-          split
+          rail
+        split
         >
           <Grid cols={3}>
             <Card flat image={img(pillar.image, 'cardTall')} mediaShape="tall" />
@@ -108,6 +109,7 @@ const TrustCenterPage = () => {
         eyebrow="Your obligations"
         title="The controls exist partly so you can meet your own"
         subtitle="Most of what an auditor asks a business for is a question about records rather than about infrastructure. Who approved this, who could have changed it, where did this figure come from."
+        rail
         split
       >
         <FiftyFifty
@@ -136,7 +138,8 @@ const TrustCenterPage = () => {
       </Section>
 
       {/* ------------------------------------------------------------ FAQ -- */}
-      <Section id="faq" variant="alt" eyebrow="FAQ" title="Questions security reviewers actually ask">
+      <Section
+        rail id="faq" variant="alt" eyebrow="FAQ" title="Questions security reviewers actually ask">
         <Container width="narrow">
           <Accordion items={TRUST_FAQS} />
         </Container>

@@ -1,5 +1,5 @@
 /* ============================================================================
-   /why-enterprise-compute — differentiators and category comparisons.
+   /why-enterprise-compute, differentiators and category comparisons.
    ----------------------------------------------------------------------------
    Comparisons are against categories of alternative rather than named
    vendors, and each one leads with where that alternative is genuinely
@@ -55,6 +55,7 @@ const WhyPage = () => {
         eyebrow="What is different"
         title="Architecture, not feature count"
         subtitle="Any product can add a report. None of them can add a ledger that was written as the business traded if the system was not built that way."
+        rail
         split
       >
         <Grid cols={3}>
@@ -65,7 +66,7 @@ const WhyPage = () => {
               title={item.title}
               text={item.text}
             >
-              <p className="ds-card-text" style={{ borderLeft: '2px solid var(--ds-border)', paddingLeft: 12 }}>
+              <p className="ds-card-text ds-note quiet flush">
                 <strong>How:</strong> {item.proof}
               </p>
             </Card>
@@ -94,26 +95,28 @@ const WhyPage = () => {
           eyebrow={`Compared with ${comparison.name.toLowerCase()}`}
           title={comparison.headline}
           subtitle={comparison.lede}
-          split
+          rail
+        split
         >
           <Grid cols={2}>
-            <div>
-              <div
-                className="ds-card"
-                style={{ borderLeft: '3px solid var(--ds-gold)', padding: '22px 24px', marginBottom: 28 }}
-              >
+            <div className="ds-stack md">
+              <div className="ds-callout gold">
                 <span className="ds-card-eyebrow">Where {comparison.name.toLowerCase()} wins</span>
-                <p className="ds-body ds-mb-0" style={{ marginTop: 8 }}>{comparison.fairPoint}</p>
+                <p className="ds-body ds-mb-0 ds-mt-2">{comparison.fairPoint}</p>
               </div>
-              <h3 className="ds-h4">Where it stops working</h3>
-              <Checklist items={comparison.breakingPoints} />
+              <div className="ds-group">
+                <div className="ds-group-head">
+                  <h3 className="ds-h4">Where it stops working</h3>
+                </div>
+                <Checklist items={comparison.breakingPoints} className="ds-mb-0" />
+              </div>
             </div>
-            <div className="ds-fifty-visual" style={{ aspectRatio: '4 / 3' }}>
+            <div className="ds-fifty-visual ratio-43">
               <img alt="" {...img(comparison.image, 'fifty')} />
             </div>
           </Grid>
 
-          <div style={{ marginTop: 40 }}>
+          <div>
             <Table
               head={['', comparison.name, 'Enterprise Compute']}
               rows={comparison.rows}
@@ -150,6 +153,7 @@ const WhyPage = () => {
         eyebrow="Decide with numbers"
         title="Put it against your own figures"
         subtitle="The comparisons above are structural. The business case is arithmetic, and it is better done with your inputs than ours."
+        rail
         split
       >
         <FiftyFifty

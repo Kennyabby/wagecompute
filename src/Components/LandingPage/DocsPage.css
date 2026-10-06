@@ -216,8 +216,9 @@
 }
 
 .ds-page .docs-sidebar {
-  top: calc(var(--ds-header-h) + var(--ds-subnav-h));
-  height: calc(100vh - var(--ds-header-h) - var(--ds-subnav-h));
+  top: var(--ds-chrome-top);
+  height: calc(100vh - var(--ds-chrome-top));
+  transition: top 0.28s var(--ds-ease-out), height 0.28s var(--ds-ease-out);
   padding: 36px 24px 48px;
   border-right: 1px solid var(--ds-border);
   background: var(--ds-surface);
@@ -318,4 +319,44 @@
     margin: 24px var(--ds-pad-x) 0;
     padding: 12px 14px;
   }
+}
+
+/* ---- Spacing pass -------------------------------------------------------
+   The docs layout is already a side-by-side (sticky nav rail + content), so
+   this only brings its internal rhythm onto the shared scale and widens the
+   gutter between the two columns, which was tight enough that the nav and
+   the article ran together.
+   ---------------------------------------------------------------------- */
+
+.ds-page .docs-layout { column-gap: var(--ds-rail-gap); }
+
+.ds-page .docs-sidebar { padding: var(--ds-s8) var(--ds-s6) var(--ds-s12); }
+.ds-page .docs-nav-group { margin: 0 0 var(--ds-s7); }
+.ds-page .docs-nav-group h4 { margin-bottom: var(--ds-s3); }
+.ds-page .docs-nav-item { padding: var(--ds-s2) var(--ds-s3); }
+
+.ds-page .docs-content { padding: var(--ds-section-y-tight) 0 var(--ds-section-y); }
+.ds-page .docs-article > * + * { margin-top: var(--ds-s5); }
+.ds-page .docs-article h1 { margin-bottom: var(--ds-s6); }
+.ds-page .docs-article h3 { margin-top: var(--ds-s12); margin-bottom: var(--ds-s4); }
+.ds-page .docs-article ul,
+.ds-page .docs-article ol { margin: 0 0 var(--ds-s5); padding-left: var(--ds-s6); display: grid; gap: var(--ds-s2); }
+
+.ds-page .docs-step,
+.ds-page .docs-note {
+  padding: var(--ds-s6);
+  margin: var(--ds-s6) 0;
+}
+.ds-page .docs-step h4,
+.ds-page .docs-note h4 { margin: 0 0 var(--ds-s3); }
+.ds-page .docs-step p:last-child,
+.ds-page .docs-note p:last-child { margin-bottom: 0; }
+
+@media (max-width: 1024px) {
+  .ds-page .docs-content { padding: var(--ds-s8) var(--ds-pad-x) var(--ds-section-y); }
+}
+@media (max-width: 768px) {
+  .ds-page .docs-article h3 { margin-top: var(--ds-s10); }
+  .ds-page .docs-step,
+  .ds-page .docs-note { padding: var(--ds-s5); }
 }

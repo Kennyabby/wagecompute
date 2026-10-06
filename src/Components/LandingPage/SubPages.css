@@ -31,7 +31,7 @@
 .sp-pricing-card.featured:hover { transform: scale(1.03) translateY(-4px); }
 .sp-pricing-card.supporting { background: linear-gradient(180deg, #ffffff 0%, #f8faf8 100%); }
 .sp-pricing-card.selected { border-color: rgba(43,106,75,0.26); box-shadow: 0 24px 54px rgba(23,56,41,0.09); }
-/* No `position: relative` here on purpose — .sp-popular-badge is an
+/* No `position: relative` here on purpose, .sp-popular-badge is an
    absolutely-positioned child of this row, and this row's own content
    (.sp-pricing-mini-badge) sits right where the badge's small `top: -14px`
    offset would still land if resolved against this row, overlapping it.
@@ -555,7 +555,7 @@
 .sp-app-logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #fff; background: linear-gradient(135deg, #2b6a4b, #173829); font-family: 'MontserratBold', sans-serif; flex-shrink: 0; }
 /* `min-width: 0` intentionally overrides the flex-item default of
    `min-width: auto` (which otherwise refuses to shrink below content size)
-   — required so the name can truncate instead of overflowing its box. The
+  , required so the name can truncate instead of overflowing its box. The
    price tag lives inside this column now (sp-app-meta-head), not as a
    sibling fighting the logo/checkbox for the same row, so it can never be
    overlapped by overflowing name text regardless of card width. */
@@ -575,7 +575,7 @@
 /* Tablet: two-column layouts start collapsing, but grids that still fit
    comfortably (summary cards, checkout highlights, comparison rows) stay
    multi-column here rather than jumping straight to a single column like
-   they used to — that left a lot of dead horizontal space on real tablets. */
+   they used to, that left a lot of dead horizontal space on real tablets. */
 @media(max-width: 1024px) {
   .sp-pricing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 720px; padding: 0 20px; gap: 28px; }
   .sp-pricing-card.featured { transform: none; margin: 0; grid-column: span 2; max-width: 480px; margin: 0 auto; }
@@ -683,10 +683,119 @@
 
 /* ---- Section rhythm, matched to .ds-section ---- */
 .ec-section {
-  padding: clamp(64px, 7.5vw, 112px) var(--ds-pad-x, 48px);
+  padding: var(--ds-section-y) var(--ds-pad-x, 48px);
   max-width: var(--ds-container, 1312px);
 }
-.ec-section-header { margin-bottom: clamp(36px, 4.5vw, 60px); }
+.ec-section-header { margin-bottom: var(--ds-head-gap); }
+
+/* Consecutive legacy sections on the same background were doubling up their
+   vertical padding, the same problem .ds-section solves for the new pages.
+   Both sides must be untinted: a plain section following the tinted one
+   below still needs its padding, because the colour edge sits directly
+   above its heading. */
+.ec-section:not(.ec-section-alt) + .ec-section:not(.ec-section-alt) { padding-top: 0; }
+
+/* Tinted legacy section, replacing an inline background style. A tinted
+   band needs its own top padding back, since the colour change is the
+   edge that justifies it. */
+.ec-section-alt {
+  background: var(--ds-surface-alt);
+  max-width: none;
+}
+.ec-section + .ec-section.ec-section-alt { padding-top: var(--ds-section-y); }
+/* The tint runs full-bleed while the content inside stays on the grid. */
+.ec-section-alt > * {
+  max-width: var(--ds-container, 1312px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ---- Pricing page rhythm -------------------------------------------
+   The plan cards, the calculator and the checkout column are the three
+   blocks a visitor actually moves between, so they need real separation
+   from each other and consistent internal padding. ------------------ */
+.sp-pricing-grid {
+  gap: var(--ds-s7);
+  max-width: none;
+  padding: 0;
+}
+.sp-pricing-card { padding: var(--ds-s10) var(--ds-s8); gap: var(--ds-s4); }
+.sp-pricing-badge-row { margin-bottom: var(--ds-s5); }
+.sp-price { margin: var(--ds-s2) 0 var(--ds-s4); }
+.sp-plan-desc { margin-bottom: var(--ds-s6); }
+.sp-plan-cta { margin-bottom: var(--ds-s6); }
+.sp-feature-list { display: grid; gap: var(--ds-s3); }
+
+.sp-checkout-shell { max-width: none; }
+.sp-checkout-grid-layout { gap: var(--ds-s8); align-items: start; }
+.sp-checkout-card { padding: var(--ds-s10) var(--ds-s8); }
+.sp-calculator-controls { gap: var(--ds-s5); margin-bottom: var(--ds-s8); }
+.sp-calculator-summary-grid { gap: var(--ds-s4); margin-bottom: var(--ds-s8); }
+.sp-calculator-summary-card { padding: var(--ds-s5); }
+.sp-optional-apps-card { padding: var(--ds-s6); margin-bottom: var(--ds-s8); }
+.sp-optional-list { display: grid; gap: var(--ds-s3); }
+.sp-app-card { padding: var(--ds-s4); }
+.sp-calculator-slider-card { padding: var(--ds-s6); margin-bottom: var(--ds-s8); }
+.sp-plan-meta { gap: var(--ds-s5); }
+.sp-checkout-highlights { gap: var(--ds-s4); margin-bottom: var(--ds-s7); }
+.sp-checkout-highlight { padding: var(--ds-s4) var(--ds-s5); }
+.sp-checkout-grid { gap: var(--ds-s5); }
+.sp-status-banner { padding: var(--ds-s6); }
+.sp-comparison-table { margin-top: 0; }
+
+/* The checkout column tracks the calculator as you work down it. */
+@media (min-width: 1025px) {
+  .sp-checkout-card-sticky {
+    position: sticky;
+    top: calc(var(--ds-chrome-top) + var(--ds-s6));
+    transition: top 0.28s var(--ds-ease-out);
+  }
+}
+
+/* ---- Help / community / about shared blocks ---- */
+.sp-help-grid { gap: var(--ds-s6); }
+.sp-help-card { padding: var(--ds-s8) var(--ds-s7); }
+.sp-faq-list { display: grid; gap: var(--ds-s3); }
+.sp-faq-item { padding: var(--ds-s5) var(--ds-s6); }
+.sp-stats-row { gap: var(--ds-s6); }
+.sp-stat-card { padding: var(--ds-s7) var(--ds-s6); }
+.sp-community-block { gap: var(--ds-rail-gap); align-items: center; }
+.sp-community-block + .sp-community-block { margin-top: var(--ds-block-gap); }
+.sp-community-links { display: grid; gap: var(--ds-s2); margin-top: var(--ds-s5); }
+.sp-badge-row { gap: var(--ds-s3); }
+.sp-input-group { gap: var(--ds-s2); }
+
+@media (max-width: 1024px) {
+  .sp-checkout-grid-layout { grid-template-columns: minmax(0, 1fr); }
+  .sp-pricing-grid { grid-template-columns: minmax(0, 1fr); }
+  .sp-community-block { gap: var(--ds-s8); }
+}
+@media (max-width: 768px) {
+  .sp-pricing-card, .sp-checkout-card { padding: var(--ds-s8) var(--ds-s6); }
+  .sp-help-card { padding: var(--ds-s6); }
+  .sp-faq-item { padding: var(--ds-s4) var(--ds-s5); }
+}
+
+/* The block above sits at the end of the file, so on equal specificity it
+   also beats the original phone rules further up. These restore the tighter
+   padding those rules were setting, which would otherwise be lost. */
+@media (max-width: 640px) {
+  .sp-pricing-card { padding: var(--ds-s7) var(--ds-s5); }
+  .sp-checkout-card { padding: var(--ds-s6) var(--ds-s5); }
+  .sp-calculator-slider-card,
+  .sp-optional-apps-card { padding: var(--ds-s4); }
+  .sp-calculator-summary-card { padding: var(--ds-s4); }
+  .sp-app-card { padding: var(--ds-s3); }
+  .sp-status-banner { padding: var(--ds-s5); }
+  .sp-help-card { padding: var(--ds-s5); }
+  .sp-stat-card { padding: var(--ds-s5); }
+  .sp-checkout-highlight { padding: var(--ds-s3) var(--ds-s4); }
+  .sp-pricing-grid { gap: var(--ds-s5); }
+  .sp-help-grid, .sp-stats-row { gap: var(--ds-s4); }
+}
+@media (max-width: 420px) {
+  .sp-pricing-card { padding: var(--ds-s6) var(--ds-s4); }
+}
 
 /* ---- Geometry: near-square corners throughout ---- */
 .sp-pricing-card,
@@ -848,3 +957,7 @@
   margin: 24px 0 8px;
 }
 .ds-prose.sp-legal-rich-content h3:first-child { margin-top: 0; }
+
+/* Pricing page: two small blocks that were carrying inline spacing. */
+.sp-badge-row-start { justify-content: flex-start; margin-top: 0; }
+.sp-optional-intro { margin: var(--ds-s2) 0 var(--ds-s3); }

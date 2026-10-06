@@ -1,5 +1,5 @@
 /* ============================================================================
-   /customers/:slug — a single customer story.
+   /customers/:slug, a single customer story.
    ----------------------------------------------------------------------------
    Challenge / approach / results, the structure every credible case study
    uses, with the result figures as a fast-fact band. Carries the illustrative
@@ -88,7 +88,7 @@ const CustomerStoryPage = () => {
       {ILLUSTRATIVE && (
         <Section tight flushBottom>
           <Container width="narrow">
-            <p className="ds-body sm ds-mb-0" style={{ borderLeft: '3px solid var(--ds-gold)', paddingLeft: 16 }}>
+            <p className="ds-note flag flush">
               {PLACEHOLDER_NOTICE}
             </p>
           </Container>
@@ -112,6 +112,7 @@ const CustomerStoryPage = () => {
         eyebrow="What changed"
         title="The specific things that were done"
         subtitle="Configuration rather than customisation, which is why this took weeks rather than quarters."
+        rail
         split
       >
         <Grid cols={2}>
@@ -136,6 +137,7 @@ const CustomerStoryPage = () => {
         eyebrow="Results"
         title="What measurably moved"
         subtitle="Operational changes rather than satisfaction scores, because these are the things the mechanics actually produce."
+        rail
         split
       >
         <FastFacts cols={story.results.length === 4 ? 4 : 3} items={story.results} />
@@ -147,6 +149,7 @@ const CustomerStoryPage = () => {
         eyebrow="Modules used"
         title="The configuration behind it"
         subtitle="Every module here is available on the free trial, so you can assemble the same configuration before paying for anything."
+        rail
         split
         footer={(
           <ButtonRow>
@@ -172,6 +175,7 @@ const CustomerStoryPage = () => {
 
       {/* ---------------------------------------------------- more stories -- */}
       <Section
+        rail
         variant="cream"
         eyebrow="More stories"
         title="Other operations, same underlying change"

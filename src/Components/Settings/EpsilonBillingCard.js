@@ -7,7 +7,7 @@ import { getAppCache, setAppCache } from '../../Resources/offlineDb'
 import { VOICE_ACCENTS, getSpeechSupport, speak, stopSpeaking } from '../../Resources/speechVoice'
 
 const EPSILON_BILLING_CACHE_KEY = 'epsilonBillingSeatInfo'
-// Silent background refresh only — never clears what's already on screen,
+// Silent background refresh only, never clears what's already on screen,
 // just replaces it once fresh data actually arrives.
 const EPSILON_BILLING_AUTO_REFRESH_MS = 5 * 60 * 1000
 
@@ -26,7 +26,7 @@ const TONE_OPTIONS = [
   { value: 'casual', label: 'Casual', desc: 'Relaxed, like a knowledgeable colleague.' },
 ]
 
-// Deliberately its own dedicated card/checkout — NOT a row inside
+// Deliberately its own dedicated card/checkout, NOT a row inside
 // BillingSettingsPanel's general "Add modules" grid. Epsilon is a per-seat
 // paid add-on, priced and purchased completely differently from every other
 // (flat, per-tenant) module, and the confirmed design keeps it visually and
@@ -60,15 +60,15 @@ const EpsilonBillingCard = ({ variants }) => {
   const [voiceGender, setVoiceGender] = useState('female')
   const [voiceAccent, setVoiceAccent] = useState('en-US')
   const [isSavingVoice, setIsSavingVoice] = useState(false)
-  // Saves happen automatically the instant a gender/accent is picked — no
-  // separate Save button — but nothing on screen ever said so. This is
+  // Saves happen automatically the instant a gender/accent is picked, no
+  // separate Save button, but nothing on screen ever said so. This is
   // purely a transient confirmation flash, cleared a couple seconds after
   // a successful save.
   const [voiceJustSaved, setVoiceJustSaved] = useState(false)
   const [isTestingVoice, setIsTestingVoice] = useState(false)
   const { ttsSupported } = getSpeechSupport()
   // Matches isTenantAdmin in wageserver/UserModule/Billing/billing.js exactly
-  // (also POST /billing/epsilon/tone's own check) — without the permissions
+  // (also POST /billing/epsilon/tone's own check), without the permissions
   // clause, a user granted admin rights via the 'all' permission rather than
   // status/access:'admin' would see this control disabled even though the
   // server would actually accept their change.
@@ -104,14 +104,14 @@ const EpsilonBillingCard = ({ variants }) => {
       })
     } catch (error) {
       // A silent background/auto refresh failing shouldn't disturb data
-      // that's still correctly on screen — only log it.
+      // that's still correctly on screen, only log it.
       console.error('Failed to load Epsilon seat info', error)
     } finally {
       if (showSpinner) setIsLoading(false)
     }
   }
 
-  // Cache-first mount: paint the last cached seat info (IndexedDB — survives
+  // Cache-first mount: paint the last cached seat info (IndexedDB, survives
   // tab switches, Settings navigation, and full page reloads) instantly with
   // no spinner, then silently revalidate in the background. Only when there
   // is no cache yet do we fall back to the original spinner-blocking fetch.
@@ -137,7 +137,7 @@ const EpsilonBillingCard = ({ variants }) => {
     return () => { cancelled = true }
   }, [company, companyRecord?.emailid])
 
-  // Periodic silent auto-refresh — keeps seat/token info from going stale
+  // Periodic silent auto-refresh, keeps seat/token info from going stale
   // without ever clearing what's displayed; state only changes once new
   // data actually arrives (see loadSeatInfo's success branch above).
   useEffect(() => {
@@ -146,7 +146,7 @@ const EpsilonBillingCard = ({ variants }) => {
     return () => clearInterval(intervalId)
   }, [company, companyRecord?.emailid])
 
-  // Tenant-wide default, applies to every user at this workspace — distinct
+  // Tenant-wide default, applies to every user at this workspace, distinct
   // from the per-user "response style" each employee already picks for
   // themselves inside the chat panel itself.
   const handleSetTone = async (nextTone) => {
@@ -168,7 +168,7 @@ const EpsilonBillingCard = ({ variants }) => {
   }
 
   // Tenant-wide default voice Epsilon speaks replies in (gender + accent
-  // preference, not a specific browser voice — see speechVoice.js's
+  // preference, not a specific browser voice, see speechVoice.js's
   // best-effort matching). Same admin gate and save pattern as tone above.
   const handleSetVoice = async (nextGender, nextAccent) => {
     if ((nextGender === voiceGender && nextAccent === voiceAccent) || isSavingVoice) return
@@ -193,13 +193,13 @@ const EpsilonBillingCard = ({ variants }) => {
     }
   }
 
-  // Speaks a short sample using this admin's OWN browser's voice catalog —
-  // purely a preview. The actual voice each employee hears depends on
+  // Speaks a short sample using this admin's OWN browser's voice catalog.
+  // Purely a preview. The actual voice each employee hears depends on
   // their own device/browser, which can differ from this one.
   const handleTestVoice = () => {
     if (isTestingVoice) { stopSpeaking(); setIsTestingVoice(false); return }
     setIsTestingVoice(true)
-    speak("Hi, I'm Epsilon — this is a preview of how I'll sound.", {
+    speak("Hi, I'm Epsilon. This is a preview of how I'll sound.", {
       gender: voiceGender,
       accent: voiceAccent,
       onEnd: () => setIsTestingVoice(false),
@@ -209,7 +209,7 @@ const EpsilonBillingCard = ({ variants }) => {
 
   const estimatedTotalNaira = seatInfo.priceNaira * Math.max(1, seatsToBuy) * Math.max(1, months)
   // Every Naira this purchase pays also funds the token wallet, at the same
-  // blended rate a central admin sets — see the token-usage plan. Purely an
+  // blended rate a central admin sets, see the token-usage plan. Purely an
   // estimate for display; the server computes the real figure at payment time.
   const estimatedTokensGranted = seatInfo.tokenPriceNaira > 0
     ? Math.floor((estimatedTotalNaira / seatInfo.tokenPriceNaira) * 1000)
@@ -253,9 +253,9 @@ const EpsilonBillingCard = ({ variants }) => {
               <span className='epsilon-billing-badge'>Paid add-on · billed per seat</span>
               <h3>Epsilon AI Assistant</h3>
               <p>
-                Epsilon is never included with any plan or free trial — every workspace pays for it separately,
+                Epsilon is never included with any plan or free trial. Every workspace pays for it separately,
                 per employee given access. You (as the purchasing admin) are automatically granted one of the
-                seats you buy — log out and back in for it to appear. Grant the rest to specific employees from
+                seats you buy, so log out and back in for it to appear. Grant the rest to specific employees from
                 Settings &gt; Team Access.
               </p>
             </div>
@@ -278,7 +278,7 @@ const EpsilonBillingCard = ({ variants }) => {
               tone={seatInfo.epsilonTokenBalance <= 0 ? 'error' : 'default'}
               description={
                 seatInfo.epsilonTokenBalance <= 0
-                  ? 'Empty — Epsilon is blocked for this workspace until you purchase more or the platform admin tops it up.'
+                  ? 'Empty. Epsilon is blocked for this workspace until you purchase more or the platform admin tops it up.'
                   : `Every message uses real tokens from this balance. Purchases add more at ${formatMoney(seatInfo.tokenPriceNaira)} per 1,000 tokens.`
               }
             />
@@ -320,9 +320,9 @@ const EpsilonBillingCard = ({ variants }) => {
                   {voiceJustSaved && <span className='epsilon-voice-save-status epsilon-voice-saved'> · Saved</span>}
                 </strong>
                 <span>
-                  Changes save automatically — there's no separate Save button. Applies when an employee turns on spoken
+                  Changes save automatically, so there's no separate Save button. Applies when an employee turns on spoken
                   replies in the chat panel. Actual voice quality depends on each listener's own browser/device (many
-                  systems only have one or two voices installed at all) — this picks the closest match available there.
+                  systems only have one or two voices installed at all), so this picks the closest match available there.
                   {isWorkspaceAdmin ? '' : ' Only a workspace admin can change this.'}
                 </span>
               </div>

@@ -1,5 +1,5 @@
 /* ============================================================================
-   /blog — insights index, and /blog/:slug — an article.
+   /blog, insights index, and /blog/:slug, an article.
    ----------------------------------------------------------------------------
    Both exported from one file because they share the post list, the topic
    filter and the related-article logic. App.js imports InsightsPage for the
@@ -65,8 +65,10 @@ export const InsightsPage = () => {
         </Grid>
       </Section>
 
-      <Section id="articles" eyebrow="All articles" title="Browse by topic">
-        <div style={{ marginBottom: 32 }}>
+      <Section
+        rail id="articles"
+        bodySnug eyebrow="All articles" title="Browse by topic">
+        <div className="ds-filters">
           <Pills label="Filter by topic" options={POST_TOPICS} value={topic} onChange={setTopic} />
         </div>
         <Grid cols={3}>
@@ -168,7 +170,8 @@ export const InsightPostPage = () => {
         </Container>
       </Section>
 
-      <Section variant="alt" eyebrow="Keep reading" title="Related articles" tight
+      <Section
+        rail variant="alt" eyebrow="Keep reading" title="Related articles" tight
         footer={<TextLink to="/blog" navigate={navigate}>All articles</TextLink>}
       >
         <Grid cols={3}>

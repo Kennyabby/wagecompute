@@ -1,0 +1,62 @@
+/* ============================================================================
+   Offline License Portal spacing.
+   ----------------------------------------------------------------------------
+   This page sits on the login chrome (Login.css) rather than the public
+   design system, so it had accumulated a dozen inline style objects for its
+   spacing. The classes below replace them and put the page on the same
+   spacing scale as everything else.
+   ========================================================================= */
+
+.olp-message {
+  color: var(--color-error, #c0392b);
+  margin-bottom: var(--ds-s3, 12px);
+}
+
+/* Row of actions that wraps on a narrow screen instead of overflowing. */
+.olp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-s3, 12px);
+  margin-top: var(--ds-s3, 12px);
+}
+.olp-actions .main-login-btn {
+  width: auto;
+  padding: 10px 18px;
+  flex: 0 1 auto;
+}
+.olp-btn-neutral { background: #888; }
+.olp-btn-danger { background: var(--color-error, #c0392b); }
+
+.olp-block { margin-top: var(--ds-s5, 20px); }
+
+/* Trailing section, separated by a rule. */
+.olp-block-divided {
+  margin-top: var(--ds-s5, 20px);
+  padding-top: var(--ds-s4, 16px);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+.olp-block-divided .main-login-btn { width: auto; padding: 10px 18px; }
+
+.olp-total {
+  margin-top: var(--ds-s3, 12px);
+  font-weight: bold;
+  text-align: right;
+}
+
+.olp-note { margin-top: var(--ds-s4, 16px); }
+
+/* The license key itself: long, unbroken, and the thing most likely to push
+   this page sideways on a phone. */
+.olp-key {
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin: var(--ds-s5, 20px) 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .olp-actions { gap: var(--ds-s2, 8px); }
+  .olp-actions .main-login-btn { width: 100%; }
+  .olp-key { font-size: 17px; letter-spacing: 1px; }
+}

@@ -143,7 +143,7 @@ export async function loadAllAppCache(company, userId) {
 
 // Feature caches (Journals, DashView, etc.) key their entries with an
 // embedded version number (e.g. `journal-snapshot-v6-...`) so a version bump
-// stops reading old entries — but nothing ever deleted the orphaned old-version
+// stops reading old entries, but nothing ever deleted the orphaned old-version
 // entries, so they'd sit in IndexedDB forever. This is an age-based sweep
 // instead of a version-list (which would need updating here every time a
 // feature bumps its own version number): anything not touched in 30 days is
@@ -169,7 +169,7 @@ export async function initOfflineDb(company, userId) {
   try {
     const db = await openUserDb(company, userId);
     db.close();
-    // Fire-and-forget — don't block app startup on cache housekeeping.
+    // Fire-and-forget, don't block app startup on cache housekeeping.
     sweepStaleAppCache(company, userId).catch(() => {});
   } catch (e) {
     // Fail silently; app will just behave as online-only.

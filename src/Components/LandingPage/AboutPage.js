@@ -1,11 +1,11 @@
 /* ============================================================================
-   /about — company page.
+   /about, company page.
    ----------------------------------------------------------------------------
    Follows sap.com/about/company.html's structure: hero, fast-fact row,
    mission block, values, milestones, leadership, then the long-form story.
 
    The story section (#story, linked from the header and footer) is the
-   existing PlatformStory walkthrough, unchanged — it is a genuinely good
+   existing PlatformStory walkthrough, unchanged, it is a genuinely good
    piece of writing and the redesign re-houses it rather than rewriting it.
    ========================================================================= */
 
@@ -107,6 +107,7 @@ const AboutPage = () => {
         eyebrow="Milestones"
         title="What has actually shipped"
         subtitle="Product history rather than funding history, because the former is what affects whether this works for you."
+        rail
         split
         footer={<TextLink to="/press" navigate={navigate}>Full newsroom</TextLink>}
       >
@@ -150,14 +151,14 @@ const AboutPage = () => {
         <Tiles cols={4}>
           {LEADERSHIP.functions.map((fn) => (
             <Tile key={fn.title} eyebrow="Function" title={fn.title} text={fn.text}>
-              <p className="ds-tile-text" style={{ marginTop: 'auto', paddingTop: 10, color: 'var(--ds-action)' }}>
+              <p className="ds-tile-text ds-tile-foot-note">
                 {fn.contact}
               </p>
             </Tile>
           ))}
         </Tiles>
 
-        <div style={{ marginTop: 'clamp(40px, 5vw, 64px)' }}>
+        <div>
           <FiftyFifty
             eyebrow="How we hold ourselves to it"
             title="The commitments that apply to us, not just to you"
@@ -181,6 +182,7 @@ const AboutPage = () => {
         eyebrow="The full walkthrough"
         title="See exactly how it works, module by module"
         subtitle="The same detailed walkthrough we give investors and customers evaluating the platform, told as one story, from the dashboard through every module to how access and security work."
+        rail
         split
       >
         <PlatformStory />
