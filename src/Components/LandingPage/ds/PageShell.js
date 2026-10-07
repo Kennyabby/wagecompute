@@ -12,6 +12,8 @@
    offset-aware scrolling for free.
    ========================================================================= */
 
+import { usePageSeo } from './seo'
+import { usePageAnalytics } from './useAnalytics'
 import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import NavBar from '../NavBar'
@@ -126,10 +128,18 @@ const useRouteScroll = (pathname, hash) => {
   }, [pathname, hash])
 }
 
-const PageShell = ({ title, description, breadcrumbs, sections, subnavTitle, subnavCta, children }) => {
+const PageShell = ({
+  title, description, breadcrumbs, sections, subnavTitle, subnavCta, children,
+  // Social and search metadata. Supplied per page so an article is not shared
+  // as though it were the product home page.
+  image, pageType, noindex, structuredData,
+}) => {
   const { pathname, hash } = useLocation()
-  usePageMeta(title, description)
+  usePageSeo({ title, description, image, type: pageType, noindex, structuredData })
   useRouteScroll(pathname, hash)
+  // Page views and time on page for the public site. Anonymous, and it opts
+  // itself out when the browser asks not to be tracked.
+  usePageAnalytics(title)
   // Measures the real chrome height and hides the secondary nav on the way
   // down the page. Every sticky offset follows from the properties it
   // publishes, so this runs on every page whether or not it has a sub-nav.

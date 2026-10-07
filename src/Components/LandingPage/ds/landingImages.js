@@ -242,6 +242,17 @@ export const heroImg = (name, shape = 'hero') => ({ ...img(name, shape), loading
 /** Raw URL only, for CSS background-image style props. */
 export const imgUrl = (name, shape = 'card') => img(name, shape).src
 
+/**
+ * The photograph's own page on Pexels, so editorial use can credit it.
+ * The licence does not require attribution, but a blog that cites its written
+ * sources and says nothing about where its pictures came from is being
+ * inconsistent about the same principle.
+ */
+export const photoUrl = (name) => {
+  const entry = LIBRARY[name]
+  return entry ? `https://www.pexels.com/photo/${entry.id}/` : null
+}
+
 export const imageNames = Object.keys(LIBRARY)
 
 export default LIBRARY

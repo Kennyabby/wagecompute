@@ -882,8 +882,15 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96
 .ds-hero-carousel .ds-hero-bg img.is-active { opacity: 1; }
 
 /* ---- cross-fading copy ---- */
-.ds-hero-stack { display: grid; }
-.ds-hero-stack > .ds-hero-slide { grid-area: 1 / 1; }
+/* The explicit single column matters. A grid with no template sizes its
+   column to the widest child's max-content, so the headline refused to wrap
+   and pushed the hero, and then the whole page, wider than the phone. */
+.ds-hero-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+.ds-hero-stack > .ds-hero-slide { grid-area: 1 / 1; min-width: 0; }
 .ds-hero-slide {
   opacity: 0;
   /* Held out of the accessibility tree and off the hit-testing path while
@@ -897,7 +904,15 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96
   visibility: visible;
   transition: opacity 0.9s var(--ds-ease-out), visibility 0s;
 }
-.ds-hero-lead .ds-hero-slide { display: grid; align-content: start; gap: var(--ds-s4); }
+.ds-hero-lead .ds-hero-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--ds-s4);
+}
+/* A long headline has to be allowed to break rather than widen the panel. */
+.ds-hero-stack .ds-h1,
+.ds-hero-stack .ds-lede { overflow-wrap: break-word; min-width: 0; }
 
 /* ---- controls ---- */
 .ds-hero-dots {
@@ -1878,4 +1893,14 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
   .ds-rule { width: 56px !important; }
   .ds-fact::before { width: 100% !important; }
   .ds-hero-bg img { transform: none !important; height: 100%; }
+}
+
+/* A single quiet link under the hero's calls to action. Deliberately not a
+   button: it is a secondary path for someone who is reading rather than
+   buying, and it should not compete with the trial. */
+.ds-hero-aside { margin: var(--ds-s5) 0 0; }
+.ds-hero-aside .ds-link { font-size: 0.9375rem; }
+@media (max-width: 680px) {
+  .ds-hero-aside { margin-top: var(--ds-s4); }
+  .ds-hero-aside .ds-link { font-size: 0.875rem; }
 }

@@ -43,7 +43,7 @@ import CustomersPage from './Components/LandingPage/CustomersPage';
 import CustomerStoryPage from './Components/LandingPage/CustomerStoryPage';
 import ResourcesPage from './Components/LandingPage/ResourcesPage';
 import EventsPage from './Components/LandingPage/EventsPage';
-import { InsightsPage, InsightPostPage } from './Components/LandingPage/InsightsPage';
+import { BlogPage, BlogPostPage } from './Components/LandingPage/BlogPage';
 import NewsroomPage from './Components/LandingPage/NewsroomPage';
 import TrustCenterPage from './Components/LandingPage/TrustCenterPage';
 import ServicesPage from './Components/LandingPage/ServicesPage';
@@ -4322,8 +4322,8 @@ function App() {
           <Route path='/roi-calculator' element={<RoiCalculatorPage />}></Route>
           <Route path='/resources' element={<ResourcesPage />}></Route>
           <Route path='/events' element={<EventsPage />}></Route>
-          <Route path='/blog' element={<InsightsPage />}></Route>
-          <Route path='/blog/:slug' element={<InsightPostPage />}></Route>
+          <Route path='/blog' element={<BlogPage />}></Route>
+          <Route path='/blog/:slug' element={<BlogPostPage />}></Route>
           <Route path='/services' element={<ServicesPage />}></Route>
           <Route path='/training' element={<TrainingPage />}></Route>
           <Route path='/integrations' element={<IntegrationsPage />}></Route>

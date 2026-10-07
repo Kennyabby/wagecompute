@@ -59,7 +59,7 @@ const DatabaseNotFound = ({ isProduction }) => {
           transition={{ delay: 0.4 }}
         >
           <button
-            className="btn-back"
+            className="error-btn-back"
             onClick={() => {
               // Electron desktop build: the app's own origin (whatever port
               // electron/main.js's spawned wageserver ended up on) is the
@@ -76,7 +76,7 @@ const DatabaseNotFound = ({ isProduction }) => {
           </button>
           {(
             <button
-              className="btn-secondary"
+              className="error-btn-secondary"
               onClick={() => {
                 if (window.electronAPI?.isElectron) { navigate('/'); return }
                 window.open(isProduction ? 'https://epxcentral.com/signup' : 'http://localhost:3000/signup', '_self')

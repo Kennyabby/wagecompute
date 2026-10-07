@@ -61,7 +61,7 @@ const OfflineLicensePaymentComplete = () => {
           </>
         )}
         <div className="error-actions">
-          <button className="btn-back" onClick={() => navigate('/offline-license-portal/login')}>
+          <button className="error-btn-back" onClick={() => navigate('/offline-license-portal/login')}>
             Go to License Portal
           </button>
         </div>

@@ -209,6 +209,19 @@ const NavBar = () => {
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
           >
+            {/* Hovering a trigger opens this, so there has to be something
+                obvious to press to get rid of it again. Escape and a click
+                outside both work, but neither is discoverable, and a panel
+                tall enough to fill the window looks like a page rather than
+                a menu. Sticky so it stays reachable while the panel scrolls. */}
+            <button
+              type="button"
+              className="ds-mega-close"
+              onClick={() => setOpenMenu(null)}
+            >
+              <span aria-hidden="true">&#215;</span>
+              <span>Close menu</span>
+            </button>
             <Container>
               <div className="ds-mega-inner">
                 <div className={`ds-mega-cols${activeMenu.feature ? ' with-feature' : ''}`}>

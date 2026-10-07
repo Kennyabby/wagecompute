@@ -90,7 +90,7 @@ const TenantRenewal = () => {
 
       <section className="ec-section">
         <div className="sp-confirm-shell">
-          <div className="sp-confirm-card info">
+          <div className="sp-confirm-card sp-confirm-card-info">
             <div className="sp-confirm-pill-row">
               <span className="sp-confirm-pill">{planName} Plan</span>
               <span className="sp-confirm-pill">₦{amountNaira.toLocaleString()}/month</span>

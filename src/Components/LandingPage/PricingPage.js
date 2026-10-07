@@ -573,7 +573,7 @@ const PricingPage = () => {
           {plans.map((plan) => (
             <div
               key={plan.key}
-              className={`sp-pricing-card ${plan.highlight ? 'featured' : 'supporting'} ${selectedPlan === plan.key ? 'selected' : ''}`}
+              className={`sp-pricing-card ${plan.highlight ? 'featured' : 'supporting'} ${selectedPlan === plan.key ? 'sp-pricing-card-selected' : ''}`}
               onClick={() => setSelectedPlan(plan.key)}
             >
               <div className="sp-pricing-badge-row">

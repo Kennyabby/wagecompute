@@ -2,6 +2,8 @@ import './CentralAdmin.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import MODULE_ICONS from '../../Resources/moduleIcons'
+import BlogAdminPanel from './BlogAdminPanel'
+import AnalyticsPanel from './AnalyticsPanel'
 
 // Same single source of truth as the tenant app (App.js), REACT_APP_API_URL.
 // Previously fell back to the hardcoded "https://api.epxcentral.com", a
@@ -1392,6 +1394,8 @@ const CentralAdminApp = () => {
             ['offlineLicenses', 'Offline Licenses', '🔑'],
             ['desktopReleases', 'Desktop Releases', '💿'],
             ['support', 'Help & Support', '💬'],
+            ['blog', 'Blog', '📝'],
+            ['siteAnalytics', 'Site Analytics', '📈'],
             ['maintenance', 'Maintenance', '🛠️'],
             ['settings', 'Settings', '⚙️'],
           ].map(([key, label, icon]) => (
@@ -1434,7 +1438,7 @@ const CentralAdminApp = () => {
         <header className='ca-header'>
           <div>
             <div className='ca-page-kicker'>Central admin platform</div>
-            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : activeTab === 'epsilonUsage' ? 'Epsilon AI usage & billing' : activeTab === 'offlineLicenses' ? 'Offline licenses' : activeTab === 'desktopReleases' ? 'Desktop app releases' : activeTab === 'maintenance' ? 'Maintenance & migrations' : 'Admin settings'}</h2>
+            <h2>{activeTab === 'overview' ? 'Global operations view' : activeTab === 'tenants' ? 'Tenant estate' : activeTab === 'subscriptions' ? 'Subscriptions & billing' : activeTab === 'epsilonUsage' ? 'Epsilon AI usage & billing' : activeTab === 'offlineLicenses' ? 'Offline licenses' : activeTab === 'desktopReleases' ? 'Desktop app releases' : activeTab === 'maintenance' ? 'Maintenance & migrations' : activeTab === 'blog' ? 'Blog' : activeTab === 'siteAnalytics' ? 'Public site analytics' : 'Admin settings'}</h2>
             <p>Generated {formatDateTime(snapshot.generatedAt || Date.now())}</p>
           </div>
           <div className='ca-header-actions'>
@@ -2208,6 +2212,14 @@ const CentralAdminApp = () => {
               </div>
             </section>
           </>
+        )}
+
+        {activeTab === 'blog' && (
+          <BlogAdminPanel requestAdmin={requestAdmin} setNotice={setNotice} />
+        )}
+
+        {activeTab === 'siteAnalytics' && (
+          <AnalyticsPanel requestAdmin={requestAdmin} setNotice={setNotice} />
         )}
 
         {activeTab === 'maintenance' && (

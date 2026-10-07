@@ -122,7 +122,7 @@
   justify-content: center;
 }
 
-.btn-back, .btn-primary, .btn-secondary {
+.error-btn-back, .error-btn-primary, .error-btn-secondary {
   height: 56px;
   padding: 0 32px;
   border-radius: 16px;
@@ -137,31 +137,31 @@
   font-family: 'MontserratBold', sans-serif;
 }
 
-.btn-back {
+.error-btn-back {
   background: white;
   color: var(--ec-primary);
   border: 1.5px solid rgba(23, 56, 41, 0.1);
 }
 
-.btn-primary {
+.error-btn-primary {
   background: linear-gradient(135deg, var(--ec-primary), var(--ec-secondary));
   color: white;
   box-shadow: 0 10px 25px rgba(23, 56, 41, 0.2);
 }
 
-.btn-secondary {
+.error-btn-secondary {
   background: var(--ec-accent);
   color: var(--ec-primary);
   box-shadow: 0 10px 25px rgba(106, 242, 173, 0.2);
 }
 
-.btn-back:hover {
+.error-btn-back:hover {
   background: var(--ec-bg);
   border-color: var(--ec-secondary);
   transform: translateY(-2px);
 }
 
-.btn-primary:hover, .btn-secondary:hover {
+.error-btn-primary:hover, .error-btn-secondary:hover {
   transform: translateY(-2px);
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
 }
@@ -205,7 +205,7 @@
   .error-actions {
     flex-direction: column;
   }
-  .btn-back, .btn-primary, .btn-secondary {
+  .error-btn-back, .error-btn-primary, .error-btn-secondary {
     width: 100%;
     justify-content: center;
   }
@@ -234,7 +234,7 @@
 @media (max-width: 480px) {
   .error-container { padding: var(--ds-s7, 28px) var(--ds-s5, 20px); }
   .error-actions { flex-direction: column; align-items: stretch; }
-  .error-actions .btn-primary,
-  .error-actions .btn-secondary,
-  .error-actions .btn-back { width: 100%; text-align: center; justify-content: center; }
+  .error-actions .error-btn-primary,
+  .error-actions .error-btn-secondary,
+  .error-actions .error-btn-back { width: 100%; text-align: center; justify-content: center; }
 }
