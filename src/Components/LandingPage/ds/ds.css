@@ -78,6 +78,21 @@
      ds/useStickyChrome.js keeps this in step as the bar hides and returns;
      the value here is the at-rest default so the stylesheet stands alone. */
   --ds-chrome-top: calc(var(--ds-header-h) + var(--ds-subnav-h));
+  /* The header's real outside height, border included, as measured by
+     ds/useStickyChrome.js. --ds-header-h is what sizes the header bar, so it
+     cannot also carry the measurement back. Anything sized against the space
+     the chrome leaves behind reads this. */
+  --ds-header-measured: 65px;
+  /* Header plus secondary nav, both measured, published by the same hook.
+     Unlike --ds-chrome-top it does not move when the bar hides, so a hero
+     pinned to the window does not resize under you as you scroll. The value
+     here is the header alone rather than header plus the --ds-subnav-h
+     estimate, because that estimate is deliberately generous and a hero
+     sized from it would visibly grow when the real measurement landed. */
+  --ds-chrome-measured: var(--ds-header-measured);
+  /* The air around an inset hero panel, needed in two places: the panel's own
+     margin and the height it subtracts to fit the window. */
+  --ds-hero-inset: 20px;
 
   /* ---- Spacing scale -------------------------------------------------
      One ladder, used by everything. Before this existed the pages were
@@ -519,13 +534,21 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96
    describes the SECOND section, so a plain section following a tinted one
    also lost its top padding. That is the one place the padding is least
    negotiable, because the colour edge sits right above the heading, and it
-   left section titles sitting flush against the previous section's border. */
-.ds-section:not(.alt):not(.cream):not(.deep):not(.deep-grad)
+   left section titles sitting flush against the previous section's border.
+
+   The first section of each pair also has to still have a bottom padding to
+   give. `flush-bottom` gives it up deliberately, usually so a section can
+   butt up against a band of its own, and collapsing the next section's top
+   padding on top of that left nothing at all between them: on the events
+   page a Register button finished hard against the heading of the section
+   underneath it. Where the predecessor is flush, the successor keeps its
+   own padding and provides the gap instead. */
+.ds-section:not(.alt):not(.cream):not(.deep):not(.deep-grad):not(.flush-bottom)
   + .ds-section:not(.alt):not(.cream):not(.deep):not(.deep-grad),
-.ds-section.alt + .ds-section.alt,
-.ds-section.cream + .ds-section.cream,
-.ds-section.deep + .ds-section.deep,
-.ds-section.deep-grad + .ds-section.deep-grad { padding-top: 0; }
+.ds-section.alt:not(.flush-bottom) + .ds-section.alt,
+.ds-section.cream:not(.flush-bottom) + .ds-section.cream,
+.ds-section.deep:not(.flush-bottom) + .ds-section.deep,
+.ds-section.deep-grad:not(.flush-bottom) + .ds-section.deep-grad { padding-top: 0; }
 
 /* Every section's children live in this wrapper, which is what gives
    sibling blocks their spacing automatically. A section with one child is
@@ -619,7 +642,13 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96
   row-gap: 0;
   align-items: start;
 }
-.ds-section.rail .ds-section-head {
+/* Everything that places an item in the rail grid is matched as a direct
+   child of the container. Several pages hand-write a .ds-section-foot inside
+   the section body, to close off one block rather than the whole section, and
+   a descendant selector put those in a column of a grid they are not even in.
+   The body's own grid then grew a phantom second column, its real column was
+   minmax(0, 1fr) so it collapsed to nothing, and the content vanished. */
+.ds-section.rail > .ds-container > .ds-section-head {
   position: sticky;
   /* Follows the chrome that is actually on screen, so the heading rises
      into the space the secondary nav frees when it hides and is never
@@ -638,13 +667,13 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96
      and costs nothing, since row-gap is zero. */
   grid-row: 1 / span 2;
 }
-.ds-section.rail .ds-section-body { grid-column: 2; }
+.ds-section.rail > .ds-container > .ds-section-body { grid-column: 2; }
 /* The closing links go under the content they refer to, not under the
    heading. Sharing the left column with a sticky element meant the heading
    travelled down over them as you scrolled, which is what put the links on
    top of the standfirst. Nothing else sits in that column now, so there is
    nothing left for the heading to collide with. */
-.ds-section.rail .ds-section-foot {
+.ds-section.rail > .ds-container > .ds-section-foot {
   grid-column: 2;
   margin-top: var(--ds-s8);
 }
@@ -746,6 +775,69 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96
   z-index: 2;
 }
 .ds-hero.immersive .ds-hero-copy { max-width: 640px; }
+
+/* ---- inset hero: a panel with air around it rather than a full-bleed band --
+   The surrounding margin uses the same gutter as the page container, so the
+   panel edge lines up with nothing in particular by design: the copy inside
+   it picks up the container padding again and sits a clear step in from the
+   photograph's edge. */
+.ds-hero.inset {
+  margin: var(--ds-hero-inset) var(--ds-pad-x);
+  border-radius: var(--ds-radius-lg);
+  overflow: hidden;
+  border-bottom: none;
+}
+
+/* ---- viewport-height hero ------------------------------------------------
+   Height is the window minus the chrome above it and minus the panel's own
+   top and bottom margin, so the whole thing lands inside the first screen
+   with its spacing intact. --ds-subnav-h is the measured height of the
+   secondary nav and reads 0 on pages that have none, so this works whether
+   or not the page carries one. It is the measured value rather than
+   --ds-chrome-top because chrome-top changes as the bar hides on scroll,
+   and a hero that resized under you while you scrolled would be horrible. */
+.ds-hero.fit-viewport .ds-hero-inner {
+  min-height: calc(100vh - var(--ds-chrome-measured) - var(--ds-hero-inset) * 2);
+}
+@supports (height: 100svh) {
+  /* svh discounts the mobile browser's collapsing toolbars, so the hero does
+     not jump as they come and go. */
+  .ds-hero.fit-viewport .ds-hero-inner {
+    min-height: calc(100svh - var(--ds-chrome-measured) - var(--ds-hero-inset) * 2);
+  }
+}
+/* The standard hero padding is tuned for a band that sizes to its content.
+   Here the height is fixed, so that padding is competing with the copy for a
+   budget that cannot grow. Trimming it keeps the type at full size on a
+   laptop screen instead of pushing the controls off the bottom. */
+.ds-hero.fit-viewport .ds-hero-inner { padding: clamp(32px, 4vw, 60px) 0; }
+
+/* ---- split hero copy -----------------------------------------------------
+   Headline on the left, standfirst and the things you can act on to the
+   right. Reads better than one tall stack and, because it uses the width
+   instead of the height, it is what lets the hero fit a screen without the
+   type having to shrink. */
+.ds-hero-copy.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: clamp(32px, 4.5vw, 80px);
+  align-items: start;
+  width: 100%;
+  max-width: none;
+}
+.ds-hero.immersive .ds-hero-copy.split { max-width: none; }
+.ds-hero-lead { min-width: 0; }
+.ds-hero-support {
+  min-width: 0;
+  display: grid;
+  gap: var(--ds-s7);
+  align-content: start;
+}
+.ds-hero-copy.split .ds-h1 { margin-bottom: 0; }
+.ds-hero-copy.split .ds-lede { max-width: 46ch; margin: 0; }
+/* The support column spaces its own children, so the checklist's standalone
+   top margin would land on top of that gap. */
+.ds-hero-copy.split .ds-hero-checklist { margin-top: 0; }
 .ds-hero-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
 /* Slightly over-sized so the parallax drift in ds/motion.js never exposes an
    edge at either end of its travel. */
@@ -762,6 +854,119 @@ html { scroll-padding-top: calc(var(--ds-header-h, 64px) + var(--ds-subnav-h, 96
   inset: 0;
   background: linear-gradient(100deg, rgba(15, 42, 30, 0.94) 0%, rgba(15, 42, 30, 0.78) 46%, rgba(15, 42, 30, 0.35) 100%);
 }
+
+/* ============================================================================
+   Hero carousel
+   ----------------------------------------------------------------------------
+   Slides cross-fade in place. Every slide sits in the same grid cell, so the
+   two overlap through the fade and the block holds the height of the tallest
+   one throughout. Nothing reflows between slides.
+   ========================================================================= */
+
+.ds-hero-carousel .ds-hero-inner {
+  /* Copy takes the free height and centres in it; the controls sit on the
+     floor of the hero rather than floating under the text. */
+  grid-template-rows: 1fr auto;
+  gap: var(--ds-s8);
+}
+
+/* ---- cross-fading photographs ---- */
+.ds-hero-bg-track { position: absolute; inset: 0; }
+.ds-hero-carousel .ds-hero-bg img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transition: opacity 1.2s var(--ds-ease-out);
+}
+.ds-hero-carousel .ds-hero-bg img.is-active { opacity: 1; }
+
+/* ---- cross-fading copy ---- */
+.ds-hero-stack { display: grid; }
+.ds-hero-stack > .ds-hero-slide { grid-area: 1 / 1; }
+.ds-hero-slide {
+  opacity: 0;
+  /* Held out of the accessibility tree and off the hit-testing path while
+     faded out. The visibility change waits for the fade to finish on the way
+     out and happens immediately on the way in. */
+  visibility: hidden;
+  transition: opacity 0.9s var(--ds-ease-out), visibility 0s linear 0.9s;
+}
+.ds-hero-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.9s var(--ds-ease-out), visibility 0s;
+}
+.ds-hero-lead .ds-hero-slide { display: grid; align-content: start; gap: var(--ds-s4); }
+
+/* ---- controls ---- */
+.ds-hero-dots {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--ds-s6);
+  max-width: 760px;
+  width: 100%;
+}
+.ds-hero-dot {
+  display: grid;
+  gap: var(--ds-s3);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.62);
+  transition: color 0.2s var(--ds-ease);
+}
+.ds-hero-dot:hover { color: #fff; }
+.ds-hero-dot.is-active { color: #fff; }
+.ds-hero-dot-bar {
+  display: block;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.26);
+  overflow: hidden;
+}
+.ds-hero-dot-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--ds-mint);
+}
+/* Only the slide on screen runs its timer bar. The others read as empty,
+   which is what tells you where you are in the set. */
+.ds-hero-dot.is-active .ds-hero-dot-fill {
+  animation-name: ds-hero-dot-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.ds-hero-carousel.is-held .ds-hero-dot-fill { animation-play-state: paused; }
+@keyframes ds-hero-dot-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.ds-hero-dot-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+/* Mount entrance. The carousel cannot use .ds-hero-enter, because that
+   staggers the direct children of the copy block and here those are the two
+   columns rather than the lines of type. The pieces that do not rotate get
+   the beat instead, and the slide itself arrives on its own fade. */
+.ds-hero-carousel .ds-hero-lead,
+.ds-hero-carousel .ds-hero-support > *,
+.ds-hero-carousel .ds-hero-dots {
+  animation: ds-hero-in 0.8s var(--ds-ease-out) both;
+}
+.ds-hero-carousel .ds-hero-lead { animation-delay: 0.04s; }
+.ds-hero-carousel .ds-hero-support > *:nth-child(1) { animation-delay: 0.14s; }
+.ds-hero-carousel .ds-hero-support > *:nth-child(2) { animation-delay: 0.22s; }
+.ds-hero-carousel .ds-hero-support > *:nth-child(n+3) { animation-delay: 0.3s; }
+.ds-hero-carousel .ds-hero-dots { animation-delay: 0.38s; }
 
 /* Stat strip under the hero copy. Separate bordered cards with real space
    between them, for the same reason the tiles are: a divider drawn by
@@ -1557,7 +1762,7 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
   .ds-section.rail > .ds-container {
     display: block;
   }
-  .ds-section.rail .ds-section-head {
+  .ds-section.rail > .ds-container > .ds-section-head {
     position: static;
     max-width: 760px;
     margin-bottom: var(--ds-head-gap);
@@ -1568,7 +1773,7 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
   .ds-section.rail .ds-section-head .ds-lede {
     font-size: clamp(1.0625rem, 0.99rem + 0.4vw, 1.3125rem);
   }
-  .ds-section.rail .ds-section-foot { margin-top: var(--ds-head-gap); }
+  .ds-section.rail > .ds-container > .ds-section-foot { margin-top: var(--ds-head-gap); }
   .ds-section.rail .ds-grid.cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
   .ds-hero-inner,
@@ -1578,6 +1783,15 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
   .ds-hero-inner { min-height: 0; }
   .ds-hero.lg .ds-hero-inner { min-height: 0; }
   .ds-hero-copy { max-width: 720px; }
+
+  /* The hero stops being pinned to the window here. In one column the copy
+     is tall enough that a locked height would either crop it or leave the
+     type stranded in the middle of an empty screen. */
+  .ds-hero.fit-viewport .ds-hero-inner { min-height: 0; }
+  .ds-hero-copy.split { grid-template-columns: minmax(0, 1fr); max-width: 720px; }
+  .ds-hero-copy.split .ds-h1 { margin-bottom: 0; }
+  .ds-hero-copy.split .ds-lede { max-width: none; }
+  .ds-hero-carousel .ds-hero-inner { grid-template-rows: auto auto; }
   .ds-hero-visual { aspect-ratio: 16 / 9; }
   .ds-fifty.reversed .ds-fifty-visual { order: 0; }
   .ds-fifty.reversed .ds-fifty-copy { order: 0; }
@@ -1608,6 +1822,11 @@ a.ds-tile:hover .ds-tile-title, button.ds-tile:hover .ds-tile-title { color: var
   .ds-accordion-panel { padding-right: 24px; }
   .ds-hero-inner { padding: clamp(36px, 9vw, 56px) 0; }
   .ds-hero.immersive .ds-hero-inner { min-height: 0; }
+  /* Four labelled controls will not fit a phone. The bars on their own still
+     say where you are in the set, given a target tall enough to hit. */
+  .ds-hero-dot-label { display: none; }
+  .ds-hero-dot { min-height: 32px; align-content: center; }
+  .ds-hero-dots { gap: var(--ds-s4); }
 }
 
 @media (max-width: 480px) {

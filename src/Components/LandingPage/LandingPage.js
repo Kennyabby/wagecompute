@@ -19,8 +19,9 @@ import LoadingPage from '../LoadingPage/LoadingPage'
 import PageShell from './ds/PageShell'
 import {
   Button, ButtonRow, Card, CTABanner, Container, FastFacts, FiftyFifty, Grid,
-  Hero, LogoStrip, Quote, Section, Showcase, TextLink, Tile, Tiles, Checklist,
+  LogoStrip, Quote, Section, Showcase, TextLink, Tile, Tiles, Checklist,
 } from './ds/DS'
+import HeroCarousel from './ds/HeroCarousel'
 import { img, heroImg } from './ds/landingImages'
 import { PRODUCT_CATEGORIES, productsInCategory } from './content/products'
 import { INDUSTRIES } from './content/industries'
@@ -31,6 +32,40 @@ import './ds/ds.css'
 
 const TRUST_NAMES = [
   'Retail Co.', 'TechVenture', 'GreenField', 'Metro Group', 'AlphaServ', 'BlueChip Inc.',
+]
+
+/* The four things an operator most often arrives wanting to know. The buttons
+   and the trial checklist sit outside the rotation, so whichever slide is up
+   there is always a way to act on it. */
+const HERO_SLIDES = [
+  {
+    key: 'ledger',
+    eyebrow: 'One platform. One ledger.',
+    title: 'Run the whole business on records you can actually trust',
+    lede: 'Point of sale, inventory, sales, purchasing, delivery, payroll and real double-entry accounting. One system, where every number traces back to the transaction that caused it.',
+    image: heroImg('heroTeam', 'heroWide'),
+  },
+  {
+    key: 'offline',
+    eyebrow: 'Built to keep trading',
+    title: 'A dropped connection should not close the till',
+    lede: 'Selling carries on through an outage and reconciles cleanly once the network is back. Nothing sits queued in someone’s head, and nothing gets keyed in twice.',
+    image: heroImg('posCheckout', 'heroWide'),
+  },
+  {
+    key: 'stock',
+    eyebrow: 'Stock you can explain',
+    title: 'Know what you hold, and know why you hold it',
+    lede: 'Stock is a running position built from movements, each one attributed to a person and a reason. When a physical count disagrees, you get a list of transactions to work through.',
+    image: heroImg('warehouseRacks', 'heroWide'),
+  },
+  {
+    key: 'pricing',
+    eyebrow: 'Priced per module',
+    title: 'Pay for the modules you run, not the seats you fill',
+    lede: 'Unlimited users on every plan, forever. Six core modules are free permanently, and you add the rest only when the business needs them.',
+    image: heroImg('businessOwner', 'heroWide'),
+  },
 ]
 
 const LandingPage = () => {
@@ -159,14 +194,7 @@ const LandingPage = () => {
       description="Run point of sale, inventory, sales, purchasing, delivery, payroll and a real double-entry ledger on one platform. Unlimited users, priced per module, built to keep working offline."
     >
       {/* ---------------------------------------------------------- hero -- */}
-      <Hero
-        tone="deep"
-        size="lg"
-        backgroundImage={heroImg('heroTeam', 'heroWide')}
-        eyebrow="One platform. One ledger."
-        title="Run the whole business on records you can actually trust"
-        lede="Point of sale, inventory, sales, purchasing, delivery, payroll and a genuine double-entry general ledger. One system, where every number traces back to the transaction that caused it and the business keeps trading when the network does not."
-      >
+      <HeroCarousel slides={HERO_SLIDES} label="What Enterprise Compute does">
         <ButtonRow>
           <Button variant="primary" size="lg" to="/signup" navigate={navigate}>Start a free 14-day trial</Button>
           <Button variant="secondary" size="lg" to="/contact" navigate={navigate}>Request a demo</Button>
@@ -180,7 +208,7 @@ const LandingPage = () => {
             ]}
           />
         </div>
-      </Hero>
+      </HeroCarousel>
 
       <LogoStrip label="Built for operators across retail, hospitality, distribution and industry" items={TRUST_NAMES} />
 

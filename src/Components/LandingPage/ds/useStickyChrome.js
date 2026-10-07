@@ -58,10 +58,20 @@ export const useStickyChrome = () => {
     let hidden = false
 
     const publish = () => {
+      const header = headerHeight()
       root.style.setProperty('--ds-subnav-h', subnavHeight + 'px')
+      // The real header, border and all. --ds-header-h is what sizes the
+      // header bar, so it cannot also be the place its measured height is
+      // written back to; anything that needs the true outside height, such
+      // as a hero sized to the rest of the window, reads this instead.
+      root.style.setProperty('--ds-header-measured', header + 'px')
+      // The whole chrome, measured, and steady whether or not the bar is
+      // currently hidden. Anything sized to the space left over wants this
+      // one, so that it is not resized by a scroll.
+      root.style.setProperty('--ds-chrome-measured', header + subnavHeight + 'px')
       root.style.setProperty(
         '--ds-chrome-top',
-        headerHeight() + (hidden ? 0 : subnavHeight) + 'px'
+        header + (hidden ? 0 : subnavHeight) + 'px'
       )
     }
 
@@ -146,6 +156,8 @@ export const useStickyChrome = () => {
       const el = getSubnav()
       if (el) el.classList.remove('is-hidden')
       root.style.removeProperty('--ds-subnav-h')
+      root.style.removeProperty('--ds-header-measured')
+      root.style.removeProperty('--ds-chrome-measured')
       root.style.removeProperty('--ds-chrome-top')
     }
   }, [])
