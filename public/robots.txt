@@ -1,3 +1,25 @@
 # https://www.robotstxt.org/robotstxt.html
+#
+# The public site is open to crawlers. The authenticated application and the
+# transactional flows are not useful in search results and some of them carry
+# tokens in the URL, so they are excluded here as well as being noindex in the
+# page metadata.
+#
+# Update the Sitemap line if the domain changes. scripts/generate-sitemap.js
+# takes the same origin from SITE_ORIGIN.
+
 User-agent: *
-Disallow:
+Allow: /
+
+Disallow: /login
+Disallow: /signup
+Disallow: /settings
+Disallow: /renew
+Disallow: /payment-confirm
+Disallow: /offline-license-portal
+Disallow: /offline-license-payment-complete
+Disallow: /database-not-found
+Disallow: /license-expired
+Disallow: /central-admin
+
+Sitemap: https://www.enterprisecompute.com/sitemap.xml

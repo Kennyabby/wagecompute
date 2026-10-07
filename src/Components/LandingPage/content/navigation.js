@@ -71,7 +71,7 @@ export const HEADER_NAV = [
     footerLinks: [
       { name: 'Compare plans', to: '/pricing' },
       { name: 'Product documentation', to: '/docs' },
-      { name: 'What’s new', to: '/blog' },
+      { name: 'Blog', to: '/blog' },
     ],
   },
   {
@@ -195,7 +195,7 @@ export const HEADER_NAV = [
         items: [
           { name: 'Resource library', desc: 'Guides, templates, checklists', to: '/resources' },
           { name: 'Customer stories', desc: 'Results from real operators', to: '/customers' },
-          { name: 'Insights & blog', desc: 'Writing on running a business', to: '/blog' },
+          { name: 'Blog', desc: 'Margin, stock, people and the decisions behind them', to: '/blog' },
           { name: 'ROI calculator', desc: 'Model your own payback', to: '/roi-calculator' },
         ],
       },
@@ -245,7 +245,7 @@ export const HEADER_NAV = [
         title: 'Newsroom',
         items: [
           { name: 'Press & news', desc: 'Announcements and coverage', to: '/press' },
-          { name: 'Insights & blog', desc: 'Writing from the team', to: '/blog' },
+          { name: 'Blog', desc: 'Writing on how businesses actually run', to: '/blog' },
           { name: 'Events', desc: 'Where to find us', to: '/events' },
           { name: 'Customer stories', desc: 'What operators report', to: '/customers' },
         ],
@@ -314,7 +314,7 @@ export const FOOTER_COLUMNS = [
       { name: 'Help centre', to: '/help' },
       { name: 'Customer stories', to: '/customers' },
       { name: 'Events & webinars', to: '/events' },
-      { name: 'Insights', to: '/blog' },
+      { name: 'Blog', to: '/blog' },
       { name: 'Community', to: '/community' },
     ],
   },

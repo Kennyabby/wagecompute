@@ -28,6 +28,7 @@ import { INDUSTRIES } from './content/industries'
 import { RESOURCES, EVENTS } from './content/resources'
 import { PARTNER_PROGRAMS } from './content/programs'
 import { STORIES, ILLUSTRATIVE, PLACEHOLDER_NOTICE } from './content/customers'
+import { POSTS, pillarName } from './content/blog'
 import './ds/ds.css'
 
 const TRUST_NAMES = [
@@ -84,6 +85,9 @@ const LandingPage = () => {
   const sideStories = STORIES.slice(1, 4)
   const featuredResources = RESOURCES.filter((r) => r.featured)
   const nextEvent = EVENTS.find((e) => e.featured)
+  // Three most recent pieces, so the home page always points at live writing
+  // rather than at a hand-picked list that goes stale.
+  const homePosts = POSTS.slice(0, 3)
 
   /* The capability showcase, the equivalent of SAP's "when every function is
      autonomous" block, but built from this platform's real module groups. */
@@ -208,6 +212,13 @@ const LandingPage = () => {
             ]}
           />
         </div>
+        {/* Sits outside the rotation with the buttons, so the blog is reachable
+            from the first screen whichever slide happens to be showing. */}
+        <p className="ds-hero-aside">
+          <TextLink to="/blog" navigate={navigate}>
+            Read the blog: margin, stock, cash and the decisions behind them
+          </TextLink>
+        </p>
       </HeroCarousel>
 
       <LogoStrip label="Built for operators across retail, hospitality, distribution and industry" items={TRUST_NAMES} />
@@ -468,6 +479,35 @@ const LandingPage = () => {
       </Section>
 
       {/* --------------------------------------------------------- what's new */}
+      {/* ------------------------------------------------------------ blog -- */}
+      <Section
+        eyebrow="From the blog"
+        title="Writing that is useful whether or not you ever buy anything"
+        subtitle="Margin, stock, cash, infrastructure and the decisions behind them, written for people running a business rather than for people shopping for software. Free to read, no sign-up wall."
+        rail
+        split
+        footer={(
+          <ButtonRow>
+            <Button variant="secondary" to="/blog" navigate={navigate}>Read the blog</Button>
+          </ButtonRow>
+        )}
+      >
+        <Grid cols={3}>
+          {homePosts.map((post) => (
+            <Card
+              key={post.slug}
+              image={img(post.image, 'card')}
+              eyebrow={pillarName(post.pillar)}
+              title={post.title}
+              text={post.excerpt}
+              link="Read it"
+              to={`/blog/${post.slug}`}
+              navigate={navigate}
+            />
+          ))}
+        </Grid>
+      </Section>
+
       <Section
         variant="alt"
         eyebrow="What's new"

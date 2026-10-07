@@ -30,7 +30,7 @@
 .sp-pricing-card.featured { border-color: var(--ec-secondary); box-shadow: 0 20px 48px rgba(43,106,75,0.12); transform: scale(1.03); z-index: 1; }
 .sp-pricing-card.featured:hover { transform: scale(1.03) translateY(-4px); }
 .sp-pricing-card.supporting { background: linear-gradient(180deg, #ffffff 0%, #f8faf8 100%); }
-.sp-pricing-card.selected { border-color: rgba(43,106,75,0.26); box-shadow: 0 24px 54px rgba(23,56,41,0.09); }
+.sp-pricing-card-selected { border-color: rgba(43,106,75,0.26); box-shadow: 0 24px 54px rgba(23,56,41,0.09); }
 /* No `position: relative` here on purpose, .sp-popular-badge is an
    absolutely-positioned child of this row, and this row's own content
    (.sp-pricing-mini-badge) sits right where the badge's small `top: -14px`
@@ -357,7 +357,7 @@
 .sp-confirm-card.error {
   background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,247,245,0.98) 100%);
 }
-.sp-confirm-card.info {
+.sp-confirm-card-info {
   background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,250,240,0.98) 100%);
 }
 .sp-confirm-pill-row {
@@ -851,7 +851,7 @@
   box-shadow: 0 10px 30px rgba(23, 56, 41, 0.1);
 }
 .sp-pricing-card.featured:hover { transform: translateY(-3px); }
-.sp-pricing-card.selected { border-color: var(--ds-action, #2b6a4b); }
+.sp-pricing-card-selected { border-color: var(--ds-action, #2b6a4b); }
 
 /* ---- Figures ---- */
 .sp-amount,

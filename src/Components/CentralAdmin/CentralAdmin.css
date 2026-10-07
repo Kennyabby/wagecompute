@@ -2382,3 +2382,161 @@ body {
   font-weight: 700;
 }
 
+
+/* ============================================================================
+   Blog authoring panel (BlogAdminPanel.js)
+   ----------------------------------------------------------------------------
+   Namespaced under .cab so nothing here collides with the rest of the admin,
+   which is a large stylesheet written over a long period.
+   ========================================================================= */
+
+.cab { display: grid; gap: 18px; }
+
+.cab-tabs { display: flex; gap: 8px; border-bottom: 1px solid #e3e9e5; }
+.cab-tabs button {
+  background: none; border: none; padding: 10px 16px; cursor: pointer;
+  font: inherit; font-size: 0.9rem; color: #5a6b62;
+  border-bottom: 2px solid transparent;
+}
+.cab-tabs button.active { color: #1f6b45; border-bottom-color: #1f6b45; font-weight: 600; }
+
+.cab-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cab-bar.cab-add { padding-top: 12px; border-top: 1px dashed #dfe6e1; }
+.cab-bar.cab-add span { font-size: 0.8rem; color: #5a6b62; margin-right: 4px; }
+.cab-bar button, .cab-actions button {
+  background: #fff; border: 1px solid #d9e2dc; border-radius: 4px;
+  padding: 7px 12px; cursor: pointer; font: inherit; font-size: 0.82rem; color: #26332c;
+}
+.cab-bar button:hover, .cab-actions button:hover { border-color: #1f6b45; color: #1f6b45; }
+.cab-bar button:disabled, .cab-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.cab-primary { background: #1f6b45 !important; border-color: #1f6b45 !important; color: #fff !important; }
+.cab-danger:hover { border-color: #a8341f !important; color: #a8341f !important; }
+
+.cab-hint { font-size: 0.8rem; color: #5a6b62; line-height: 1.55; margin: 0; max-width: 78ch; }
+.cab-hint code { background: #eef3f0; padding: 1px 5px; border-radius: 3px; font-size: 0.95em; }
+
+.cab-section { margin: 10px 0 0; font-size: 0.95rem; color: #26332c; }
+
+.cab-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.cab-table th, .cab-table td {
+  text-align: left; padding: 10px 12px; border-bottom: 1px solid #eef2ef; vertical-align: middle;
+}
+.cab-table th { color: #5a6b62; font-weight: 600; }
+.cab-empty { color: #7b8b82; text-align: center; padding: 28px 0; }
+.cab-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.cab-pill {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; text-transform: capitalize;
+}
+.cab-pill.published { background: #e4f3ea; color: #1f6b45; }
+.cab-pill.draft { background: #f1f1ee; color: #6b6b60; }
+
+.cab-editor { display: grid; gap: 14px; }
+.cab-row { display: flex; gap: 14px; flex-wrap: nowrap; }
+.cab-row.cab-wrap { flex-wrap: wrap; }
+.cab-editor label, .cab-row label {
+  display: grid; gap: 5px; flex: 1 1 0; min-width: 0;
+  font-size: 0.78rem; color: #5a6b62; text-transform: capitalize;
+}
+.cab-editor input, .cab-editor select, .cab-editor textarea,
+.cab-row input, .cab-row select, .cab-row textarea, .cab-block textarea, .cab-block input, .cab-block select {
+  font: inherit; font-size: 0.86rem; padding: 8px 10px;
+  border: 1px solid #d9e2dc; border-radius: 4px; background: #fff; color: #26332c;
+  width: 100%; box-sizing: border-box;
+}
+.cab-editor textarea, .cab-block textarea { resize: vertical; line-height: 1.5; }
+.cab-check { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.cab-check input { width: auto !important; }
+
+.cab-block {
+  border: 1px solid #e3e9e5; border-radius: 6px; padding: 12px;
+  display: grid; gap: 10px; background: #fcfdfc;
+}
+.cab-block-head { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.cab-block-head select { max-width: 200px; }
+
+@media (max-width: 760px) {
+  .cab-row { flex-wrap: wrap; }
+  .cab-block-head { flex-direction: column; align-items: stretch; }
+  .cab-block-head select { max-width: none; }
+}
+
+/* ============================================================================
+   Public-site analytics panel (AnalyticsPanel.js)
+   ========================================================================= */
+
+.cana { display: grid; gap: 16px; }
+
+.cana-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cana-group { display: inline-flex; border: 1px solid #d9e2dc; border-radius: 6px; overflow: hidden; }
+.cana-group button {
+  background: #fff; border: none; border-right: 1px solid #e7edea;
+  padding: 7px 13px; cursor: pointer; font: inherit; font-size: 0.8rem; color: #45554c;
+}
+.cana-group button:last-child { border-right: none; }
+.cana-group button.active { background: #1f6b45; color: #fff; }
+.cana-bar > button {
+  background: #fff; border: 1px solid #d9e2dc; border-radius: 6px;
+  padding: 7px 13px; cursor: pointer; font: inherit; font-size: 0.8rem; color: #26332c;
+}
+.cana-bar > button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.cana-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.cana-stat {
+  background: #fff; border: 1px solid #e7edea; border-radius: 8px;
+  padding: 14px 16px; display: grid; gap: 3px; align-content: start; min-width: 0;
+}
+.cana-stat-label { font-size: 0.72rem; color: #6b7c73; text-transform: uppercase; letter-spacing: 0.06em; }
+.cana-stat-value { font-size: 1.5rem; font-weight: 600; color: #16241d; line-height: 1.1; }
+.cana-stat-note { font-size: 0.72rem; color: #8a988f; }
+
+.cana-card { background: #fff; border: 1px solid #e7edea; border-radius: 8px; padding: 16px 18px 18px; min-width: 0; }
+.cana-card h4 { margin: 0 0 12px; font-size: 0.92rem; color: #16241d; }
+.cana-chart { height: 280px; width: 100%; }
+.cana-chart.short { height: 220px; }
+.cana-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.cana-note { font-size: 0.8rem; color: #6b7c73; line-height: 1.55; margin: 0; }
+
+.cana-empty {
+  background: #f6faf8; border: 1px dashed #cfdfd6; border-radius: 8px;
+  padding: 16px 18px; font-size: 0.84rem; color: #4a5a51; line-height: 1.6; margin: 0;
+}
+.cana-empty-cell { text-align: center; color: #8a988f; padding: 24px 0; }
+
+.cana-table-wrap { overflow-x: auto; }
+.cana-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.cana-table th, .cana-table td {
+  text-align: left; padding: 10px 12px; border-bottom: 1px solid #eef2ef; vertical-align: middle;
+}
+.cana-table th { color: #6b7c73; font-weight: 600; white-space: nowrap; }
+.cana-page-title { display: block; color: #16241d; font-weight: 500; }
+.cana-page-path { display: block; color: #8a988f; font-size: 0.74rem; margin-top: 2px; }
+
+.cana-depth {
+  display: inline-block; vertical-align: middle; width: 70px; height: 6px;
+  background: #eef2ef; border-radius: 3px; overflow: hidden; margin-right: 8px;
+}
+.cana-depth-fill { display: block; height: 100%; background: #1f6b45; }
+.cana-depth-value { font-size: 0.76rem; color: #6b7c73; }
+
+.cana-defs dl { margin: 0; display: grid; gap: 8px; }
+.cana-defs dt { font-size: 0.8rem; font-weight: 600; color: #26332c; }
+.cana-defs dd { margin: 0 0 4px; font-size: 0.8rem; color: #6b7c73; line-height: 1.55; }
+
+@media (max-width: 1200px) {
+  .cana-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  .cana-split { grid-template-columns: minmax(0, 1fr); }
+  .cana-chart { height: 240px; }
+}
+@media (max-width: 560px) {
+  .cana-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cana-stat-value { font-size: 1.25rem; }
+  .cana-bar { gap: 8px; }
+  .cana-group { width: 100%; }
+  .cana-group button { flex: 1 1 0; }
+  .cana-card { padding: 14px; }
+  .cana-chart { height: 210px; }
+}

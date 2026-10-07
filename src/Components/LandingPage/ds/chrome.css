@@ -118,10 +118,43 @@
      `overscroll-behavior: contain` stops a scroll that reaches the end of
      the panel from chaining into the page behind it, which would otherwise
      yank the whole document the moment you hit the last link. */
-  max-height: calc(100vh - var(--ds-header-h));
+  /* Deliberately short of the full window. A panel that reaches the bottom
+     of the screen covers the dimmed page entirely and then reads as a page
+     of its own, which is how someone ends up thinking they are stuck in it.
+     Leaving a strip of scrim visible underneath is what makes it legible as
+     something sitting on top of the site.
+
+     `overscroll-behavior: contain` stops a scroll that reaches the end of
+     the panel from chaining into the page behind it, which would otherwise
+     yank the whole document the moment you hit the last link. */
+  max-height: min(70vh, calc(100vh - var(--ds-header-h) - 72px));
   overflow-y: auto;
   overscroll-behavior: contain;
+  border-radius: 0 0 var(--ds-radius-lg, 8px) var(--ds-radius-lg, 8px);
 }
+
+/* ---- Close affordance ---- */
+.ds-mega-close {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  float: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 14px 0 0;
+  padding: 7px 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: 999px;
+  background: var(--ds-surface);
+  color: var(--ds-text-muted);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ds-ease), color 0.16s var(--ds-ease);
+}
+.ds-mega-close span:first-child { font-size: 1.05rem; line-height: 1; }
+.ds-mega-close:hover { border-color: var(--ds-action); color: var(--ds-action); }
 
 /* A slim scrollbar, so a scrollable panel is visibly scrollable rather than
    looking identical to one that just happens to be cut off. */

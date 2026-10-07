@@ -66,13 +66,13 @@ const LicenseExpired = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <button className="btn-primary" onClick={() => navigate(companyRecord?.emailid ? '/settings' : '/renew')}>
+          <button className="error-btn-primary" onClick={() => navigate(companyRecord?.emailid ? '/settings' : '/renew')}>
             Manage Subscription
           </button>
-          <button className="btn-back" onClick={() => navigate('/')}>
+          <button className="error-btn-back" onClick={() => navigate('/')}>
             <HiArrowLeft /> Back to Home
           </button>
-          <button className="btn-primary" onClick={() => window.location.href = 'mailto:support@epxcentral.com'}>
+          <button className="error-btn-primary" onClick={() => window.location.href = 'mailto:support@epxcentral.com'}>
             Contact Support
           </button>
         </motion.div>
