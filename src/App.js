@@ -503,9 +503,9 @@ function App() {
   // This whole path only became reachable once a suspended tenant could log
   // in at all, so the gap was latent until now.
   const pathList = ['', 'login', 'profile', 'dashboard', 'license-expired', 'renew',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings', 'test']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'business-central', 'settings', 'test']
   const dashList = ['dashboard',
-    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'settings']
+    'employees', 'departments', 'positions', 'attendance', 'payroll', 'pos', 'delivery', 'sales', 'business-partners', 'inventory', 'assets', 'accommodations', 'purchase', 'expenses', 'reports', 'journals', 'business-central', 'settings']
   // Must mirror the free-tier keys in wageserver/UserModule/Billing/moduleCatalog.js
   // exactly, these are always available regardless of what a tenant purchased.
   const FREE_TIER_MODULE_KEYS = ['dashboard', 'settings', 'employees', 'departments', 'positions', 'attendance']
@@ -1016,6 +1016,11 @@ function App() {
               } catch (e) {
                 console.error('SSE AccountingSummaries apply error', e);
               }
+              break;
+            case 'BCSyncRuns':
+              // Progress of a Business Central sync. The module keeps its own
+              // state, so this only hands the update on to whichever page is open.
+              window.dispatchEvent(new CustomEvent('wc:bc-sync-update', { detail: { company, run: payload.data || null } }));
               break;
             case 'DashboardSummaries':
               try {

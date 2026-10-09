@@ -159,7 +159,7 @@ const ensureClientTxnId = (endpoint, body) => {
 let currentIsFullyConnected = true;
 export const setConnectivityStatus = (isConnected) => { currentIsFullyConnected = isConnected !== false; };
 
-const TIER_B_ENDPOINT_PREFIXES = ['business-partners/', 'billing/', 'accounting/'];
+const TIER_B_ENDPOINT_PREFIXES = ['business-partners/', 'billing/', 'accounting/', 'bc/'];
 const TIER_B_EXACT_ENDPOINTS = ['createGeneralLedgerEntry', 'initializeChartOfAccounts'];
 
 const isTierBRequest = (endpoint, body) => {

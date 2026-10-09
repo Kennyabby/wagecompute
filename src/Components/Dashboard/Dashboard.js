@@ -22,6 +22,7 @@ import Settings from '../Settings/Settings'
 import Journals from '../Journals/Journals'
 import LicenseExpired from '../LandingPage/LicenseExpired'
 import BusinessPartners from '../BusinessPartners/BusinessPartners'
+import BusinessCentral from '../BusinessCentral/BusinessCentral'
 
 const CORE_LEDGER_PAGES = new Set(['settings', 'journals', 'reports', 'employees', 'departments', 'positions'])
 
@@ -484,6 +485,12 @@ const Dashboard = ()=>{
                 || companyRecord?.permissions?.includes('reports')
             )){
                 setView(<Journals/>)
+            }else if (path === 'business-central' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('business-central'))){
+                // Not wrapped in guardPage: this module reads from the
+                // tenant's Business Central server and needs none of the
+                // warehouse, category or chart of accounts setup the native
+                // modules wait for.
+                setView(<BusinessCentral/>)
             }else if (path === 'settings' && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('settings'))){
                 setView(<Settings/>)
             }else{

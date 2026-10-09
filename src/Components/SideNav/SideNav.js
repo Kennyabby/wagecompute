@@ -7,7 +7,7 @@ import { BiSolidDashboard, BiMenu } from "react-icons/bi";
 import { BsTable } from "react-icons/bs";
 import { FaUsers, FaHotel, FaBoxes, FaHandshake } from "react-icons/fa";
 import { SiPayloadcms } from "react-icons/si";
-import { MdInventory, MdClose, MdSubject, MdDeliveryDining, MdLogout } from "react-icons/md";
+import { MdInventory, MdClose, MdSubject, MdDeliveryDining, MdLogout, MdInsights } from "react-icons/md";
 import { GiPayMoney, GiPlayerTime, GiBuyCard, GiExpense } from "react-icons/gi";
 import { RiSettings2Fill } from "react-icons/ri";
 import { TbReportMoney } from "react-icons/tb";
@@ -341,6 +341,7 @@ const SideNav = () => {
             badge: hasPermission('approve_postexpense') ? expenseApprovals.length : 0,
             approvedBadge: expenseApproved.length
         },
+        hasModuleAccess('business-central') && { name: 'business-central', label: 'Business Central', meta: 'ERP reports', icon: MdInsights },
         hasModuleAccess('settings') && { name: 'settings', label: 'Settings', meta: 'Control room', icon: RiSettings2Fill }
     ].filter(Boolean)
 
