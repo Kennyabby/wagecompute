@@ -19,7 +19,7 @@ import { BiSolidDashboard } from 'react-icons/bi'
 import { BsTable } from 'react-icons/bs'
 import { FaUsers, FaHotel, FaBoxes, FaHandshake } from 'react-icons/fa'
 import { SiPayloadcms } from 'react-icons/si'
-import { MdInventory, MdSubject, MdDeliveryDining, MdAssessment } from 'react-icons/md'
+import { MdInventory, MdSubject, MdDeliveryDining, MdAssessment, MdInsights } from 'react-icons/md'
 import { GiPayMoney, GiPlayerTime, GiBuyCard, GiExpense } from 'react-icons/gi'
 import { RiSettings2Fill } from 'react-icons/ri'
 import { CgArrangeBack } from 'react-icons/cg'
@@ -44,6 +44,7 @@ const MODULE_ICONS = {
   expenses: GiExpense,
   journals: BsTable,
   reports: MdAssessment,
+  'business-central': MdInsights,
   epsilon: EpsilonMark,
 }
 

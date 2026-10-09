@@ -57,12 +57,15 @@
   margin-bottom: 24px;
 }
 
+/* Same treatment as .visual-logo-box img, see the note there. */
 .mobile-logo img {
+  box-sizing: border-box;
   height: 140px;
   width: 140px;
   border-radius: 50%;
   border: 2px solid var(--login-primary);
-  padding: 10px;
+  padding: 20px;
+  background: #eeefed;
   object-fit: contain;
 }
 
@@ -322,12 +325,27 @@
   margin-bottom: 40px;
 }
 
+/* The mark ships as a 421x433 PNG with an opaque #eeefed rectangle behind it,
+   not a transparent circle. Three things follow, and all three are needed:
+
+   box-sizing, because this project sets no global border-box, so the declared
+   200px was the artwork alone and the circle was really 224px across.
+
+   padding, enough that the artwork's diagonal fits inside the circle. Without
+   it the rectangle's corners and its top and bottom edges fell outside the
+   radius and were cut into flat chords, which is the clipping that was
+   visible on every one of these.
+
+   background, matching the PNG's own grey, so the circle reads as one solid
+   badge instead of showing the edges of the rectangle sitting inside it. */
 .visual-logo-box img {
+  box-sizing: border-box;
   height: 200px;
   width: 200px;
   border-radius: 50%;
   border: 2px solid white;
-  padding: 10px;
+  padding: 28px;
+  background: #eeefed;
   filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.2));
   object-fit: contain;
 }
@@ -402,13 +420,16 @@
   margin-bottom: 60px;
 }
 
+/* Same treatment as .visual-logo-box img, see the note there. */
 .user-app-logo {
+  box-sizing: border-box;
   height: 160px;
   width: 160px;
   margin-bottom: 32px;
   border-radius: 50%;
   border: 2px solid var(--login-primary);
-  padding: 10px;
+  padding: 23px;
+  background: #eeefed;
   filter: drop-shadow(0 10px 20px rgba(23, 56, 41, 0.1));
   object-fit: contain;
 }
@@ -1062,6 +1083,9 @@
   .mobile-logo img {
     height: 100px;
     width: 100px;
+    /* Scaled with the mark, so the clear space inside the ring stays in the
+       same proportion and the artwork still fits within the radius. */
+    padding: 14px;
   }
 
   .form-header h2 {
@@ -1104,6 +1128,7 @@
     height: 100px;
     width: 100px;
     margin-bottom: 20px;
+    padding: 14px;
   }
 
   .user-header h1 {

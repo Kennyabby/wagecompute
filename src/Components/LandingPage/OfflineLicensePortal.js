@@ -241,9 +241,12 @@ const OfflineLicensePortal = () => {
                 <p>This issues a brand new license key (a new purchase) under your existing account. Enter the new key in the desktop app's license screen once payment completes.</p>
                 {/* Epsilon excluded: never available on the offline/desktop
                     build (no Anthropic key, no per-seat billing there); the
-                    server already strips it from computeOfflinePrice too. */}
+                    server already strips it from computeOfflinePrice too.
+                    Business Central Reports is excluded for a similar reason:
+                    it syncs from a tenant's ERP server on a schedule and is
+                    only registered on the online platform. */}
                 <div className='module-picker-grid'>
-                  {moduleCatalog.filter(m => m.tier === 'standard' && m.key !== 'epsilon').map((m) => {
+                  {moduleCatalog.filter(m => m.tier === 'standard' && m.key !== 'epsilon' && m.key !== 'business-central').map((m) => {
                     const Icon = MODULE_ICONS[m.key]
                     return (
                       <label key={m.key} className='module-picker-chip'>

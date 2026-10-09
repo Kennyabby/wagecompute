@@ -1,0 +1,215 @@
+/* Business Central Reports module. Built on the platform tokens
+   (src/styles/tokens.css); every class is prefixed bc- so nothing here can
+   reach another module. */
+
+.bc-root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    color: var(--brand-text);
+    font-size: var(--font-base);
+    min-width: 0;
+}
+
+.bc-root h1 { font-size: var(--font-xl); margin: 0; color: var(--brand-primary); text-align: left; }
+/* The shared stat tile is sized for a handful of short figures. These pages
+   show six money amounts in a row, which need a smaller size to stay on one line. */
+.bc-root .ui-stat-value { font-size: var(--font-xl); }
+.bc-root .ui-stat-card { padding: var(--space-4) var(--space-5); }
+.bc-root h2 { font-size: var(--font-lg); margin: 0 0 var(--space-3); color: var(--brand-primary); }
+.bc-root h3 { font-size: var(--font-md); margin: 0; color: var(--brand-primary); }
+.bc-root h4 { font-size: var(--font-sm); margin: var(--space-5) 0 var(--space-2); text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand-text-muted); }
+.bc-root p { margin: 0; line-height: 1.5; }
+
+.bc-muted { color: var(--brand-text-muted); font-size: var(--font-sm); }
+.bc-sub { display: block; color: var(--brand-text-muted); font-size: var(--font-xs); }
+.bc-empty { color: var(--brand-text-muted); padding: var(--space-5) 0; text-align: center; }
+.bc-stale { opacity: 0.55; transition: opacity 0.15s; }
+
+.bc-page { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+
+/* ---- Header and tabs ---- */
+.bc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap; }
+
+.bc-sync-chip {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--brand-border); border-radius: var(--radius-pill);
+    background: var(--brand-card); color: var(--brand-text); font-size: var(--font-sm); cursor: pointer;
+}
+.bc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-400); }
+.bc-dot-live { background: var(--color-info); animation: bc-pulse 1.2s ease-in-out infinite; }
+.bc-dot-on { background: var(--color-success); }
+@keyframes bc-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .bc-dot-live { animation: none; } }
+
+.bc-tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--brand-border); overflow-x: auto; }
+.bc-tabs button {
+    padding: var(--space-3) var(--space-4); border: 0; background: none; cursor: pointer;
+    font-size: var(--font-base); font-weight: 600; color: var(--brand-text-muted);
+    border-bottom: 2px solid transparent; white-space: nowrap;
+}
+.bc-tabs button:hover { color: var(--brand-primary); }
+.bc-tabs button.active { color: var(--brand-primary); border-bottom-color: var(--brand-secondary); }
+
+/* ---- Cards ---- */
+.bc-card {
+    background: var(--brand-card); border: 1px solid var(--brand-border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm); padding: var(--space-5) var(--space-6);
+    display: flex; flex-direction: column; gap: var(--space-4); min-width: 0;
+}
+.bc-first-sync { align-items: flex-start; }
+
+/* ---- Buttons and inputs ---- */
+.bc-button {
+    padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-300); background: var(--brand-card); color: var(--brand-primary);
+    font-size: var(--font-sm); font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.bc-button:hover:not(:disabled) { background: var(--gray-50); }
+.bc-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.bc-button-primary { background: var(--brand-secondary); border-color: var(--brand-secondary); color: #fff; }
+.bc-button-primary:hover:not(:disabled) { background: var(--brand-primary); }
+.bc-button-danger { color: var(--color-error); border-color: var(--color-error-border); }
+.bc-button-danger:hover:not(:disabled) { background: var(--color-error-bg); }
+
+.bc-link-button { border: 0; background: none; padding: 0; color: var(--brand-secondary); font-size: var(--font-sm); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+.bc-root button:focus-visible, .bc-root input:focus-visible, .bc-root select:focus-visible { outline: 2px solid var(--brand-secondary); outline-offset: 2px; }
+
+.bc-input {
+    width: 100%; box-sizing: border-box; padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--gray-300); border-radius: var(--radius-sm);
+    background: #fff; color: var(--brand-text); font-size: var(--font-sm); font-family: inherit; min-height: 36px;
+}
+.bc-input:disabled { background: var(--gray-100); color: var(--gray-500); }
+.bc-input-error { border-color: var(--color-error); }
+.bc-search { max-width: 360px; }
+
+.bc-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 160px; flex: 1 1 180px; max-width: 280px; }
+.bc-field-label { font-size: var(--font-xs); font-weight: 700; color: var(--brand-text-muted); }
+.bc-field-range { flex: 2 1 480px; max-width: 560px; }
+.bc-field-narrow { flex: 0 1 190px; }
+.bc-field-wide { flex: 1 1 100%; max-width: none; }
+.bc-field-toggle { align-self: flex-end; min-height: 36px; }
+.bc-range { display: flex; align-items: center; gap: var(--space-2); }
+.bc-range .bc-input { width: auto; flex: 1 1 130px; min-width: 0; }
+
+.bc-check { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-sm); cursor: pointer; }
+.bc-check input { width: 16px; height: 16px; accent-color: var(--brand-secondary); flex: none; }
+
+.bc-filter-bar {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-4);
+    background: var(--brand-card); border: 1px solid var(--brand-border); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);
+}
+.bc-filter-bar-plain { border: 0; padding: 0; background: none; }
+.bc-form-grid { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; }
+.bc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.bc-data-age { margin-top: calc(var(--space-3) * -1); }
+
+/* ---- Multi-select ---- */
+.bc-multi { position: relative; }
+.bc-multi-button { text-align: left; cursor: pointer; display: flex; align-items: center; }
+.bc-multi-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-multi-panel {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; width: max(100%, 280px);
+    background: #fff; border: 1px solid var(--gray-300); border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+    padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);
+}
+.bc-multi-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* ---- Banners and status ---- */
+.bc-banner { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1px solid; font-size: var(--font-sm); line-height: 1.5; }
+.bc-banner-error { background: var(--color-error-bg); border-color: var(--color-error-border); color: var(--color-error); }
+.bc-banner-warn { background: var(--color-warning-bg); border-color: var(--color-warning-border); color: var(--color-warning); }
+.bc-banner-info { background: var(--color-info-bg); border-color: var(--color-info-border); color: var(--color-info); }
+
+.bc-status { display: inline-block; font-size: var(--font-xs); font-weight: 700; padding: 2px var(--space-2); border-radius: var(--radius-sm); }
+.bc-status-ok { background: var(--color-success-bg); color: var(--color-success); }
+.bc-status-info { background: var(--color-info-bg); color: var(--color-info); }
+.bc-status-warn { background: var(--color-warning-bg); color: var(--color-warning); }
+.bc-status-error { background: var(--color-error-bg); color: var(--color-error); }
+.bc-status-muted { background: var(--gray-100); color: var(--gray-600); }
+
+/* ---- Tables ---- */
+.bc-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* The app has global table rules (full black borders), so every side is set
+   here explicitly instead of relying on defaults. */
+.bc-table { width: 100%; border-collapse: collapse; border: 0; font-size: var(--font-sm); }
+.bc-table th, .bc-table td { padding: var(--space-2) var(--space-3); text-align: left; border: 0; border-bottom: 1px solid var(--gray-200); vertical-align: top; }
+.bc-table th { font-size: var(--font-xs); font-weight: 700; color: var(--brand-text-muted); white-space: nowrap; background: var(--gray-50); }
+.bc-table th button { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; gap: var(--space-1); align-items: center; }
+.bc-table tbody tr:hover { background: var(--gray-50); }
+.bc-table tfoot td { font-weight: 700; border-top: 2px solid var(--gray-300); border-bottom: 0; background: var(--gray-50); }
+.bc-table .bc-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bc-table th.bc-num button { flex-direction: row-reverse; }
+.bc-sort { font-size: 9px; min-width: 9px; }
+.bc-table-tools { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.bc-table-tools .bc-input { max-width: 280px; }
+.bc-data-table { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.bc-data-table .bc-table-scroll { max-height: 640px; overflow-y: auto; }
+.bc-data-table thead th { position: sticky; top: 0; z-index: 1; }
+/* One line per row keeps wide reports scannable; long text is cut with an
+   ellipsis and shown in full on hover. */
+.bc-data-table td { white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.bc-pager { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-3); }
+
+/* ---- Charts ---- */
+.bc-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--space-5); }
+.bc-chart-wide { grid-column: 1 / -1; }
+.bc-chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+.bc-legend { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: var(--font-sm); color: var(--gray-700); }
+.bc-legend > span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.bc-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+.bc-chart-table { max-height: 320px; overflow: auto; }
+
+.bc-tooltip { background: #fff; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); padding: var(--space-2) var(--space-3); font-size: var(--font-sm); color: var(--gray-800); }
+.bc-tooltip-title { font-weight: 700; margin-bottom: var(--space-1); }
+.bc-tooltip-row { display: flex; align-items: center; gap: var(--space-2); }
+.bc-tooltip-row strong { margin-left: auto; padding-left: var(--space-4); font-variant-numeric: tabular-nums; }
+
+/* ---- Reports ---- */
+.bc-domain { display: flex; flex-direction: column; }
+.bc-report-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: var(--space-4); }
+.bc-report-card { text-align: left; cursor: pointer; gap: var(--space-2); font: inherit; color: inherit; }
+.bc-report-card strong { font-size: var(--font-md); color: var(--brand-primary); }
+.bc-report-card span { font-size: var(--font-sm); color: var(--brand-text-muted); line-height: 1.5; }
+.bc-report-card:hover:not(:disabled) { border-color: var(--brand-secondary); box-shadow: var(--shadow-md); }
+.bc-report-card:disabled { cursor: not-allowed; background: var(--gray-50); }
+.bc-report-card:disabled strong { color: var(--gray-500); }
+.bc-report-card .bc-report-reason { color: var(--color-warning); }
+.bc-report-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap; }
+.bc-report-head h2 { margin: var(--space-2) 0 var(--space-1); }
+
+/* ---- Sync ---- */
+.bc-sync-actions { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.bc-sync-actions > div:first-child { flex: 1 1 320px; display: flex; flex-direction: column; gap: var(--space-1); }
+.bc-progress { height: 6px; border-radius: var(--radius-pill); background: var(--color-info-bg); overflow: hidden; }
+.bc-progress > div { height: 100%; background: var(--color-info); transition: width 0.3s; }
+/* Used when the amount of work is not known in advance. */
+.bc-progress-busy > div { width: 35%; animation: bc-slide 1.4s ease-in-out infinite; }
+@keyframes bc-slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .bc-progress-busy > div { animation: none; width: 100%; opacity: 0.5; } }
+.bc-preparing { display: flex; align-items: flex-start; gap: var(--space-3); }
+.bc-preparing .bc-dot { margin-top: 6px; flex: none; }
+.bc-preparing .bc-sub { color: inherit; opacity: 0.85; margin-top: 2px; }
+
+/* ---- Changes ---- */
+.bc-change-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.bc-change-list li { border-bottom: 1px solid var(--gray-200); padding: var(--space-3) 0; }
+.bc-change-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.bc-change-main { flex: 1 1 260px; min-width: 0; }
+.bc-change-fields { margin-top: var(--space-3); }
+
+/* ---- Connection ---- */
+.bc-mapping { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-3) 0; align-items: flex-start; }
+.bc-mapping-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); width: 100%; }
+.bc-mapping-grid .bc-field { max-width: none; }
+.bc-confirm { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+
+@media (max-width: 768px) {
+    .bc-range { flex-wrap: wrap; }
+    .bc-card { padding: var(--space-4); }
+    .bc-field, .bc-field-range, .bc-field-narrow { max-width: none; flex-basis: 100%; }
+    .bc-filter-bar { padding: var(--space-4); }
+}

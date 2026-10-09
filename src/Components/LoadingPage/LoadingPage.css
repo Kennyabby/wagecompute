@@ -41,21 +41,39 @@
     align-items: center;
 }
 
+/* box-sizing is set here because this project has no global border-box rule.
+   Without it the declared width is the artwork only, the padding and border
+   are added outside it, and the circle ends up a different diameter from the
+   one written down. The generous padding is what keeps the ring clear of the
+   logo instead of sitting tight against it. */
 .loadinglogo {
-    width: 200px;
-    height: 200px;
+    box-sizing: border-box;
+    width: 240px;
+    height: 240px;
     object-fit: contain;
     z-index: 5;
     filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
-    padding: 20px;
+    padding: 34px;
     border-radius: 50%;
     border: 2px solid var(--login-primary);
+    /* The PNG carries its own opaque #eeefed rectangle. Matching it here means
+       the circle reads as one badge rather than showing the rectangle's edges
+       inside the ring. */
+    background: #eeefed;
 }
 
+/* The rings are sized in pixels and centred with margin auto rather than as a
+   percentage of the 320px wrapper. At 100% this arc orbited at radius 160
+   while the logo's own circle sat at 120, so what you saw was a stray curve
+   below the mark that read as a broken circle. Centring with a transform is
+   not an option either: framer-motion drives the rotation through `transform`
+   and would overwrite it. */
 .logo-ring {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    inset: 0;
+    margin: auto;
+    width: 240px;
+    height: 240px;
     border-radius: 50%;
     border: 2px solid transparent;
     border-top-color: #173829;
@@ -64,8 +82,10 @@
 
 .logo-ring-outer {
     position: absolute;
-    width: 140%;
-    height: 140%;
+    inset: 0;
+    margin: auto;
+    width: 300px;
+    height: 300px;
     border-radius: 50%;
     border: 1px dashed rgba(23, 56, 41, 0.1);
     z-index: 3;
@@ -73,8 +93,10 @@
 
 .logo-glow {
     position: absolute;
-    width: 110%;
-    height: 110%;
+    inset: 0;
+    margin: auto;
+    width: 268px;
+    height: 268px;
     background: radial-gradient(circle, rgba(106, 242, 173, 0.15) 0%, transparent 70%);
     border-radius: 50%;
     z-index: 2;
@@ -138,6 +160,22 @@
     .loadinglogo {
         width: 140px;
         height: 140px;
+        padding: 20px;
+    }
+    /* The rings are fixed pixel sizes, so they have to come down with the
+       logo. Left at their desktop values they would sit well outside it and
+       reintroduce the detached arc this was fixed to remove. */
+    .logo-ring {
+        width: 140px;
+        height: 140px;
+    }
+    .logo-ring-outer {
+        width: 180px;
+        height: 180px;
+    }
+    .logo-glow {
+        width: 158px;
+        height: 158px;
     }
     .loading-container {
         gap: 32px;

@@ -1,17 +1,17 @@
 {
   "short_name": "Enterprise Compute",
-  "name": "Enterprise Compute — All-in-One ERP, POS & Accounting Platform",
+  "name": "Enterprise Compute, All-in-One ERP, POS and Accounting Platform",
   "description": "HR, payroll, inventory, POS, sales, and live accounting in one connected, offline-capable platform with a built-in AI assistant.",
   "icons": [
     {
-      "src": "enterprisecompute.png",
+      "src": "favicon-rounded.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "180x180"
     },
     {
       "src": "enterprisecompute.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "421x433"
     }
   ],
   "start_url": ".",
