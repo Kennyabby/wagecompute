@@ -5,6 +5,7 @@ const GROUP_LABEL = { ledger: 'Ledgers', master: 'Master data', document: 'Open 
 const GROUP_ORDER = ['ledger', 'master', 'document', 'postedDocument']
 
 const emptyForm = {
+    name: '',
     baseUrl: '',
     authType: 'ntlm',
     domain: '',
@@ -31,9 +32,10 @@ const fieldLabel = (name) => {
     return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
-const datasetStatus = (config) => {
-    if (!config) return { tone: 'muted', text: 'Not discovered yet' }
-    if (!config.available) return { tone: 'muted', text: 'No published page with this name' }
+const datasetStatus = (config, dataset) => {
+    const page = dataset?.page ? ` (page ${dataset.page})` : ''
+    if (!config) return { tone: 'muted', text: `Not discovered yet${page}` }
+    if (!config.available) return { tone: 'muted', text: `No published page with this name${page}` }
     if (config.missingRequired?.length) return { tone: 'error', text: `Required fields not found: ${config.missingRequired.join(', ')}` }
     if (config.missing?.length) return { tone: 'warn', text: `Ready. ${config.missing.length} optional field${config.missing.length === 1 ? '' : 's'} not found` }
     return { tone: 'ok', text: 'Ready' }
@@ -77,16 +79,33 @@ const FieldMapping = ({ dataset, config, onSave, busy }) => {
     )
 }
 
-const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunning, onChanged, notify }) => {
-    const [form, setForm] = useState(() => formFrom(connection))
+// The server and sign-in of an existing connection, for adding another
+// company on the same server without typing them again.
+const SHARED_FIELDS = ['baseUrl', 'authType', 'domain', 'username', 'branchDimension']
+const sharedFrom = (source) => (source ? Object.fromEntries(SHARED_FIELDS.filter((key) => source[key] !== undefined).map((key) => [key, source[key]])) : {})
+
+/**
+ * Settings of one connection. With `adding`, the form is for a new one:
+ * `template` is the connection it can borrow the server and stored password
+ * from, and `onCreated` is told the new connection's id once it is saved.
+ */
+const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunning, onChanged, notify, adding = false, template = null, onCreated, onCancel }) => {
+    const [sameServer, setSameServer] = useState(adding && !!template)
+    const [form, setForm] = useState(() => (adding ? { ...emptyForm, ...(template ? sharedFrom(template) : {}) } : formFrom(connection)))
     const [companies, setCompanies] = useState(connection?.company ? [connection.company] : [])
+    // What the server needs to know when the form is for a new connection.
+    const target = adding ? { id: 'new', ...(sameServer && template ? { copyFrom: template.id } : {}) } : {}
+    // Only the first connection made can keep a stored copy.
+    const canStore = adding ? !template : connection?.primary !== false
     const [busy, setBusy] = useState('')
     const [testResult, setTestResult] = useState(null)
     const [openDataset, setOpenDataset] = useState('')
     const [purge, setPurge] = useState(false)
     const [confirmRemove, setConfirmRemove] = useState(false)
 
-    useEffect(() => { setForm(formFrom(connection)) }, [connection?.updatedAt]) // eslint-disable-line react-hooks/exhaustive-deps
+    // Follows the saved connection when it changes. A form for a new
+    // connection has nothing saved to follow and keeps what was typed.
+    useEffect(() => { if (!adding) setForm(formFrom(connection)) }, [connection?.updatedAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // A test result only describes the server settings it was run with, so it
     // is cleared when one of those changes and kept when a sync setting does.
@@ -111,7 +130,7 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
 
     const test = () => act('test', async () => {
         try {
-            const response = await api.testConnection(form)
+            const response = await api.testConnection(form, target)
             setCompanies(response.companies)
             setTestResult({ ok: true, text: `Connected. ${response.companies.length} compan${response.companies.length === 1 ? 'y' : 'ies'} found.` })
             if (!form.company && response.companies.length === 1) setForm((current) => ({ ...current, company: response.companies[0] }))
@@ -121,8 +140,9 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
     })
 
     const save = () => act('save', async () => {
-        const response = await api.saveConnection(form)
-        await onChanged()
+        const response = await api.saveConnection(form, target)
+        if (adding && onCreated) await onCreated(response.connection.id)
+        else await onChanged()
         if (response.discoverError) notify('error', `Saved, but the published pages could not be read: ${response.discoverError}`)
         else notify('success', form.company ? 'Connection saved and published pages read.' : 'Connection saved. Test it and choose a company to continue.')
     })
@@ -165,12 +185,31 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
             {syncRunning && <div className='bc-banner bc-banner-info'>A sync is running. Connection settings can be changed when it finishes.</div>}
 
             <section className='bc-card'>
-                <h3>Business Central server</h3>
+                <h3>{adding ? 'New Business Central connection' : 'Business Central server'}</h3>
                 <p className='bc-muted'>
-                    The OData address of your Business Central server, and an account that can read the published pages.
-                    A dedicated account with a read-only permission set (such as D365 READ) is the safest choice.
+                    {adding
+                        ? 'Another server, another sign-in, or another company on a server you already use. Each connection has its own dashboard and reports, and you switch between them at the top of the page.'
+                        : 'The OData address of your Business Central server, and an account that can read the published pages. A dedicated account with a read-only permission set (such as D365 READ) is the safest choice.'}
                 </p>
+                {adding && template && (
+                    <label className='bc-check'>
+                        <input
+                            type='checkbox'
+                            checked={sameServer}
+                            onChange={(event) => {
+                                setSameServer(event.target.checked)
+                                setForm((current) => ({ ...current, ...(event.target.checked ? sharedFrom(template) : { baseUrl: '', username: '', domain: '' }), password: '' }))
+                                setTestResult(null)
+                            }}
+                        />
+                        <span>Same server and sign-in as {template.name || template.company || 'the current connection'}, for another company on it</span>
+                    </label>
+                )}
                 <div className='bc-form-grid'>
+                    <label className='bc-field bc-field-wide'>
+                        <span className='bc-field-label'>Name of this connection</span>
+                        <input className='bc-input' maxLength={60} placeholder='Shown in the switcher. Blank uses the company name' value={form.name} onChange={(event) => set({ name: event.target.value })} />
+                    </label>
                     <label className='bc-field bc-field-wide'>
                         <span className='bc-field-label'>OData address</span>
                         <input className='bc-input' placeholder='http://203.0.113.10:8080/bcodata' value={form.baseUrl} onChange={(event) => set({ baseUrl: event.target.value })} />
@@ -201,7 +240,7 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
                             className='bc-input'
                             type='password'
                             autoComplete='new-password'
-                            placeholder={connection?.hasPassword ? 'Saved. Leave blank to keep it' : ''}
+                            placeholder={connection?.hasPassword ? 'Saved. Leave blank to keep it' : (adding && sameServer ? 'Leave blank to use the saved one' : '')}
                             value={form.password}
                             onChange={(event) => set({ password: event.target.value })}
                         />
@@ -237,20 +276,23 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
                             <option value='dim2'>Global Dimension 2</option>
                         </select>
                     </label>
-                    <label className='bc-field bc-field-wide'>
-                        <span className='bc-field-label'>Where reports get their data</span>
-                        <select className='bc-input' value={form.storageMode} onChange={(event) => set({ storageMode: event.target.value })}>
-                            <option value='live'>Read live from Business Central (nothing is stored here)</option>
-                            <option value='stored'>Store a copy here and keep it in sync</option>
-                        </select>
-                    </label>
+                    {canStore && (
+                        <label className='bc-field bc-field-wide'>
+                            <span className='bc-field-label'>Where reports get their data</span>
+                            <select className='bc-input' value={form.storageMode} onChange={(event) => set({ storageMode: event.target.value })}>
+                                <option value='live'>Read live from Business Central (nothing is stored in the database)</option>
+                                <option value='stored'>Store a copy in the database and keep it in sync</option>
+                            </select>
+                        </label>
+                    )}
                 </div>
 
                 {form.storageMode === 'live' ? (
                     <p className='bc-muted'>
-                        Reports read from Business Central each time they run, so they are always current and nothing from your ERP
-                        is kept in this database. Business Central has to be reachable for a report to open, and the first report
-                        after a server restart takes longer while the ledgers are read.
+                        Reports read from Business Central, so they are current and nothing from your ERP is kept in the database.
+                        What has been read is remembered on the server between restarts, and only new or changed entries are fetched
+                        after that. The very first report takes longer while the ledgers are read once.
+                        {!canStore ? ' A stored copy in the database is available on the first connection only.' : ''}
                     </p>
                 ) : (
                     <>
@@ -286,7 +328,8 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
                     </>
                 )}
                 <div className='bc-actions'>
-                    <button type='button' className='bc-button bc-button-primary' disabled={locked || !secretsConfigured || !form.baseUrl || !form.username} onClick={save}>{busy === 'save' ? 'Saving...' : 'Save connection'}</button>
+                    <button type='button' className='bc-button bc-button-primary' disabled={locked || !secretsConfigured || !form.baseUrl || !form.username} onClick={save}>{busy === 'save' ? 'Saving...' : (adding ? 'Add connection' : 'Save connection')}</button>
+                    {adding && onCancel && <button type='button' className='bc-button' disabled={!!busy} onClick={onCancel}>Cancel</button>}
                     {connection?.updatedAt && <span className='bc-muted'>Last saved {formatDateTime(connection.updatedAt)}{connection.updatedBy ? ` by ${connection.updatedBy}` : ''}</span>}
                 </div>
             </section>
@@ -314,7 +357,7 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
                                     <tbody>
                                         {rows.map((dataset) => {
                                             const config = connection.datasets?.[dataset.key]
-                                            const status = datasetStatus(config)
+                                            const status = datasetStatus(config, dataset)
                                             const isOpen = openDataset === dataset.key
                                             return [
                                                 <tr key={dataset.key}>
@@ -369,15 +412,17 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
             {connection && (
                 <section className='bc-card'>
                     <h3>Remove connection</h3>
-                    <p className='bc-muted'>Forgets the address and password. Reports stop working until a connection is set up again.</p>
+                    <p className='bc-muted'>Forgets the address and password of {connection.name || connection.company || 'this connection'}. Its reports stop working until it is set up again. Other connections are not affected.</p>
                     {!confirmRemove ? (
                         <button type='button' className='bc-button bc-button-danger' disabled={locked} onClick={() => setConfirmRemove(true)}>Remove connection</button>
                     ) : (
                         <div className='bc-confirm'>
-                            <label className='bc-check'>
-                                <input type='checkbox' checked={purge} onChange={(event) => setPurge(event.target.checked)} />
-                                <span>Also delete any data copied from Business Central, including the change history</span>
-                            </label>
+                            {connection.primary !== false && (
+                                <label className='bc-check'>
+                                    <input type='checkbox' checked={purge} onChange={(event) => setPurge(event.target.checked)} />
+                                    <span>Also delete any data copied from Business Central, including the change history</span>
+                                </label>
+                            )}
                             <div className='bc-actions'>
                                 <button type='button' className='bc-button bc-button-danger' disabled={locked} onClick={remove}>{busy === 'remove' ? 'Removing...' : (purge ? 'Remove and delete data' : 'Remove, keep data')}</button>
                                 <button type='button' className='bc-button' disabled={!!busy} onClick={() => setConfirmRemove(false)}>Keep connection</button>

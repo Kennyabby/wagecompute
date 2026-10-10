@@ -56,14 +56,16 @@ const ChartTable = ({ chart }) => (
     </div>
 )
 
-const Plot = ({ chart }) => {
+const Plot = ({ chart, onOpen }) => {
     const { type, data, series, xKey, format } = chart
+    // Clicking the plot opens the report behind it, when there is one.
+    const open = onOpen ? { onClick: onOpen, style: { cursor: 'pointer' } } : {}
     const tooltip = <Tooltip content={<ChartTooltip format={format} series={series} />} cursor={type === 'line' ? { stroke: 'var(--gray-300)' } : { fill: 'rgba(23, 56, 41, 0.05)' }} />
 
     if (type === 'horizontalBar') {
         return (
             <ResponsiveContainer width='100%' height={Math.max(data.length * ROW_HEIGHT + 30, 150)}>
-                <BarChart data={data} layout='vertical' margin={{ top: 4, right: 24, bottom: 4, left: 8 }}>
+                <BarChart data={data} layout='vertical' margin={{ top: 4, right: 24, bottom: 4, left: 8 }} {...open}>
                     <CartesianGrid stroke={GRID} horizontal={false} />
                     <XAxis type='number' tick={AXIS_TICK} tickFormatter={formatCompact} tickLine={false} axisLine={false} />
                     <YAxis type='category' dataKey={xKey} width={160} tick={AXIS_TICK} tickFormatter={(value) => truncate(value)} tickLine={false} axisLine={{ stroke: GRID }} />
@@ -88,7 +90,7 @@ const Plot = ({ chart }) => {
     return (
         <ResponsiveContainer width='100%' height={280}>
             {type === 'line' ? (
-                <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+                <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 0 }} {...open}>
                     {axes}
                     {series.map((item, index) => (
                         <Line
@@ -105,7 +107,7 @@ const Plot = ({ chart }) => {
                     ))}
                 </LineChart>
             ) : (
-                <BarChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 0 }} barGap={2}>
+                <BarChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 0 }} barGap={2} {...open}>
                     {axes}
                     {series.map((item, index) => (
                         <Bar key={item.key} dataKey={item.key} fill={SERIES_COLORS[index]} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
@@ -119,9 +121,10 @@ const Plot = ({ chart }) => {
 /**
  * Renders one chart definition as the server sends it:
  * { title, type: 'line' | 'bar' | 'horizontalBar', xKey, format, series: [{ key, label }], data }.
- * Every chart can be flipped to a table of the same numbers.
+ * Every chart can be flipped to a table of the same numbers. With `onOpen`,
+ * the chart also leads to the report its figures come from.
  */
-const BCChart = ({ chart }) => {
+const BCChart = ({ chart, onOpen }) => {
     const [asTable, setAsTable] = useState(false)
     const hasData = chart.data?.length > 0
 
@@ -130,9 +133,12 @@ const BCChart = ({ chart }) => {
             <header className='bc-chart-head'>
                 <h3>{chart.title}</h3>
                 {hasData && (
-                    <button type='button' className='bc-link-button' onClick={() => setAsTable((value) => !value)}>
-                        {asTable ? 'Show chart' : 'Show as table'}
-                    </button>
+                    <span className='bc-chart-actions'>
+                        {onOpen && <button type='button' className='bc-link-button' onClick={onOpen}>Open report</button>}
+                        <button type='button' className='bc-link-button' onClick={() => setAsTable((value) => !value)}>
+                            {asTable ? 'Show chart' : 'Show as table'}
+                        </button>
+                    </span>
                 )}
             </header>
             {hasData && chart.series.length > 1 && !asTable && (
@@ -143,7 +149,7 @@ const BCChart = ({ chart }) => {
                 </div>
             )}
             {!hasData && <p className='bc-empty'>Nothing to show for this selection.</p>}
-            {hasData && (asTable ? <ChartTable chart={chart} /> : <Plot chart={chart} />)}
+            {hasData && (asTable ? <ChartTable chart={chart} /> : <Plot chart={chart} onOpen={onOpen} />)}
         </section>
     )
 }

@@ -13,7 +13,7 @@ const describeChange = (change, comparedWith) => {
     return `${direction}${amount} on the ${comparedWith.days} days before`
 }
 
-const BCDashboard = ({ api, lookups, lastSyncedAt, live, onOpenReport }) => {
+const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport, onLoaded, onDiscovered }) => {
     const filters = [
         { key: 'dateRange', type: 'dateRange', label: 'Period' },
         { key: 'locations', type: 'multi', label: 'Location', lookup: 'locations' },
@@ -24,19 +24,22 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, onOpenReport }) => {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const { preparing, awaitData } = usePreparingRetry()
+    const [discovering, setDiscovering] = useState(false)
+    const [discoverNote, setDiscoverNote] = useState('')
 
     const load = useCallback(async (params) => {
         setLoading(true)
         setError('')
         try {
             const response = await awaitData(() => api.getDashboard(params))
-            if (response) setDashboard(response.dashboard)
+            setDashboard(response.dashboard)
+            if (onLoaded) onLoaded()
         } catch (failure) {
             setError(failure.message)
         } finally {
             setLoading(false)
         }
-    }, [api, awaitData])
+    }, [api, awaitData, onLoaded])
 
     // Reload when a sync finishes, so the figures follow the data without a
     // manual refresh. `values` is read at that moment, not tracked, because
@@ -46,32 +49,97 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, onOpenReport }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load, lastSyncedAt])
 
+    // Looks for newly published pages, then loads everything again so the
+    // reports and tiles that were waiting for them appear.
+    const discover = async () => {
+        setDiscovering(true)
+        setDiscoverNote('')
+        const before = (dashboard?.missing || []).length
+        try {
+            await api.discover()
+            if (onDiscovered) await onDiscovered()
+            const response = await awaitData(() => api.getDashboard(values))
+            setDashboard(response.dashboard)
+            const found = before - (response.dashboard.missing || []).length
+            setDiscoverNote(found > 0 ? `Found ${found} newly published ${found === 1 ? 'page' : 'pages'}.` : 'No newly published pages were found. Check the service name matches the one shown.')
+        } catch (failure) {
+            setDiscoverNote(failure.message)
+        } finally {
+            setDiscovering(false)
+        }
+    }
+
+    const missing = dashboard?.missing || []
+    const needed = missing.filter((entry) => !entry.optional)
+
     return (
         <div className='bc-page'>
             <BCFilterBar filters={filters} values={values} onChange={setValues} lookups={lookups} onSubmit={() => load(values)} submitLabel='Apply' busy={loading} />
             <p className='bc-muted bc-data-age'>
                 {live ? 'Read live from Business Central.' : `Data as of the last sync: ${formatAgo(lastSyncedAt)}.`}
+                {' '}Click a tile or a chart to open the report behind it.
             </p>
 
             {error && <div className='bc-banner bc-banner-error'>{error}</div>}
             <BCPreparing progress={preparing} />
             {!dashboard && loading && !preparing && <p className='bc-empty'>Loading the dashboard...</p>}
 
+            {dashboard && missing.length > 0 && (
+                <section className='bc-card bc-missing'>
+                    <header className='bc-chart-head'>
+                        <h3>{needed.length ? 'Pages to publish in Business Central' : 'Optional pages not published'}</h3>
+                        {canManage && (
+                            <button type='button' className='bc-button bc-button-primary' disabled={discovering} onClick={discover}>
+                                {discovering ? 'Looking...' : 'Discover'}
+                            </button>
+                        )}
+                    </header>
+                    <p className='bc-muted'>
+                        {needed.length ? 'Some reports are waiting for these.' : 'Every report can run. These add detail.'}
+                        {' '}Publish each page as a web service under the name shown, then {canManage ? 'press Discover' : 'ask an admin to press Discover'}.
+                    </p>
+                    <table className='bc-table'>
+                        <thead><tr><th>Page</th><th>Table</th><th>Publish as (service name)</th><th>Needed for</th></tr></thead>
+                        <tbody>
+                            {missing.map((entry) => (
+                                <tr key={entry.key}>
+                                    <td>{entry.page || ''}</td>
+                                    <td>{entry.label}</td>
+                                    <td><code>{entry.service}</code></td>
+                                    <td>{entry.optional ? `Optional. ${entry.purpose}` : entry.reports.join(', ')}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {discoverNote && <p className='bc-muted' role='status'>{discoverNote}</p>}
+                </section>
+            )}
+
             {dashboard && (
                 <>
                     <StatCardGrid min={170}>
-                        {dashboard.kpis.map((kpi) => (
-                            <StatCard
-                                key={kpi.key}
-                                label={kpi.label}
-                                value={<span title={formatValue(kpi.value, kpi.format)}>{formatKpi(kpi.value, kpi.format)}</span>}
-                                description={kpi.hint || describeChange(kpi.change, dashboard.comparedWith)}
-                            />
-                        ))}
+                        {dashboard.kpis.map((kpi) => {
+                            const card = (
+                                <StatCard
+                                    label={kpi.label}
+                                    value={<span title={formatValue(kpi.value, kpi.format)}>{formatKpi(kpi.value, kpi.format)}</span>}
+                                    description={kpi.hint || describeChange(kpi.change, dashboard.comparedWith)}
+                                />
+                            )
+                            // A tile opens the report that breaks its figure down,
+                            // with the dashboard's period and filters carried over.
+                            return kpi.link ? (
+                                <button key={kpi.key} type='button' className='bc-tile' title={`See what makes up ${kpi.label.toLowerCase()}`} onClick={() => onOpenReport(kpi.link.report, kpi.link.params)}>
+                                    {card}
+                                </button>
+                            ) : <div key={kpi.key}>{card}</div>
+                        })}
                     </StatCardGrid>
 
                     <div className='bc-chart-grid'>
-                        {dashboard.charts.map((chart) => <BCChart key={chart.key} chart={chart} />)}
+                        {dashboard.charts.map((chart) => (
+                            <BCChart key={chart.key} chart={chart} onOpen={chart.link ? () => onOpenReport(chart.link.report, chart.link.params) : undefined} />
+                        ))}
                     </div>
 
                     <div className='bc-chart-grid'>

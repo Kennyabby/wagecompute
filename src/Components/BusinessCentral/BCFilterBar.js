@@ -46,7 +46,8 @@ const MultiSelect = ({ label, options, value, onChange }) => {
                                 <span>{option.label}</span>
                             </label>
                         ))}
-                        {matches.length === 0 && <p className='bc-muted'>No matches.</p>}
+                        {options.length === 0 && <p className='bc-muted'>No values to choose from yet. They appear once a report has loaded.</p>}
+                        {options.length > 0 && matches.length === 0 && <p className='bc-muted'>No matches.</p>}
                         {matches.length > VISIBLE_OPTIONS && <p className='bc-muted'>Showing the first {VISIBLE_OPTIONS}. Search to narrow the list.</p>}
                     </div>
                     {value.length > 0 && <button type='button' className='bc-link-button' onClick={() => onChange([])}>Clear selection</button>}
@@ -75,7 +76,7 @@ export const initialFilterValues = (filters) => {
  * server sends with each report; `lookups` supplies the choices for filters
  * that point at one (items, locations, branches and so on).
  */
-const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel = 'Run report', busy }) => {
+const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel = 'Run report', busy, children }) => {
     const set = (patch) => onChange({ ...values, ...patch })
 
     return (
@@ -107,6 +108,10 @@ const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel
                 }
                 if (filter.type === 'multi') {
                     const options = filter.options || lookups?.[filter.lookup] || []
+                    // A filter the company has no values for (salespeople, in a
+                    // company that does not use them) would only ever be an
+                    // empty list, so it is left off.
+                    if (filter.optional && lookups && options.length === 0) return null
                     return <MultiSelect key={filter.key} label={filter.label} options={options} value={values[filter.key] || []} onChange={(next) => set({ [filter.key]: next })} />
                 }
                 if (filter.type === 'select') {
@@ -146,6 +151,7 @@ const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel
                 return null
             })}
             <button type='submit' className='bc-button bc-button-primary' disabled={busy}>{busy ? 'Working...' : submitLabel}</button>
+            {children}
         </form>
     )
 }

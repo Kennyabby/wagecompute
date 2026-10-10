@@ -2,9 +2,14 @@
 // Every call resolves with the response body or throws an Error carrying the
 // server's own message, so pages can use one try/catch instead of checking
 // `err` on each response.
-export const createBcApi = (fetchServer, server) => {
+//
+// `connectionId` names which of the workspace's Business Central connections
+// the calls are about. It rides along on every request, so switching
+// connection is a matter of making a new api with another id.
+export const createBcApi = (fetchServer, server, connectionId = '') => {
     const call = async (method, endpoint, body) => {
-        const response = await fetchServer(method, body, `bc/${endpoint}`, server)
+        const payload = connectionId ? { ...(body || {}), connectionId } : body
+        const response = await fetchServer(method, payload, `bc/${endpoint}`, server)
         if (!response || response.err || response.ok === false) {
             const error = new Error(response?.mess || 'Could not reach the server. Check your connection and try again.')
             error.status = response?.status
@@ -15,8 +20,9 @@ export const createBcApi = (fetchServer, server) => {
 
     return {
         getConnection: () => call('GET', 'connection'),
-        testConnection: (connection) => call('POST', 'connection/test', { connection }),
-        saveConnection: (connection) => call('POST', 'connection/save', { connection }),
+        // `target` is { id: 'new', copyFrom } when adding a connection.
+        testConnection: (connection, target = {}) => call('POST', 'connection/test', { connection, ...target }),
+        saveConnection: (connection, target = {}) => call('POST', 'connection/save', { connection, ...target }),
         discover: () => call('POST', 'connection/discover', {}),
         saveMapping: (datasets) => call('POST', 'connection/mapping', { datasets }),
         removeConnection: (purge) => call('POST', 'connection/remove', { purge }),
@@ -34,5 +40,6 @@ export const createBcApi = (fetchServer, server) => {
         getDashboard: (params) => call('POST', 'dashboard', params),
         getReports: () => call('GET', 'reports'),
         runReport: (key, params) => call('POST', 'reports/run', { key, params }),
+        drillReport: (key, params, target) => call('POST', 'reports/drill', { key, params, target }),
     }
 }

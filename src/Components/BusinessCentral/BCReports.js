@@ -2,9 +2,10 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
-import { generatePDF, generateExcel } from '../../utils/exportUtils'
 import BCChart from './BCChart'
 import BCDataTable, { isNumericColumn } from './BCDataTable'
+import BCDrillModal from './BCDrillModal'
+import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
 import BCFilterBar, { initialFilterValues } from './BCFilterBar'
 import { formatKpi, formatValue } from './bcFormat'
 import BCPreparing, { usePreparingRetry } from './BCPreparing'
@@ -29,9 +30,28 @@ const describeFilters = (definition, params, lookups) => {
     return described
 }
 
-const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack }) => {
-    const { companyRecord, company, centralCompany, settings, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
-    const [values, setValues] = useState(() => initialFilterValues(definition.filters))
+// A short description of a row for the breakdown heading: its first few
+// text columns, e.g. "FG-75CL, Bottled water 75cl, Sales depot".
+const describeRow = (columns, row) => columns
+    .filter((column) => !isNumericColumn(column) && column.type !== 'date' && row[column.key])
+    .slice(0, 3)
+    .map((column) => row[column.key])
+    .join(', ')
+
+const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset }) => {
+    const context = useContext(ContextProvider)
+    const { setAlert, setAlertState, setAlertTimeout } = context
+    const [drill, setDrill] = useState(null)
+    // `preset` carries filters over from wherever the report was opened,
+    // such as the dashboard's period. Only values this report has a filter
+    // for are taken.
+    const [values, setValues] = useState(() => {
+        const initial = initialFilterValues(definition.filters)
+        Object.entries(preset || {}).forEach(([key, value]) => {
+            if (key in initial && value !== undefined && value !== null) initial[key] = value
+        })
+        return initial
+    })
     const [report, setReport] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -43,13 +63,15 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack }) => {
         setError('')
         try {
             const response = await awaitData(() => api.runReport(definition.key, params))
-            if (response) setReport(response.report)
+            setDrill(null)
+            setReport(response.report)
+            if (onLoaded) onLoaded()
         } catch (failure) {
             setError(failure.message)
         } finally {
             setLoading(false)
         }
-    }, [api, definition.key, awaitData])
+    }, [api, definition.key, awaitData, onLoaded])
 
     // Runs once with the default filters when the report opens, and again
     // when a sync brings in new data. Later runs are started with the button.
@@ -62,22 +84,16 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack }) => {
         if (!report) return
         setExporting(kind)
         try {
-            const companyData = companyRecord || company || {}
-            const companyInfo = {
-                name: centralCompany?.name || companyData.name || settings?.companyName || '',
-                address: centralCompany?.address || companyData.address || '',
-                phone: companyData.phone || '',
-                email: centralCompany?.email || companyData.email || '',
-                logoUrl: centralCompany?.logoUrl || companyData.logoUrl || null,
-            }
-            const columns = report.columns.map((column) => ({ name: column.label, reference: column.key, numeric: isNumericColumn(column) }))
-            const dateRange = report.params.from
-                ? { startDate: report.params.from, endDate: report.params.to }
-                : (report.params.asOf ? `As of ${report.params.asOf}` : null)
-            const filters = describeFilters(definition, report.params, lookups)
-            const title = `${report.title} (Business Central)`
-            if (kind === 'pdf') await generatePDF(report.rows, columns, companyInfo, dateRange, title, filters)
-            else generateExcel(report.rows, columns, companyInfo, dateRange, title, filters)
+            await exportTable({
+                kind,
+                title: `${report.title} (Business Central)`,
+                columns: report.columns,
+                rows: report.rows,
+                totals: report.totals,
+                dateRange: dateRangeFrom(report.params),
+                filters: describeFilters(definition, report.params, lookups),
+                companyInfo: companyInfoFrom(context),
+            })
         } catch (failure) {
             setAlertState('error')
             setAlert('The export could not be created. Please try again.')
@@ -128,15 +144,32 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack }) => {
                     )}
                     {report.meta?.note && <div className='bc-banner bc-banner-info'>{report.meta.note}</div>}
                     <section className='bc-card'>
-                        <BCDataTable columns={report.columns} rows={report.rows} totals={report.totals} />
+                        {report.columns.some((column) => column.drill) && report.rows.length > 0 && (
+                            <p className='bc-muted'>Click any underlined figure to see the entries that make it up.</p>
+                        )}
+                        <BCDataTable
+                            columns={report.columns}
+                            rows={report.rows}
+                            totals={report.totals}
+                            onDrill={(row, column) => setDrill({ row, column, caption: describeRow(report.columns, row) })}
+                        />
                     </section>
                 </div>
+            )}
+            {drill && report && (
+                <BCDrillModal
+                    api={api}
+                    report={report}
+                    target={drill}
+                    filters={describeFilters(definition, report.params, lookups)}
+                    onClose={() => setDrill(null)}
+                />
             )}
         </div>
     )
 }
 
-const BCReports = ({ api, lookups, lastSyncedAt, openKey, onOpenKey, onGoTo }) => {
+const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded }) => {
     const [catalogue, setCatalogue] = useState(null)
     const [error, setError] = useState('')
     const [search, setSearch] = useState('')
@@ -152,7 +185,7 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, onOpenKey, onGoTo }) =
     const selected = useMemo(() => catalogue?.reports.find((report) => report.key === openKey && report.available), [catalogue, openKey])
 
     if (selected) {
-        return <ReportViewer key={selected.key} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} />
+        return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} />
     }
 
     const needle = search.trim().toLowerCase()
