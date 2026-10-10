@@ -153,6 +153,74 @@
 /* One line per row keeps wide reports scannable; long text is cut with an
    ellipsis and shown in full on hover. */
 .bc-data-table td { white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+/* ---- Dashboard: profit for the period ---- */
+.bc-financial { display: flex; flex-direction: column; gap: var(--space-4); }
+.bc-financial-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: var(--space-4); }
+.bc-financial-card {
+    position: relative; display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; text-align: left;
+    padding: var(--space-4); border: 1px solid var(--gray-200); border-radius: var(--radius-md); background: var(--gray-50);
+    color: var(--brand-text); font: inherit; cursor: pointer;
+}
+.bc-financial-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); }
+.bc-financial-result { background: #fff; border-color: var(--gray-300); }
+.bc-financial-sign { position: absolute; top: var(--space-3); right: var(--space-4); font-size: var(--font-lg, 1.25rem); color: var(--gray-500); line-height: 1; }
+.bc-financial-amount { font-size: 1.35rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bc-profit { color: #12805a; }
+.bc-loss { color: #b8451c; }
+.bc-working .bc-working-part td { color: var(--gray-700); font-size: var(--font-xs); border-bottom-color: var(--gray-100); }
+.bc-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Figures kept from earlier, being brought up to date. */
+.bc-updating { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--font-xs); color: var(--gray-700); }
+
+/* ---- Report builder ---- */
+.bc-builder h4 { margin: var(--space-4) 0 var(--space-2); font-size: var(--font-sm); }
+.bc-builder-line { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-bottom: var(--space-2); }
+.bc-builder-line .bc-input { flex: 1 1 180px; max-width: 320px; }
+.bc-builder-formula { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.bc-builder-letter { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--brand-secondary); color: #fff; font-weight: 700; font-size: var(--font-sm); flex: 0 0 auto; }
+.bc-builder-inline { display: inline-flex; align-items: center; gap: var(--space-2); }
+/* One linked page or one extra page, with everything that belongs to it. */
+.bc-builder-block { margin-bottom: var(--space-3); padding: var(--space-3); border: 1px solid var(--gray-200); border-radius: var(--radius-md); }
+.bc-chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-radius: 999px; background: var(--gray-100); font-size: var(--font-xs); }
+.bc-chip-remove { border: 0; background: none; cursor: pointer; font-size: var(--font-sm); line-height: 1; color: var(--gray-700); }
+.bc-chip-remove:disabled { cursor: not-allowed; opacity: 0.4; }
+/* The report's columns drawn as a sheet: a letter over each figure. */
+.bc-sheet-wrap { overflow-x: auto; margin-bottom: var(--space-3); }
+.bc-sheet { border-collapse: collapse; font-size: var(--font-xs); }
+.bc-sheet th, .bc-sheet td { min-width: 120px; padding: var(--space-1) var(--space-2); border: 1px solid var(--gray-200); text-align: left; white-space: nowrap; }
+.bc-sheet th { background: var(--gray-100); text-align: center; font-weight: 700; color: var(--gray-700); }
+.bc-sheet-heading { font-weight: 600; }
+.bc-builder-inline .bc-input { width: 90px; flex: 0 0 auto; }
+.bc-guide ol { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--font-sm); line-height: 1.5; }
+.bc-report-own { display: flex; flex-direction: column; gap: var(--space-1); }
+.bc-report-own .bc-report-card { flex: 1 1 auto; }
+.bc-report-own-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; padding: 0 var(--space-2); font-size: var(--font-xs); }
+
+/* ---- Dashboard: monthly performance and pinned reports ---- */
+.bc-monthly { display: flex; flex-direction: column; gap: var(--space-4); }
+.bc-monthly .bc-chart { border: 0; padding: 0; box-shadow: none; }
+.bc-year-picker { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.bc-year-picker button { border: 1px solid var(--gray-300); background: #fff; color: var(--brand-text); font: inherit; font-size: var(--font-sm); font-weight: 600; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); cursor: pointer; min-height: 32px; }
+.bc-year-picker button.active { background: var(--brand-secondary); border-color: var(--brand-secondary); color: #fff; }
+.bc-year-picker button:disabled { cursor: progress; opacity: 0.7; }
+.bc-pinned { display: flex; flex-direction: column; gap: var(--space-4); }
+.bc-pinned-report { display: flex; flex-direction: column; gap: var(--space-4); }
+.bc-pinned-report .bc-chart { border: 0; padding: 0; box-shadow: none; }
+
+/* ---- Bank statements: the check of the file ---- */
+.bc-verdict { font-weight: 700; margin: 0; }
+.bc-verdict-ok { color: #12805a; }
+.bc-verdict-stop { color: #b8451c; }
+.bc-findings { border-left: 4px solid var(--gray-300); padding: var(--space-2) var(--space-4); background: var(--gray-50); border-radius: var(--radius-sm); }
+.bc-findings h4 { margin: 0 0 var(--space-2); font-size: var(--font-sm); }
+.bc-findings ul { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--font-sm); }
+.bc-findings-error { border-left-color: #b8451c; }
+.bc-findings-warn { border-left-color: #a67c00; }
+.bc-findings-ok { border-left-color: #12805a; }
+.bc-findings-rows { color: var(--gray-700); }
+.bc-tabs-inner { margin-top: var(--space-2); flex-wrap: wrap; }
+
 /* ---- Transactions page: stock summary cards ---- */
 .bc-th-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: var(--space-4); }
 .bc-th-card {

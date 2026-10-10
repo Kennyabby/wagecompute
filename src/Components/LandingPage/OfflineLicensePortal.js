@@ -246,7 +246,7 @@ const OfflineLicensePortal = () => {
                     it syncs from a tenant's ERP server on a schedule and is
                     only registered on the online platform. */}
                 <div className='module-picker-grid'>
-                  {moduleCatalog.filter(m => m.tier === 'standard' && m.key !== 'epsilon' && m.key !== 'business-central').map((m) => {
+                  {moduleCatalog.filter(m => m.tier === 'standard' && m.key !== 'epsilon').map((m) => {
                     const Icon = MODULE_ICONS[m.key]
                     return (
                       <label key={m.key} className='module-picker-chip'>

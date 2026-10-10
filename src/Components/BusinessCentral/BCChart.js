@@ -11,7 +11,10 @@ import { formatValue, formatCompact, formatPeriod } from './bcFormat'
 // apart under protan, deutan and tritan simulation). The third sits just
 // under 3:1 contrast on white, which is why every chart also offers a table
 // view and never relies on colour alone.
-export const SERIES_COLORS = ['#2a78d6', '#eb6834', '#1baf7a']
+// The fourth and fifth are for the few charts with more than three series.
+// They are told apart from the first three by hue and by lightness, and the
+// table view is there for anyone who cannot separate them.
+export const SERIES_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#8a5cd0', '#a67c00', '#5b6b7a']
 
 const AXIS_TICK = { fontSize: 12, fill: 'var(--gray-500)' }
 const GRID = 'var(--gray-200)'

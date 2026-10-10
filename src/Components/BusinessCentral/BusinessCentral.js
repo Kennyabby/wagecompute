@@ -8,6 +8,7 @@ import { formatAgo } from './bcFormat'
 import BCDashboard from './BCDashboard'
 import BCReports from './BCReports'
 import BCTransactions from './BCTransactions'
+import BCBankStatement from './BCBankStatement'
 import BCChanges from './BCChanges'
 import BCSync from './BCSync'
 import BCLive from './BCLive'
@@ -99,7 +100,11 @@ const BusinessCentral = () => {
 
     const loadLookups = useCallback(async () => {
         try {
-            setLookups((await api.getLookups()).lookups)
+            const response = await api.getLookups()
+            setLookups(response.lookups)
+            // A kept list is used at once. If the server is bringing it up to
+            // date, it is fetched once more shortly after.
+            if (response.stale) setTimeout(() => { api.getLookups().then((fresh) => setLookups(fresh.lookups)).catch(() => {}) }, 8000)
         } catch (failure) {
             setLookups(null)
         }
@@ -339,6 +344,7 @@ const BusinessCentral = () => {
         { key: 'dashboard', label: 'Dashboard' },
         { key: 'transactions', label: 'Transactions' },
         { key: 'reports', label: 'Reports' },
+        { key: 'bank', label: 'Bank statements' },
         // The change log compares Business Central with a stored copy, so it
         // only exists when there is one.
         ...(stored ? [{ key: 'changes', label: 'Changes' }] : []),
@@ -346,7 +352,7 @@ const BusinessCentral = () => {
         ...(canManage ? [{ key: 'connection', label: 'Connection' }] : []),
     ]
     const activeTab = tabs.some((entry) => entry.key === tab) ? tab : 'dashboard'
-    const wantsData = activeTab === 'dashboard' || activeTab === 'reports' || activeTab === 'transactions'
+    const wantsData = ['dashboard', 'reports', 'transactions', 'bank'].includes(activeTab)
     const notDiscovered = !connection.company || !connection.discoveredAt
     const needsFirstSync = stored && !hasData
 
@@ -398,7 +404,8 @@ const BusinessCentral = () => {
                     <>
                         {activeTab === 'dashboard' && <BCDashboard api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} live={!stored} canManage={canManage} onOpenReport={openReport} onLoaded={onDataLoaded} onDiscovered={refreshAll} />}
                         {activeTab === 'transactions' && <BCTransactions api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} onLoaded={onDataLoaded} onGoTo={setTab} />}
-                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} />}
+                        {activeTab === 'bank' && <BCBankStatement api={api} lookups={lookups} />}
+                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} />}
                     </>
                 )}
                 {activeTab === 'changes' && <BCChanges api={api} datasets={datasets} lastSyncedAt={lastSyncedAt} onGoTo={setTab} />}

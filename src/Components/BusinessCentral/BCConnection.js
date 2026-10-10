@@ -13,6 +13,7 @@ const emptyForm = {
     password: '',
     company: '',
     branchDimension: 'none',
+    inferBranch: true,
     autoSync: true,
     syncIntervalMinutes: 60,
     verifyIntervalHours: 24,
@@ -276,6 +277,12 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
                             <option value='dim2'>Global Dimension 2</option>
                         </select>
                     </label>
+                    {form.branchDimension !== 'none' && (
+                        <label className='bc-check bc-field-wide' title='From the other lines of the same document, then from the location'>
+                            <input type='checkbox' checked={form.inferBranch !== false} onChange={(event) => set({ inferBranch: event.target.checked })} />
+                            <span>Work out the branch for entries posted without one, from their document or location</span>
+                        </label>
+                    )}
                     {canStore && (
                         <label className='bc-field bc-field-wide'>
                             <span className='bc-field-label'>Where reports get their data</span>

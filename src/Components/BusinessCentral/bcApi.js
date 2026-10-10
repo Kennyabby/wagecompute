@@ -38,6 +38,14 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
 
         getLookups: () => call('GET', 'lookups'),
         getDashboard: (params) => call('POST', 'dashboard', params),
+        getMonthly: (params) => call('POST', 'dashboard/monthly', params),
+        matchStatement: (statement) => call('POST', 'bank/match', statement),
+
+        getBuilderSchema: () => call('GET', 'builder/schema'),
+        runBuilder: (spec, params) => call('POST', 'builder/run', { spec, params }),
+        getSavedReports: () => call('GET', 'builder/saved'),
+        saveReport: (spec, id) => call('POST', 'builder/save', { spec, id }),
+        deleteReport: (id) => call('POST', 'builder/delete', { id }),
         getReports: () => call('GET', 'reports'),
         runReport: (key, params) => call('POST', 'reports/run', { key, params }),
         drillReport: (key, params, target) => call('POST', 'reports/drill', { key, params, target }),
