@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import BCDataTable from './BCDataTable'
-import BCPreparing, { usePreparingRetry } from './BCPreparing'
+import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
 import { formatValue } from './bcFormat'
 
@@ -30,7 +30,7 @@ const BCDrillModal = ({ api, report, target, filters, onClose }) => {
     // so a file always matches the screen.
     const [view, setView] = useState(null)
     const onView = useCallback((next) => setView(next), [])
-    const { preparing, awaitData } = usePreparingRetry()
+    const { preparing, updating, awaitData } = usePreparingRetry()
     const closeButton = useRef(null)
 
     const { column, row, caption } = target
@@ -41,7 +41,7 @@ const BCDrillModal = ({ api, report, target, filters, onClose }) => {
         setBreakdown(null)
         setView(null)
         setError('')
-        awaitData(() => api.drillReport(report.key, report.params, { column: column.key, row: row._key || {} }))
+        awaitData(() => api.drillReport(report.key, report.params, { column: column.key, row: row._key || {} }), (fresh) => setBreakdown(fresh.breakdown))
             .then((response) => setBreakdown(response.breakdown))
             .catch((failure) => setError(failure.message))
     }, [api, awaitData, report.key, report.params, column.key, row])
@@ -110,6 +110,7 @@ const BCDrillModal = ({ api, report, target, filters, onClose }) => {
                 <div className='bc-modal-body'>
                     {error && <div className='bc-banner bc-banner-error'>{error}</div>}
                     <BCPreparing progress={preparing} />
+                    <BCUpdating since={updating} />
                     {!breakdown && !error && !preparing && <p className='bc-empty'>Loading the breakdown...</p>}
                     {breakdown && (
                         <>

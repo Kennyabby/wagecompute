@@ -5,7 +5,7 @@ import BCDrillModal from './BCDrillModal'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
 import BCFilterBar, { initialFilterValues } from './BCFilterBar'
 import { formatValue } from './bcFormat'
-import BCPreparing, { usePreparingRetry } from './BCPreparing'
+import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 
 const REPORT_KEY = 'transactionHistory'
 const PAGE_SIZES = [25, 50, 100, 250]
@@ -54,7 +54,7 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
     const [duplicatesOnly, setDuplicatesOnly] = useState(false)
     const [view, setView] = useState(null)
     const [exporting, setExporting] = useState('')
-    const { preparing, awaitData } = usePreparingRetry()
+    const { preparing, updating, awaitData } = usePreparingRetry()
 
     // The filters come with the report's definition, like every other report.
     useEffect(() => {
@@ -75,7 +75,7 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
         setLoading(true)
         setError('')
         try {
-            const response = await awaitData(() => api.runReport(REPORT_KEY, params))
+            const response = await awaitData(() => api.runReport(REPORT_KEY, params), (fresh) => setReport(fresh.report))
             setDrill(null)
             setReport(response.report)
             if (onLoaded) onLoaded()
@@ -160,6 +160,7 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
 
             {error && <div className='bc-banner bc-banner-error'>{error}</div>}
             <BCPreparing progress={preparing} />
+            <BCUpdating since={updating} />
             {!report && loading && !preparing && <p className='bc-empty'>Loading transactions...</p>}
 
             {report && summary && (

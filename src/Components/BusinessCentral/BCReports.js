@@ -4,11 +4,12 @@ import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
 import BCChart from './BCChart'
 import BCDataTable, { isNumericColumn } from './BCDataTable'
+import BCBuilder from './BCBuilder'
 import BCDrillModal from './BCDrillModal'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
 import BCFilterBar, { initialFilterValues } from './BCFilterBar'
 import { formatKpi, formatValue } from './bcFormat'
-import BCPreparing, { usePreparingRetry } from './BCPreparing'
+import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 
 // Filter values written out for the export header, so a printed report says
 // what it was filtered to.
@@ -56,13 +57,15 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [exporting, setExporting] = useState('')
-    const { preparing, awaitData } = usePreparingRetry()
+    const { preparing, updating, awaitData } = usePreparingRetry()
 
     const run = useCallback(async (params) => {
         setLoading(true)
         setError('')
         try {
-            const response = await awaitData(() => api.runReport(definition.key, params))
+            // A kept answer is shown first. The fresh one replaces it without
+            // closing a breakdown someone has open in the meantime.
+            const response = await awaitData(() => api.runReport(definition.key, params), (fresh) => setReport(fresh.report))
             setDrill(null)
             setReport(response.report)
             if (onLoaded) onLoaded()
@@ -121,6 +124,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
 
             {error && <div className='bc-banner bc-banner-error'>{error}</div>}
             <BCPreparing progress={preparing} />
+            <BCUpdating since={updating} />
             {!report && loading && !preparing && <p className='bc-empty'>Running the report...</p>}
 
             {report && (
@@ -169,10 +173,14 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
     )
 }
 
-const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded }) => {
+const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded, notify = () => {} }) => {
     const [catalogue, setCatalogue] = useState(null)
     const [error, setError] = useState('')
     const [search, setSearch] = useState('')
+    // The builder: null when closed, { saved } while a report is being made
+    // or edited. `version` makes the list load again after a save or delete.
+    const [building, setBuilding] = useState(null)
+    const [version, setVersion] = useState(0)
 
     useEffect(() => {
         let active = true
@@ -180,9 +188,41 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
             .then((response) => { if (active) setCatalogue(response) })
             .catch((failure) => { if (active) setError(failure.message) })
         return () => { active = false }
-    }, [api, lastSyncedAt])
+    }, [api, lastSyncedAt, version])
+
+    const edit = async (report) => {
+        try {
+            const saved = (await api.getSavedReports()).reports.find((entry) => entry.id === report.custom.id)
+            if (saved) setBuilding({ saved })
+            else { notify('error', 'That report no longer exists.'); setVersion((current) => current + 1) }
+        } catch (failure) {
+            notify('error', failure.message)
+        }
+    }
+    const remove = async (report) => {
+        if (!window.confirm(`Delete the report "${report.title}"? This cannot be undone.`)) return
+        try {
+            await api.deleteReport(report.custom.id)
+            notify('success', `"${report.title}" deleted.`)
+            setVersion((current) => current + 1)
+        } catch (failure) {
+            notify('error', failure.message)
+        }
+    }
 
     const selected = useMemo(() => catalogue?.reports.find((report) => report.key === openKey && report.available), [catalogue, openKey])
+
+    if (building) {
+        return (
+            <BCBuilder
+                api={api}
+                saved={building.saved || null}
+                notify={notify}
+                onClose={() => setBuilding(null)}
+                onSaved={(report) => { setBuilding(null); setVersion((current) => current + 1); onOpenKey(`custom:${report.id}`) }}
+            />
+        )
+    }
 
     if (selected) {
         return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} />
@@ -197,7 +237,12 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
             {!catalogue && !error && <p className='bc-empty'>Loading reports...</p>}
             {catalogue && (
                 <>
-                    <input className='bc-input bc-search' placeholder='Search reports' value={search} onChange={(event) => setSearch(event.target.value)} aria-label='Search reports' />
+                    <div className='bc-report-head'>
+                        <input className='bc-input bc-search' placeholder='Search reports' value={search} onChange={(event) => setSearch(event.target.value)} aria-label='Search reports' />
+                        <div className='bc-actions'>
+                            <button type='button' className='bc-button bc-button-primary' onClick={() => setBuilding({})}>Build a report</button>
+                        </div>
+                    </div>
                     {catalogue.domains.map((domain) => {
                         const reports = catalogue.reports.filter((report) => report.domain === domain.key && matches(report))
                         if (!reports.length) return null
@@ -205,19 +250,33 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
                             <section key={domain.key} className='bc-domain'>
                                 <h2>{domain.label}</h2>
                                 <div className='bc-report-grid'>
-                                    {reports.map((report) => (
-                                        <button
-                                            key={report.key}
-                                            type='button'
-                                            className='bc-card bc-report-card'
-                                            disabled={!report.available}
-                                            onClick={() => onOpenKey(report.key)}
-                                        >
-                                            <strong>{report.title}</strong>
-                                            <span>{report.description}</span>
-                                            {!report.available && <span className='bc-report-reason'>Not available yet: {report.reason}</span>}
-                                        </button>
-                                    ))}
+                                    {reports.map((report) => {
+                                        const card = (
+                                            <button
+                                                key={report.key}
+                                                type='button'
+                                                className='bc-card bc-report-card'
+                                                disabled={!report.available}
+                                                onClick={() => onOpenKey(report.key)}
+                                            >
+                                                <strong>{report.title}</strong>
+                                                <span>{report.description}</span>
+                                                {report.custom?.pinned && <span className='bc-report-reason'>Shown on the dashboard</span>}
+                                                {!report.available && <span className='bc-report-reason'>Not available yet: {report.reason}</span>}
+                                            </button>
+                                        )
+                                        // A report someone built can also be changed or deleted.
+                                        return report.custom ? (
+                                            <div key={report.key} className='bc-report-own'>
+                                                {card}
+                                                <span className='bc-report-own-actions'>
+                                                    <button type='button' className='bc-link-button' onClick={() => edit(report)}>Edit</button>
+                                                    <button type='button' className='bc-link-button' onClick={() => remove(report)}>Delete</button>
+                                                    {report.custom.createdBy && <span className='bc-muted'>By {report.custom.createdBy}</span>}
+                                                </span>
+                                            </div>
+                                        ) : card
+                                    })}
                                 </div>
                             </section>
                         )
