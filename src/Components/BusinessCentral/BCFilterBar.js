@@ -5,7 +5,7 @@ const VISIBLE_OPTIONS = 200
 
 // Dropdown with search and tick boxes. Item lists run to thousands of
 // entries, so only the first matches are rendered and the search narrows them.
-const MultiSelect = ({ label, options, value, onChange }) => {
+export const MultiSelect = ({ label, options, value, onChange }) => {
     const [open, setOpen] = useState(false)
     const [search, setSearch] = useState('')
     const ref = useRef(null)

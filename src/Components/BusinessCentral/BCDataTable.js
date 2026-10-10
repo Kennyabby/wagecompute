@@ -119,7 +119,9 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
     const narrowed = filterable && filtered.length !== rows.length
     const shownTotals = useMemo(() => {
         if (!narrowed) return totals
-        return Object.fromEntries(columns.filter((column) => column.total).map((column) => [
+        // Only a column whose total is the sum of its lines can be totalled
+        // again from the lines left. An average or a formula cannot.
+        return Object.fromEntries(columns.filter((column) => column.total && column.additive !== false).map((column) => [
             column.key,
             round2(filtered.reduce((sum, row) => sum + (Number(row[column.key]) || 0), 0)),
         ]))
@@ -232,12 +234,14 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
                                     const numeric = isNumericColumn(column)
                                     const text = formatValue(row[column.key], column.type)
                                     // A zero has nothing behind it worth opening.
-                                    const drillable = onDrill && column.drill && !row._noDrill && Number(row[column.key])
+                                    // `pick` makes a column of names clickable too, for a
+                                    // caller that offers something to do with the name.
+                                    const drillable = onDrill && !row._noDrill && ((column.drill && Number(row[column.key])) || (column.pick && row[column.key] !== undefined && row[column.key] !== ''))
                                     const indent = column.indent && row._level ? { paddingLeft: `calc(var(--space-3) + ${Math.min(row._level, 8) * 18}px)` } : undefined
                                     return (
                                         <td key={column.key} className={numeric ? `bc-num${column.signed && Number(row[column.key]) ? (Number(row[column.key]) > 0 ? ' bc-pos' : ' bc-neg') : ''}` : (column.wrap ? 'bc-wrap' : '')} style={indent} title={numeric || column.wrap ? undefined : String(row[column.key] ?? '')}>
                                             {drillable
-                                                ? <button type='button' className='bc-drill' title={`See what makes up this ${column.label.toLowerCase()}`} onClick={() => onDrill(row, column)}>{text}</button>
+                                                ? <button type='button' className='bc-drill' title={column.pick ? 'Show only this, or leave it out' : `See what makes up this ${column.label.toLowerCase()}`} onClick={() => onDrill(row, column)}>{text}</button>
                                                 : text}
                                         </td>
                                     )
@@ -253,7 +257,7 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
                             <tr>
                                 {shown.map((column, index) => (
                                     <td key={column.key} className={isNumericColumn(column) ? 'bc-num' : ''}>
-                                        {column.total ? formatValue(shownTotals[column.key], column.type) : (index === 0 ? (narrowed ? 'Total (filtered)' : 'Total') : '')}
+                                        {column.total && !(narrowed && column.additive === false) ? formatValue(shownTotals[column.key], column.type) : (index === 0 ? (narrowed ? 'Total (filtered)' : 'Total') : '')}
                                     </td>
                                 ))}
                             </tr>

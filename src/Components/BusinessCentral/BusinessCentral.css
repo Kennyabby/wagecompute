@@ -185,6 +185,11 @@
 .bc-chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-radius: 999px; background: var(--gray-100); font-size: var(--font-xs); }
 .bc-chip-remove { border: 0; background: none; cursor: pointer; font-size: var(--font-sm); line-height: 1; color: var(--gray-700); }
 .bc-chip-remove:disabled { cursor: not-allowed; opacity: 0.4; }
+/* A column of the preview, with a box to rename it. */
+.bc-chip-edit { border-radius: var(--radius-md); padding: var(--space-1) var(--space-2); }
+.bc-builder-line .bc-chip-edit .bc-input { flex: 0 1 150px; width: 150px; height: 28px; padding: 0 var(--space-2); font-size: var(--font-xs); }
+/* The list of a field's values to tick from. */
+.bc-picker-list { max-height: 220px; overflow-y: auto; }
 /* The report's columns drawn as a sheet: a letter over each figure. */
 .bc-sheet-wrap { overflow-x: auto; margin-bottom: var(--space-3); }
 .bc-sheet { border-collapse: collapse; font-size: var(--font-xs); }
@@ -280,6 +285,8 @@ button.bc-th-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transfo
     width: min(1200px, 100%); max-height: 100%; display: flex; flex-direction: column; min-height: 0;
     color: var(--brand-text); font-size: var(--font-base);
 }
+/* A question, not a table: no wider than its text needs. */
+.bc-modal-narrow { width: min(520px, 94vw); }
 .bc-modal-head {
     display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap;
     padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--brand-border);
