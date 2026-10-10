@@ -75,7 +75,8 @@
 
 .bc-link-button { border: 0; background: none; padding: 0; color: var(--brand-secondary); font-size: var(--font-sm); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 
-.bc-root button:focus-visible, .bc-root input:focus-visible, .bc-root select:focus-visible { outline: 2px solid var(--brand-secondary); outline-offset: 2px; }
+.bc-root button:focus-visible, .bc-root input:focus-visible, .bc-root select:focus-visible,
+.bc-modal button:focus-visible, .bc-modal input:focus-visible { outline: 2px solid var(--brand-secondary); outline-offset: 2px; }
 
 .bc-input {
     width: 100%; box-sizing: border-box; padding: var(--space-2) var(--space-3);
@@ -152,12 +153,89 @@
 /* One line per row keeps wide reports scannable; long text is cut with an
    ellipsis and shown in full on hover. */
 .bc-data-table td { white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+/* ---- Transactions page: stock summary cards ---- */
+.bc-th-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: var(--space-4); }
+.bc-th-card {
+    display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; text-align: left;
+    padding: var(--space-4); border: 1px solid var(--gray-200); border-left: 4px solid var(--gray-300); border-radius: var(--radius-md);
+    background: #fff; color: var(--brand-text); font: inherit;
+}
+button.bc-th-card { cursor: pointer; transition: box-shadow 0.15s ease, transform 0.15s ease; }
+button.bc-th-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transform: translateY(-1px); }
+.bc-th-in { border-left-color: #1baf7a; }
+.bc-th-out { border-left-color: #eb6834; }
+.bc-th-total { border-left-color: #2a78d6; }
+.bc-th-label { font-size: var(--font-xs); font-weight: 700; color: var(--brand-text-muted); }
+.bc-th-value { font-size: var(--font-lg, 1.25rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bc-th-line { font-size: var(--font-xs); color: var(--gray-700); font-variant-numeric: tabular-nums; }
+.bc-th-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-2); }
+@media (prefers-reduced-motion: reduce) { button.bc-th-card { transition: none; } button.bc-th-card:hover { transform: none; } }
+
+/* Choosing columns and page size on a table. */
+.bc-column-chooser { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); padding: var(--space-3) var(--space-4); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); }
+.bc-page-size { display: inline-flex; align-items: center; gap: var(--space-2); margin-right: auto; }
+.bc-page-size .bc-input { width: auto; min-height: 32px; }
+.bc-table .bc-pos { color: #12805a; }
+.bc-table .bc-neg { color: #b8451c; }
+
+/* Headings and totals of a statement, and cells that carry a sentence. */
+.bc-table .bc-row-strong td { font-weight: 700; }
+.bc-data-table td.bc-wrap { white-space: normal; min-width: 280px; max-width: 520px; overflow: visible; text-overflow: clip; line-height: 1.4; }
+.bc-missing td, .bc-missing th { white-space: normal; }
+.bc-missing code { font-family: inherit; font-weight: 600; }
 .bc-pager { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-3); }
+.bc-table-count { display: inline-flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+/* One filter per column, in a second heading row that stays in view under
+   the column names while the entries scroll. */
+.bc-data-table thead .bc-filter-row th { top: 33px; padding-top: var(--space-1); padding-bottom: var(--space-2); font-weight: 400; }
+.bc-table .bc-column-filter { min-height: 30px; min-width: 96px; max-width: 200px; padding: var(--space-1) var(--space-2); font-size: var(--font-xs); font-weight: 400; color: var(--brand-text); }
+.bc-table th.bc-num .bc-column-filter { text-align: right; }
+
+/* A figure that opens the entries behind it. It keeps the look of the number
+   it is, with an underline as the only sign that it can be clicked. */
+.bc-drill {
+    border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer;
+    font-variant-numeric: tabular-nums; text-decoration: underline; text-decoration-color: var(--gray-400);
+    text-decoration-style: dotted; text-underline-offset: 3px;
+}
+.bc-drill:hover { color: var(--brand-secondary); text-decoration-color: var(--brand-secondary); text-decoration-style: solid; }
+
+/* ---- Breakdown pop-up ---- */
+.bc-modal-backdrop {
+    /* Above the side menu (which goes up to 10000), below the app's alerts. */
+    position: fixed; inset: 0; z-index: 20000; background: rgba(19, 26, 21, 0.45);
+    display: flex; align-items: center; justify-content: center; padding: var(--space-5);
+}
+.bc-modal {
+    background: var(--brand-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+    width: min(1200px, 100%); max-height: 100%; display: flex; flex-direction: column; min-height: 0;
+    color: var(--brand-text); font-size: var(--font-base);
+}
+.bc-modal-head {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap;
+    padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--brand-border);
+}
+.bc-modal-head h2 { margin: 0 0 var(--space-1); font-size: var(--font-lg); color: var(--brand-primary); }
+.bc-modal-head p, .bc-modal-body p { margin: 0; line-height: 1.5; }
+.bc-modal-body { padding: var(--space-5) var(--space-6); overflow: auto; display: flex; flex-direction: column; gap: var(--space-4); min-height: 0; }
+.bc-modal .bc-data-table .bc-table-scroll { max-height: 55vh; }
 
 /* ---- Charts ---- */
 .bc-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--space-5); }
 .bc-chart-wide { grid-column: 1 / -1; }
 .bc-chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+/* Choosing between connections, beside the page title. */
+.bc-switcher { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-left: auto; }
+.bc-switcher .bc-input { width: auto; min-width: 200px; max-width: 320px; }
+.bc-chart-actions { display: inline-flex; gap: var(--space-4); flex-wrap: wrap; justify-content: flex-end; }
+
+/* A dashboard tile that opens a report. It is a button so the keyboard can
+   reach it, but it looks like the card it wraps. */
+.bc-tile { display: block; width: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: var(--radius-md); }
+.bc-tile > * { height: 100%; transition: box-shadow 0.15s ease, transform 0.15s ease; }
+.bc-tile:hover > * { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .bc-tile > * { transition: none; } .bc-tile:hover > * { transform: none; } }
 .bc-legend { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: var(--font-sm); color: var(--gray-700); }
 .bc-legend > span { display: inline-flex; align-items: center; gap: var(--space-2); }
 .bc-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
@@ -208,6 +286,9 @@
 .bc-confirm { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
 
 @media (max-width: 768px) {
+    .bc-modal-backdrop { padding: 0; }
+    .bc-modal { border-radius: 0; height: 100%; }
+    .bc-modal-head, .bc-modal-body { padding: var(--space-4); }
     .bc-range { flex-wrap: wrap; }
     .bc-card { padding: var(--space-4); }
     .bc-field, .bc-field-range, .bc-field-narrow { max-width: none; flex-basis: 100%; }

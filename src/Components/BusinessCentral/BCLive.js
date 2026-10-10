@@ -6,10 +6,16 @@ import { formatAgo, formatDateTime } from './bcFormat'
 const POLL_MS = 2000
 
 /**
- * The Data page when reports read live from Business Central. Nothing is
- * stored, so there is no sync to manage: this shows what has been read into
- * memory so far and lets someone read it all again on demand.
+ * The Data page when reports read live from Business Central. There is no
+ * sync to manage: this shows what has been read so far, what has changed in
+ * Business Central since, and lets someone read it all again on demand.
  */
+const describeChange = (change) => [
+    change.added ? `${change.added.toLocaleString()} new` : '',
+    change.changed ? `${change.changed.toLocaleString()} changed` : '',
+    change.removed ? `${change.removed.toLocaleString()} removed` : '',
+].filter(Boolean).join(', ')
+
 const BCLive = ({ api, canManage, notify, onGoTo }) => {
     const [live, setLive] = useState(null)
     const [busy, setBusy] = useState(false)
@@ -44,7 +50,7 @@ const BCLive = ({ api, canManage, notify, onGoTo }) => {
     return (
         <div className='bc-page'>
             <StatCardGrid min={200}>
-                <StatCard label='Data source' value='Live' description='Read from Business Central when a report runs. Nothing is stored here.' />
+                <StatCard label='Data source' value='Live' description={live?.restored ? 'Started from the copy kept on the server, then brought up to date.' : 'Read from Business Central. Nothing is stored in the database.'} />
                 <StatCard
                     label='New entries last checked'
                     value={live?.ready ? formatAgo(live.refreshedAt) : 'Not yet'}
@@ -72,8 +78,10 @@ const BCLive = ({ api, canManage, notify, onGoTo }) => {
                             </p>
                         ) : (
                             <p className='bc-muted'>
-                                New entries are picked up automatically. Edits made in Business Central to entries that were already
-                                read show up after the daily reload, or straight away if you reload now.
+                                New entries are picked up automatically, and so are entries deleted in Business Central, which are
+                                noticed by comparing counts every few minutes. Customer, vendor and bank entries are read again every
+                                few minutes, so payments applied to old invoices show up too. An edit to an old item entry that leaves
+                                the count unchanged shows up after the daily reload, or straight away if you reload now.
                             </p>
                         )}
                     </div>
@@ -91,12 +99,35 @@ const BCLive = ({ api, canManage, notify, onGoTo }) => {
             </section>
 
             <section className='bc-card'>
+                <h3>Changes picked up from Business Central</h3>
+                {live?.changes?.length ? (
+                    <div className='bc-table-scroll'>
+                        <table className='bc-table'>
+                            <thead><tr><th>When</th><th>Table</th><th>What changed</th><th>Note</th></tr></thead>
+                            <tbody>
+                                {live.changes.map((change) => (
+                                    <tr key={change.id}>
+                                        <td>{formatDateTime(change.at)}</td>
+                                        <td>{change.table}</td>
+                                        <td>{describeChange(change) || 'See note'}</td>
+                                        <td>{change.note}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <p className='bc-empty'>Nothing has changed in Business Central since the data was read.</p>
+                )}
+            </section>
+
+            <section className='bc-card'>
                 <h3>Keeping a stored copy</h3>
                 <p className='bc-muted'>
-                    Live reading needs Business Central to be reachable, and starts from scratch after a server restart.
-                    A stored copy in this database removes both limits: reports work while Business Central is offline, the copy is
-                    kept current by an automatic or manual sync, and the Changes page records every difference found between
-                    Business Central and the copy. It takes database space in proportion to your history.
+                    Live reading needs Business Central to be reachable to pick up anything new. A stored copy in the database
+                    removes that limit: reports work while Business Central is offline, the copy is kept current by an automatic
+                    or manual sync, and the Changes page records every difference found, field by field. It takes database
+                    space in proportion to your history.
                 </p>
                 {canManage ? (
                     <div>
