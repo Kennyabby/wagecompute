@@ -44,7 +44,9 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         getBuilderSchema: () => call('GET', 'builder/schema'),
         runBuilder: (spec, params) => call('POST', 'builder/run', { spec, params }),
         getSavedReports: () => call('GET', 'builder/saved'),
-        saveReport: (spec, id) => call('POST', 'builder/save', { spec, id }),
+        // With `draft`, the report is kept as it stands, finished or not.
+        saveReport: (spec, id, draft = false) => call('POST', 'builder/save', { spec, id, draft }),
+        getFieldValues: (source) => call('POST', 'builder/values', source),
         deleteReport: (id) => call('POST', 'builder/delete', { id }),
         getReports: () => call('GET', 'reports'),
         runReport: (key, params) => call('POST', 'reports/run', { key, params }),

@@ -51,7 +51,7 @@ test('a report is built step by step, previewed and saved', async () => {
 
     // The guide is open for a new report and covers every step.
     expect(await screen.findByRole('heading', { name: 'How to build a report' })).toBeInTheDocument()
-    expect(GUIDE).toHaveLength(11)
+    expect(GUIDE).toHaveLength(14)
     expect(screen.getByText(/A formula works on the figures by their letters/)).toBeInTheDocument()
 
     fireEvent.change(await screen.findByPlaceholderText('For example: Profit by customer'), { target: { value: 'Profit by customer' } })
@@ -178,6 +178,120 @@ test('pages are combined: a link brings in a name, another page is matched to th
     expect(await screen.findByText('9 rows read from Value Entries + Cust Ledger Entries.')).toBeInTheDocument()
     // In the preview a figure's heading carries its letter.
     expect(screen.getByText('[A] Sales')).toBeInTheDocument()
+})
+
+test('an item-wise report: a calculated field, values picked for a filter, a reader filter, and changes made on the preview', async () => {
+    const wide = { ...schema, aggregates: { ...schema.aggregates, first: 'Show the value' }, operators: { ...schema.operators, in: 'is one of', notin: 'is not one of' }, tables: [...schema.tables.map((entry) => (entry.service === 'ValueEntries' ? { ...entry, fields: [...entry.fields, { name: 'Item_No', label: 'Item No', type: 'text' }, { name: 'Location_Code', label: 'Location Code', type: 'text' }, { name: 'Invoiced_Quantity', label: 'Invoiced Quantity', type: 'number' }] } : entry))] }
+    const pivot = {
+        kpis: [], charts: [],
+        columns: [{ key: 'r0', label: 'Source No', type: 'text' }, { key: 'x0_m0', label: 'FG-50CL: Qty', type: 'qty', total: true }, { key: 'x1_m0', label: 'FG-75CL: Qty', type: 'qty', total: true }, { key: 'm0', label: 'Total: Qty', type: 'qty', total: true }],
+        rows: [{ r0: 'C001', x0_m0: 10, x1_m0: 5, m0: 15 }, { r0: 'C002', x0_m0: 2, x1_m0: 0, m0: 2 }],
+        totals: { x0_m0: 12, x1_m0: 5, m0: 17 },
+        meta: { note: '', rowsRead: 4, table: 'Value Entries', across: ['FG-50CL', 'FG-75CL'], prompts: [{ key: 'p0', label: 'Location', options: [{ value: 'DEPOT', label: 'DEPOT' }, { value: 'FACTORY', label: 'FACTORY' }] }] },
+    }
+    const api = {
+        getBuilderSchema: jest.fn().mockResolvedValue({ schema: wide }),
+        runBuilder: jest.fn().mockResolvedValue({ report: pivot }),
+        getFieldValues: jest.fn().mockResolvedValue({ list: { values: ['FG-50CL', 'FG-75CL', 'RM-CAP'], cut: false } }),
+        saveReport: jest.fn().mockResolvedValue({ report: { id: 'r5', name: 'Item wise' } }),
+    }
+    const notify = jest.fn()
+    const onSaved = jest.fn()
+    render(<BCBuilder api={api} onSaved={onSaved} onClose={() => {}} notify={notify} />)
+    fireEvent.change(await screen.findByPlaceholderText('For example: Profit by customer'), { target: { value: 'Item wise' } })
+    fireEvent.change(screen.getByLabelText('Business Central page'), { target: { value: 'ValueEntries' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add a row grouping' }))
+    fireEvent.change(screen.getByLabelText('Row 1'), { target: { value: 'Source_No' } })
+    fireEvent.change(screen.getByLabelText('Columns across'), { target: { value: 'Item_No' } })
+
+    // A calculated field, with its field inserted from the list, then used in figure A.
+    fireEvent.click(screen.getByRole('button', { name: 'Add a calculated field' }))
+    fireEvent.change(screen.getByLabelText('Calculation 1 name'), { target: { value: 'Quantity sold' } })
+    fireEvent.change(screen.getByLabelText('Calculation 1'), { target: { value: '=0-' } })
+    fireEvent.change(screen.getByLabelText('Calculation 1 insert a field'), { target: { value: 'Invoiced_Quantity' } })
+    expect(screen.getByLabelText('Calculation 1')).toHaveValue('=0-[Invoiced_Quantity]')
+    fireEvent.change(screen.getByLabelText('Figure A works out'), { target: { value: 'sum' } })
+    expect([...screen.getByLabelText('Figure A field').options].map((option) => option.textContent)).toContain('Quantity sold')
+    fireEvent.change(screen.getByLabelText('Figure A field'), { target: { value: 'C1' } })
+    fireEvent.change(screen.getByLabelText('Figure A heading'), { target: { value: 'Qty' } })
+
+    // A filter whose values are ticked from what the field holds. Two ticks make it "is one of".
+    fireEvent.click(screen.getByRole('button', { name: 'Add a filter' }))
+    fireEvent.change(screen.getByLabelText('Filter 1 field'), { target: { value: 'Item_No' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Pick values' }))
+    fireEvent.click(await screen.findByLabelText('FG-50CL'))
+    fireEvent.click(screen.getByLabelText('FG-75CL'))
+    expect(api.getFieldValues).toHaveBeenCalledWith({ service: 'ValueEntries', field: 'Item_No' })
+    expect(screen.getByLabelText('Filter 1 value')).toHaveValue('FG-50CL, FG-75CL')
+    expect(screen.getByLabelText('Filter 1 test')).toHaveValue('in')
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+
+    // A filter the reader will see on the report.
+    fireEvent.click(screen.getByRole('button', { name: 'Add a filter for the reader' }))
+    fireEvent.change(screen.getByLabelText('Reader filter 1 field'), { target: { value: 'Location_Code' } })
+    fireEvent.change(screen.getByLabelText('Reader filter 1 name'), { target: { value: 'Location' } })
+
+    // Unfinished work can be kept as a draft, and later saves change that same one.
+    fireEvent.click(screen.getByRole('button', { name: 'Save progress' }))
+    await waitFor(() => expect(api.saveReport).toHaveBeenCalledWith(expect.objectContaining({ name: 'Item wise' }), undefined, true))
+    expect(onSaved).not.toHaveBeenCalled()
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('success', expect.stringMatching(/saved as a draft/)))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+    await waitFor(() => expect(api.runBuilder).toHaveBeenCalledTimes(1))
+    expect(api.runBuilder.mock.calls[0][0]).toMatchObject({
+        calcs: [{ label: 'Quantity sold', expression: '=0-[Invoiced_Quantity]' }],
+        across: { field: 'Item_No' },
+        measures: [{ field: 'C1', aggregate: 'sum', label: 'Qty' }],
+        filters: [{ field: 'Item_No', operator: 'in', value: 'FG-50CL, FG-75CL' }],
+        prompts: [{ field: 'Location_Code', label: 'Location' }],
+    })
+    // The line's total is the last column and the bottom line totals each column.
+    expect(await screen.findByText('[A] Total: Qty')).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '17' })).toBeInTheDocument()
+
+    // On the preview: the reader's filter narrows it.
+    const reader = within(screen.getByRole('group', { name: 'Filters for the reader' }))
+    fireEvent.click(reader.getByRole('button', { name: 'All' }))
+    fireEvent.click(reader.getByLabelText('DEPOT'))
+    await waitFor(() => expect(api.runBuilder).toHaveBeenCalledTimes(2))
+    expect(api.runBuilder.mock.calls[1][1]).toEqual({ p0: ['DEPOT'] })
+
+    // Leaving one item out writes the filter and runs again.
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave out FG-75CL' }))
+    await waitFor(() => expect(api.runBuilder).toHaveBeenCalledTimes(3))
+    expect(api.runBuilder.mock.calls[2][0].filters).toEqual([{ field: 'Item_No', operator: 'ne', value: 'FG-75CL' }])
+    expect(screen.getByLabelText('Filter 1 value')).toHaveValue('FG-75CL')
+
+    // Renaming a column there changes the figure's heading.
+    const rename = await screen.findByLabelText('Rename column A')
+    fireEvent.change(rename, { target: { value: 'Bottles' } })
+    fireEvent.blur(rename)
+    await waitFor(() => expect(api.runBuilder).toHaveBeenCalledTimes(4))
+    expect(screen.getByLabelText('Figure A heading')).toHaveValue('Bottles')
+
+    // Clicking a customer offers to show only that one.
+    fireEvent.click(await screen.findByRole('button', { name: 'C002' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show only this' }))
+    await waitFor(() => expect(api.runBuilder).toHaveBeenCalledTimes(5))
+    expect(api.runBuilder.mock.calls[4][0].filters).toContainEqual({ field: 'Source_No', operator: 'eq', value: 'C002' })
+
+    // Saved as a report, it replaces the draft and does not make a second one.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save report' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Save report' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ id: 'r5', name: 'Item wise' }))
+    expect(api.saveReport.mock.calls[1]).toEqual([expect.objectContaining({ name: 'Item wise' }), 'r5'])
+})
+
+test('a draft opens as it was left, even with parts missing', async () => {
+    const saved = { id: 'd1', name: 'Half done', draft: true, spec: { name: 'Half done', service: 'ValueEntries', rows: [{ field: '' }], formulas: [{ label: '', expression: '=A+' }] } }
+    const api = { getBuilderSchema: jest.fn().mockResolvedValue({ schema }), saveReport: jest.fn().mockResolvedValue({ report: { id: 'd1', name: 'Half done' } }) }
+    render(<BCBuilder api={api} saved={saved} onSaved={() => {}} onClose={() => {}} notify={() => {}} />)
+    expect(await screen.findByRole('heading', { name: 'Carry on with "Half done"' })).toBeInTheDocument()
+    expect(await screen.findByLabelText('Formula 1')).toHaveValue('=A+')
+    expect(screen.getByLabelText('Figure A works out')).toHaveValue('count')
+    fireEvent.click(screen.getByRole('button', { name: 'Save progress' }))
+    await waitFor(() => expect(api.saveReport).toHaveBeenCalledWith(expect.objectContaining({ name: 'Half done' }), 'd1', true))
 })
 
 const renderStatement = (api) => {

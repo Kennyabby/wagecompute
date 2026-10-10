@@ -83,6 +83,13 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [run, lastSyncedAt])
 
+    // A report someone built has filters of its own, and the values to
+    // choose from come back with the report itself.
+    const filters = useMemo(() => definition.filters.map((filter) => {
+        const found = (report?.meta?.prompts || []).find((prompt) => prompt.key === filter.key)
+        return found ? { ...filter, options: found.options } : filter
+    }), [definition.filters, report])
+
     const exportReport = async (kind) => {
         if (!report) return
         setExporting(kind)
@@ -120,7 +127,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                 </div>
             </div>
 
-            <BCFilterBar filters={definition.filters} values={values} onChange={setValues} lookups={lookups} onSubmit={() => run(values)} busy={loading} />
+            <BCFilterBar filters={filters} values={values} onChange={setValues} lookups={lookups} onSubmit={() => run(values)} busy={loading} />
 
             {error && <div className='bc-banner bc-banner-error'>{error}</div>}
             <BCPreparing progress={preparing} />
@@ -173,6 +180,41 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
     )
 }
 
+/**
+ * Asks before a built report is deleted. A click on OK is too easy to make by
+ * accident for something that cannot be brought back, so the report's name
+ * has to be typed out first. The box says what will be lost.
+ */
+export const DeleteReportDialog = ({ report, busy, onConfirm, onCancel }) => {
+    const [typed, setTyped] = useState('')
+    const matches = typed.trim().toLowerCase() === report.title.trim().toLowerCase()
+    return (
+        <div className='bc-modal-backdrop' onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onCancel() }}>
+            <form className='bc-modal bc-modal-narrow' role='dialog' aria-modal='true' aria-label={`Delete ${report.title}`} onSubmit={(event) => { event.preventDefault(); if (matches && !busy) onConfirm() }}>
+                <header className='bc-modal-head'>
+                    <h2>Delete "{report.title}"?</h2>
+                </header>
+                <div className='bc-modal-body'>
+                    <p>
+                        This {report.custom?.draft ? 'draft' : 'report'} and everything set up in it will be removed for good: its rows, figures, formulas, filters, tiles and chart.
+                        {report.custom?.pinned ? ' It will also disappear from the dashboard.' : ''}
+                        {report.custom?.draft ? '' : ' Nobody will be able to run it any more.'} It cannot be brought back.
+                    </p>
+                    <p>The data in Business Central is not touched.</p>
+                    <label className='bc-field'>
+                        <span className='bc-field-label'>To confirm, type the report's name: <strong>{report.title}</strong></span>
+                        <input className='bc-input' autoFocus value={typed} onChange={(event) => setTyped(event.target.value)} aria-label='Type the report name to confirm' autoComplete='off' />
+                    </label>
+                    <div className='bc-actions'>
+                        <button type='button' className='bc-button' disabled={busy} onClick={onCancel}>Keep the report</button>
+                        <button type='submit' className='bc-button bc-button-danger' disabled={!matches || busy}>{busy ? 'Deleting...' : 'Delete for good'}</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    )
+}
+
 const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded, notify = () => {} }) => {
     const [catalogue, setCatalogue] = useState(null)
     const [error, setError] = useState('')
@@ -190,6 +232,8 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
         return () => { active = false }
     }, [api, lastSyncedAt, version])
 
+    const [toDelete, setToDelete] = useState(null)
+    const [deleting, setDeleting] = useState(false)
     const edit = async (report) => {
         try {
             const saved = (await api.getSavedReports()).reports.find((entry) => entry.id === report.custom.id)
@@ -199,14 +243,18 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
             notify('error', failure.message)
         }
     }
+    // Runs only from the confirmation box, once the name has been typed.
     const remove = async (report) => {
-        if (!window.confirm(`Delete the report "${report.title}"? This cannot be undone.`)) return
+        setDeleting(true)
         try {
             await api.deleteReport(report.custom.id)
             notify('success', `"${report.title}" deleted.`)
             setVersion((current) => current + 1)
         } catch (failure) {
             notify('error', failure.message)
+        } finally {
+            setDeleting(false)
+            setToDelete(null)
         }
     }
 
@@ -218,8 +266,9 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
                 api={api}
                 saved={building.saved || null}
                 notify={notify}
-                onClose={() => setBuilding(null)}
+                onClose={() => { setBuilding(null); setVersion((current) => current + 1) }}
                 onSaved={(report) => { setBuilding(null); setVersion((current) => current + 1); onOpenKey(`custom:${report.id}`) }}
+                // A draft may have been saved while it was open, so the list is read again.
             />
         )
     }
@@ -233,6 +282,7 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
 
     return (
         <div className='bc-page'>
+            {toDelete && <DeleteReportDialog report={toDelete} busy={deleting} onConfirm={() => remove(toDelete)} onCancel={() => setToDelete(null)} />}
             {error && <div className='bc-banner bc-banner-error'>{error}</div>}
             {!catalogue && !error && <p className='bc-empty'>Loading reports...</p>}
             {catalogue && (
@@ -262,7 +312,8 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
                                                 <strong>{report.title}</strong>
                                                 <span>{report.description}</span>
                                                 {report.custom?.pinned && <span className='bc-report-reason'>Shown on the dashboard</span>}
-                                                {!report.available && <span className='bc-report-reason'>Not available yet: {report.reason}</span>}
+                                                {report.custom?.draft && <span className='bc-report-reason'>Draft: only you can see it. Press Continue to carry on.</span>}
+                                                {!report.available && !report.custom?.draft && <span className='bc-report-reason'>Not available yet: {report.reason}</span>}
                                             </button>
                                         )
                                         // A report someone built can also be changed or deleted.
@@ -270,8 +321,8 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
                                             <div key={report.key} className='bc-report-own'>
                                                 {card}
                                                 <span className='bc-report-own-actions'>
-                                                    <button type='button' className='bc-link-button' onClick={() => edit(report)}>Edit</button>
-                                                    <button type='button' className='bc-link-button' onClick={() => remove(report)}>Delete</button>
+                                                    <button type='button' className='bc-link-button' onClick={() => edit(report)}>{report.custom.draft ? 'Continue' : 'Edit'}</button>
+                                                    <button type='button' className='bc-link-button' onClick={() => setToDelete(report)}>Delete</button>
                                                     {report.custom.createdBy && <span className='bc-muted'>By {report.custom.createdBy}</span>}
                                                 </span>
                                             </div>
