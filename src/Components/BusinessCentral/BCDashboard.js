@@ -321,11 +321,12 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
                         })}
                     </StatCardGrid>
 
-                    <div className='bc-chart-grid'>
-                        {dashboard.charts.map((chart) => (
-                            <BCChart key={chart.key} chart={chart} onOpen={chart.link ? () => onOpenReport(chart.link.report, chart.link.params) : undefined} />
-                        ))}
-                    </div>
+                    {/* The order down the page: the main trend, the year month by
+                        month, then what people built and pinned, then the
+                        other charts. */}
+                    {dashboard.charts.slice(0, 1).map((chart) => (
+                        <BCChart key={chart.key} chart={chart} onOpen={chart.link ? () => onOpenReport(chart.link.report, chart.link.params) : undefined} />
+                    ))}
 
                     {/* Keyed by when the dashboard was built, so a reload starts it again on the dashboard's own year. */}
                     {dashboard.monthly && <MonthlyPerformance key={dashboard.generatedAt || 'monthly'} api={api} monthly={dashboard.monthly} branches={dashboard.params?.branches || []} />}
@@ -350,6 +351,14 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
                                 </div>
                             ))}
                         </section>
+                    )}
+
+                    {dashboard.charts.length > 1 && (
+                        <div className='bc-chart-grid'>
+                            {dashboard.charts.slice(1).map((chart) => (
+                                <BCChart key={chart.key} chart={chart} onOpen={chart.link ? () => onOpenReport(chart.link.report, chart.link.params) : undefined} />
+                            ))}
+                        </div>
                     )}
 
                     <div className='bc-chart-grid'>
