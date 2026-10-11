@@ -25,7 +25,7 @@ const Purchase = () => {
         settings, setAlert, setAlertState, setAlertTimeout, setActionMessage,
         showApprovalBox, setShowApprovalBox,
         curApproval, setCurApproval,
-        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval, canApproveSection,
         setApprovalStatus, setApprovalMessage, getProductsStockReport,
         paymentMethods,
     } = useContext(ContextProvider)
@@ -58,7 +58,10 @@ const Purchase = () => {
     const [reportPurchase, setReportPurchase] = useState(null)
 
     const [purchaseApprovals, setPurchaseApprovals] = useState([])
-    const [isApprover, setIsApprover] = useState(false)
+    const [isApproverByRole, setIsApprover] = useState(false)
+    // The same rule the posting itself follows (see getApprovalConfig in
+    // App.js), so the button never says one thing and does another.
+    const isApprover = isApproverByRole || canApproveSection('purchase', postAction)
     // Split, badge-facing counterparts to purchaseApprovals (which stays
     // untouched, it deliberately mixes pending+approved for the existing
     // merged list view below). Pending mirrors the red badge logic used
@@ -300,9 +303,31 @@ const Purchase = () => {
         } catch (e) { }
     }
 
+    // The vendor list for the purchase form. It used to be read only after
+    // stock, approvals, employees and purchases had all finished loading, so
+    // one of those being slow (the stock report on a large catalogue) or
+    // failing left the Vendor dropdown empty until the page was opened again.
+    // It is now read on its own, first, and tried once more if it fails.
+    const loadVendors = async (attempt = 1) => {
+        const cmp_val = window.localStorage.getItem('sessn-cmp')
+        if (!cmp_val) return
+        try {
+            const vendorResp = await fetchServer("POST", {
+                database: cmp_val,
+                collection: "Vendors"
+            }, "getDocsDetails", server)
+            if (!vendorResp.err && Array.isArray(vendorResp.record)) {
+                setVendors(vendorResp.record)
+                return
+            }
+        } catch (e) { }
+        if (attempt < 2) setTimeout(() => loadVendors(attempt + 1), 1500)
+    }
+
     const refreshPurchaseData = async () => {
         const cmp_val = window.localStorage.getItem('sessn-cmp')
         if (!cmp_val) return;
+        loadVendors()
         // Fire-and-forget, deliberately outside the tasks below, a hiccup
         // refreshing payment totals must never be able to block loading
         // purchases/vendors (which the vendor dropdown depends on).
@@ -315,14 +340,8 @@ const Purchase = () => {
             tasks.push(getApprovals(cmp_val, companyRecord));
             tasks.push(getEmployees(cmp_val, companyRecord));
             tasks.push(getPurchase(cmp_val, companyRecord));
-            await Promise.all(tasks);
-            const vendorResp = await fetchServer("POST", {
-                database: cmp_val,
-                collection: "Vendors"
-            }, "getDocsDetails", server)
-            if (!vendorResp.err && Array.isArray(vendorResp.record)) {
-                setVendors(vendorResp.record)
-            }
+            // One of these failing must not stop the others from finishing.
+            await Promise.allSettled(tasks);
         } catch (e) { }
     }
 

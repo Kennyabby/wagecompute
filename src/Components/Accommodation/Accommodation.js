@@ -31,7 +31,7 @@ const Accommodation = () => {
         getDate, removeComma, showApprovalBox, setShowApprovalBox,
         alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
-        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, canApproveSection,
         paymentReceipts, obtainPaymentReceipts,
         removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
@@ -50,7 +50,10 @@ const Accommodation = () => {
     const [salesOpts1, setSalesOpts1] = useState('accommodation')
 
     const [accommodationApprovals, setAccommodationApprovals] = useState([])
-    const [isApprover, setIsApprover] = useState(false)
+    const [isApproverByRole, setIsApprover] = useState(false)
+    // The same rule the posting itself follows (see getApprovalConfig in
+    // App.js), so the button never says one thing and does another.
+    const isApprover = isApproverByRole || canApproveSection('accommodation', 'postaccommodation')
     // Split, badge-facing counterparts to accommodationApprovals (left
     // untouched, it's used for per-booking link matching elsewhere).
     // Approved is visible only to whoever raised the request or an admin,

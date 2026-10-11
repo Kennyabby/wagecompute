@@ -31,7 +31,7 @@ const Expenses = () => {
         expenses, setExpenses, getExpenses, allowBacklogs,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
         attendance, getAttendance, months, monthDays, employees, getEmployees,
-        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, canApproveSection,
         showApprovalBox, setShowApprovalBox,
         removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
@@ -96,7 +96,7 @@ const Expenses = () => {
     // admin, matching SideNav's green-badge visibility rule.
     const [expensePending, setExpensePending] = useState([])
     const [expenseApproved, setExpenseApproved] = useState([])
-    const isExpenseApprover = companyRecord?.status === 'admin'
+    const isExpenseApprover = companyRecord?.status === 'admin' || canApproveSection('expense', 'postexpense')
         || companyRecord?.permissions?.includes('all')
         || companyRecord?.permissions?.includes('approve_postexpense')
 

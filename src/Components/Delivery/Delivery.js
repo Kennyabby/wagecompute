@@ -9,7 +9,6 @@ import TransactionReports from '../Shared/TransactionReports/TransactionReports'
 import {
     loadDeliverySnapshot,
     saveDeliverySnapshot,
-    queuePendingChange,
     loadPendingChanges,
     loadAllOrders,
     loadAllTables,
@@ -19,7 +18,9 @@ import {
     putSession,
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
-import { syncPendingChanges } from '../../Resources/offlineSync';
+// queuePendingChange here is submitChange: queued in the browser, posted at
+// once on the desktop app (see offlineSync.js).
+import { syncPendingChanges, submitChange as queuePendingChange } from '../../Resources/offlineSync';
 import { getTerminalId, generateClientTxnId } from '../../Resources/clientTxnId';
 import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 import { exportReconciliationExcel, exportReconciliationPDF } from '../../utils/reconciliationExport';

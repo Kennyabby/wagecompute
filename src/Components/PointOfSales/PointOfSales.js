@@ -8,7 +8,6 @@ import Notify from '../../Resources/Notify/Notify';
 import {
     loadPosSnapshot,
     savePosSnapshot,
-    queuePendingChange,
     loadPendingChanges,
     loadAllOrders,
     loadAllTables,
@@ -19,7 +18,9 @@ import {
     putSessionManager,
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
-import { syncPendingChanges, processChange } from '../../Resources/offlineSync';
+// queuePendingChange here is submitChange: queued in the browser, posted at
+// once on the desktop app (see offlineSync.js).
+import { syncPendingChanges, processChange, submitChange as queuePendingChange } from '../../Resources/offlineSync';
 import { getTerminalId } from '../../Resources/clientTxnId';
 
 const PointOfSales = () => {
@@ -35,7 +36,7 @@ const PointOfSales = () => {
         profiles, fetchProfiles, getSessionEnd, getSessionStart, formatDateToDefault,
         products, getProducts, setProducts, getEmployeeName,
         fetchSessions, fetchAllSessions, sessions, setSessions, posOrders,
-        fetchSessionManagers, sessionManagers, setSessionManagers,
+        fetchSessionManagers, sessionManagers, setSessionManagers, sessionManagerRequired,
         getLastActiveSessions, lastActiveSessions, 
         fetchSessionsByRange, fetchOrdersByRange,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
@@ -333,7 +334,8 @@ const PointOfSales = () => {
             },1000)            
             window.localStorage.removeItem('auto-sales')
             setTimeout(()=>{
-                createSessionManager()
+                // Only where the Session Manager is in use.
+                if (sessionManagerRequired) createSessionManager()
             },1500)
         }
     },[window.localStorage.getItem('back-to-pos')])
@@ -665,7 +667,8 @@ const PointOfSales = () => {
     // ]);
 
     useEffect(()=>{
-        if (companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.permissions?.includes('manage_session_manager') || companyRecord?.access === 'admin'){
+        // Nothing to remind anyone of when the workspace does not use the Session Manager.
+        if (sessionManagerRequired && (companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.permissions?.includes('manage_session_manager') || companyRecord?.access === 'admin')){
             let activeSessions = lastActiveSessions.filter(s => s.active)
             if (currSessionManager && currSessionManager?.end && activeSessions.length){
                 setAlertState('info')
@@ -2350,7 +2353,8 @@ const PointOfSales = () => {
                             payload: updatedTable,
                         }
                         if (curPosSettings?.type === 'restaurant'){
-                            queuePendingChange(company, companyRecord.emailid, change);
+                            // Part of a cancellation: posted at once in every mode, and waited for.
+                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }else{
                             try{                                
                                 await processChange(change, company, fetchServer, server);
@@ -2417,7 +2421,8 @@ const PointOfSales = () => {
                     },
                 }
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    // Part of a cancellation: posted at once in every mode, and waited for.
+                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }else{
                     await processChange(change, company, fetchServer, server);
                 }
@@ -4688,8 +4693,9 @@ const OrdersModal = ({
 
             setCancelling(true);
             setAlertState('info');
-            setAlert('Cancelling Order...');
-            setAlertTimeout(5000);
+            setAlert(`Cancelling Order #${order.orderNumber}. Please wait...`);
+            // Long enough to outlast the work. It is replaced when the work ends.
+            setAlertTimeout(120000);
 
             try {
                 // 1) Build cancelled order object
@@ -4752,7 +4758,7 @@ const OrdersModal = ({
                             payload: updatedTable,
                         }
                         if (curPosSettings?.type === 'restaurant'){
-                            queuePendingChange(company, companyRecord.emailid, change);
+                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }else{
                             try {
                                 await processChange(change, company, fetchServer, server);
@@ -4765,7 +4771,6 @@ const OrdersModal = ({
 
                 // 4) Queue order cancellation
                 if (company && companyRecord?.emailid) {
-                    setAlertTimeout(20);
                     const change = {
                         entityType: 'order',
                         op: 'update',
@@ -4779,7 +4784,7 @@ const OrdersModal = ({
                     }
 
                     if (curPosSettings?.type === 'restaurant'){
-                        queuePendingChange(company, companyRecord.emailid, change);
+                        await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                     }else{
                         await processChange(change, company, fetchServer, server);
                     }
@@ -4835,6 +4840,7 @@ const OrdersModal = ({
             <div className="modal-content orders-modal">
                 <div className="modal-header">
                     <h3>All Orders</h3>
+                    {cancelling && <span className='live-state' role='status'>Cancelling order. Please wait...</span>}
                     <button
                         disabled={cancelling}
                         onClick={() => setShowOrdersModal(false)}
@@ -4936,7 +4942,7 @@ const OrdersModal = ({
                                         onClick={() => handleCancelOrder(order)}
                                         title="Cancel Order"
                                     >
-                                        Cancel Order
+                                        {cancelling ? 'Cancelling...' : 'Cancel Order'}
                                     </button>
                                 )
                             }
@@ -4956,7 +4962,7 @@ const POSDashboard = ({
     fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
     setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories, glDeepLink
 }) => {
-    const { fetchServer, server, company, wrhs, formatDateToDefault, settings } = useContext(ContextProvider);
+    const { fetchServer, server, company, wrhs, formatDateToDefault, settings, sessionManagerRequired, getSessionStart } = useContext(ContextProvider);
 
     // Configured in Settings > General Config > POS Reconciliation, instead of
     // a fixed list, so admins control which locations gate session-end without
@@ -4973,6 +4979,14 @@ const POSDashboard = ({
     const [clearingPreview, setClearingPreview] = useState([])
     const [clearingPostingDate, setClearingPostingDate] = useState('')
     const [clearingLoading, setClearingLoading] = useState(false)
+    // 'day' is the current business day's own money. 'earlier' is whatever is
+    // still on the accounts from before it.
+    const [clearingScope, setClearingScope] = useState('day')
+    // One line per payment method while a clearing is being posted, and after.
+    const [clearingSteps, setClearingSteps] = useState([])
+    const [clearingFinishedAt, setClearingFinishedAt] = useState(null)
+    // What is left from earlier days, checked when the page opens and after every run.
+    const [earlierUncleared, setEarlierUncleared] = useState([])
     const [pendingSessions, setPendingSessions] = useState([]);
     const [showReports, setShowReports] = useState(false);
     const [stableSalesSessions, setStableSalesSessions] = useState([]);
@@ -5045,19 +5059,20 @@ const POSDashboard = ({
         if (Array.isArray(lastActiveSessions)){
             let activeSessions = lastActiveSessions.filter(s => s.active && getSessionEnd(s.start) <= Date.now())
             let endedCount = (lastActiveSessions.filter(s => s.end))?.length
-            if (activeSessions.length > 0 && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))){
+            // Only where the Session Manager is in use.
+            if (sessionManagerRequired && activeSessions.length > 0 && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))){
                 setAlertState('info')
                 setAlert('Session as ended. Please Stop Session Manager')
                 setAlertTimeout(5000)
             }
 
-            if (endedCount && endedCount === lastActiveSessions.length && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))){
+            if (sessionManagerRequired && endedCount && endedCount === lastActiveSessions.length && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))){
                 setAlertState('info')
                 setAlert('All sesisons ended, Please Start Session Manager!')
                 setAlertTimeout(8000)
             }
         }
-    },[lastActiveSessions, companyRecord])
+    },[lastActiveSessions, companyRecord, sessionManagerRequired])
 
     useEffect(() => {
         (async () => {
@@ -5087,49 +5102,82 @@ const POSDashboard = ({
     // after Session Manager stop) rather than "today", this button exists
     // specifically to re-run clearing for the day that manager covers,
     // falling back to today only if no Session Manager is active at all.
-    const openClearingPreview = async () => {
+    // The business day clearing works on.
+    //   Session Manager in use: the day its current (or last) run started.
+    //   Session Manager off: today's business day, worked out from the clock
+    //   and the POS mode's Session-End Hour. Until that hour passes, it is
+    //   still the previous day's business. That is the same rule the rest of
+    //   the app uses to decide which day a sale belongs to.
+    const clearingBusinessDate = () => formatDateToDefault((sessionManagerRequired && currSessionManager?.start) || getSessionStart(Date.now()))
+
+    const canRunClearing = sessionManagerRequired
+        ? (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))
+        : companyRecord?.status === 'admin'
+
+    // Asks what is still on the accounts from before the current business
+    // day, so the button for it can say how much, or stay hidden.
+    const checkEarlierUncleared = async () => {
+        if (!canRunClearing || !server) return
+        const resp = await fetchServer("POST", { postingDate: clearingBusinessDate(), dryRun: true, scope: 'earlier' }, "accounting/runPaymentMethodClearing", server).catch(() => null)
+        if (resp?.ok) setEarlierUncleared(Array.isArray(resp.results) ? resp.results : [])
+    }
+    useEffect(() => {
+        checkEarlierUncleared()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [server, company, sessionManagerRequired, currSessionManager?.start, currSessionManager?.end])
+
+    const openClearingPreview = async (scope = 'day') => {
         setClearingLoading(true)
-        const previewDate = formatDateToDefault(currSessionManager?.start || Date.now())
-        const resp = await fetchServer("POST", { postingDate: previewDate, dryRun: true }, "accounting/runPaymentMethodClearing", server)
+        const previewDate = clearingBusinessDate()
+        const resp = await fetchServer("POST", { postingDate: previewDate, dryRun: true, scope }, "accounting/runPaymentMethodClearing", server)
         setClearingLoading(false)
         if (resp?.err || !resp?.ok) {
             setAlertState('error')
-            setAlert(resp?.mess || 'Could not preview automatic account clearing.')
+            setAlert(resp?.mess || 'Could not preview account clearing.')
             setAlertTimeout(4000)
             return
         }
+        setClearingScope(scope)
         setClearingPostingDate(previewDate)
         setClearingPreview(Array.isArray(resp.results) ? resp.results : [])
+        setClearingSteps([])
+        setClearingFinishedAt(null)
         setShowClearingModal(true)
     }
 
-    // Double-posting protection isn't client-side debouncing, it's that the
-    // server recomputes each account's ACTUAL balance fresh at post time
-    // (never trusting the preview's amounts) and skips anything already at
-    // zero, and every posting's clientTxnId is deterministic
-    // (sourceCollection+sourceId+postingKind), so Mongo's unique index on it
-    // rejects a genuine duplicate outright, the automatic trigger firing
-    // moments before/after this manual confirm, or this button being clicked
-    // twice, can never post the same clearing entry twice for the same
-    // method/day.
+    // Posts the clearing one payment method at a time, so each one's outcome
+    // can be shown as it happens. Each request is worked out again on the
+    // server from the ledger as it stands (the preview's amounts are never
+    // trusted), and the same sweep asked for twice at the same moment posts
+    // once: its identity is the method, the date and its number for the day.
     const confirmClearing = async () => {
         setClearingLoading(true)
-        const resp = await fetchServer("POST", { postingDate: clearingPostingDate }, "accounting/runPaymentMethodClearing", server)
-        setClearingLoading(false)
-        if (resp?.err || !resp?.ok) {
-            setAlertState('error')
-            setAlert(resp?.mess || 'Could not run automatic account clearing.')
-            setAlertTimeout(4000)
-            return
+        setClearingFinishedAt(null)
+        const steps = clearingPreview.map((row) => ({ ...row, state: 'waiting', note: 'Waiting its turn' }))
+        setClearingSteps(steps)
+        const update = (index, patch) => { steps[index] = { ...steps[index], ...patch }; setClearingSteps([...steps]) }
+        for (let index = 0; index < steps.length; index += 1) {
+            const row = steps[index]
+            update(index, { state: 'posting', note: `Posting: debit ${row.debitAccountCode} ${row.debitAccountName}, credit ${row.creditAccountCode} ${row.creditAccountName}` })
+            // eslint-disable-next-line no-await-in-loop
+            const resp = await fetchServer("POST", { postingDate: clearingPostingDate, scope: clearingScope, method: row.methodId || row.method }, "accounting/runPaymentMethodClearing", server).catch((error) => ({ err: true, mess: error?.message }))
+            const result = (resp?.results || [])[0]
+            if (resp?.err || !resp?.ok) update(index, { state: 'failed', note: resp?.mess || 'The server did not answer.' })
+            else if (!result) update(index, { state: 'nothing', note: 'Nothing left to clear. It was already at zero when its turn came.' })
+            else if (result.error) update(index, { state: 'failed', note: result.error })
+            else if (result.created === false) update(index, { state: 'nothing', note: 'Already posted by another run at the same moment. Nothing was posted twice.' })
+            else update(index, { state: 'posted', amount: result.amount, postingDate: result.postingDate, note: `Posted ${'₦' + Number(result.amount || 0).toLocaleString()} dated ${result.postingDate}${result.documentNo ? `, journal ${result.documentNo}` : ''}, at ${new Date().toLocaleTimeString()}` })
         }
-        setShowClearingModal(false)
-        setClearingPreview([])
-        const posted = (resp.results || []).filter((row) => row.created)
-        setAlertState('success')
-        setAlert(posted.length
-            ? `Automatic account clearing posted (${posted.length} entr${posted.length === 1 ? 'y' : 'ies'}).`
-            : 'Nothing left to clear. It was already posted, either by the automatic run or by an earlier confirm.')
-        setAlertTimeout(3000)
+        setClearingLoading(false)
+        setClearingFinishedAt(Date.now())
+        const posted = steps.filter((row) => row.state === 'posted')
+        const failed = steps.filter((row) => row.state === 'failed')
+        setAlertState(failed.length ? 'error' : 'success')
+        setAlert(failed.length
+            ? `Account clearing finished with ${failed.length} failure${failed.length === 1 ? '' : 's'}. See the list for what went wrong.`
+            : (posted.length ? `Account clearing posted (${posted.length} entr${posted.length === 1 ? 'y' : 'ies'}).` : 'Nothing left to clear.'))
+        setAlertTimeout(4000)
+        checkEarlierUncleared()
     }
 
     const loadPendingOfflineChanges = async () => {
@@ -5198,9 +5246,9 @@ const POSDashboard = ({
                     </div>
                 </div>
                 <div className='pos-session-board-view'>
-                    {(companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')) && <div className='pos-session-manager-panel'>
-                        <label className='pos-session-manager-label'>Session Manager</label>
-                        <div 
+                    {(sessionManagerRequired ? (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')) : companyRecord?.status === 'admin') && <div className='pos-session-manager-panel'>
+                        <label className='pos-session-manager-label'>{sessionManagerRequired ? 'Session Manager' : 'Account Clearing'}</label>
+                        {sessionManagerRequired && <div 
                             className='pos-session-manager-toggle'
                             onClick={()=>{
                                 if ((currSessionManager === null || currSessionManager?.end)){
@@ -5239,34 +5287,57 @@ const POSDashboard = ({
                             }}
                         >
                             {((currSessionManager === null || currSessionManager?.end)) ? 'Start' : 'Stop'}
-                        </div>
+                        </div>}
                         {/* Only once there's an actual stopped Session Manager to clear
                             for, clearing sweeps that manager's own day (still its
                             `start` date even after stopping), so there's nothing
                             meaningful to run while it's still active or before one has
                             ever been started. */}
-                        {currSessionManager && currSessionManager?.end && <button
+                        {/* The day's own clearing: once every session has ended, or the
+                            Session Manager is stopped (or was never started), or
+                            the workspace does not use it. While people are still
+                            selling there is more to come, so it waits. */}
+                        {(!sessionManagerRequired || !currSessionManager || currSessionManager?.end || !activeSessions?.length) && <button
                             className='pos-session-board-btn'
                             style={{ marginTop: '12px' }}
                             disabled={clearingLoading}
-                            onClick={openClearingPreview}
-                            title='Manually re-run automatic account clearing (Settings > Payment Methods), for example if it failed during automatic posting.'
+                            onClick={() => openClearingPreview('day')}
+                            title="Moves what each auto-clear payment method received on the current business day to its receiving account (Settings > Payment Methods). Shows what it will post before posting."
                         >
-                            {clearingLoading ? 'Checking...' : 'Run Automatic Account Clearing'}
+                            {clearingLoading && clearingScope === 'day' ? 'Checking...' : 'Run Account Clearing'}
+                        </button>}
+                        {/* Money still on the accounts from before the current
+                            business day. Offered whatever the sessions or the
+                            Session Manager are doing, for as long as there is any. */}
+                        {earlierUncleared.length > 0 && <button
+                            className='pos-session-board-btn'
+                            style={{ marginTop: '12px' }}
+                            disabled={clearingLoading}
+                            onClick={() => openClearingPreview('earlier')}
+                            title='Moves what is still on the auto-clear accounts from earlier days to their receiving accounts. Shows what it will post before posting.'
+                        >
+                            {`Clear ₦${Math.round(earlierUncleared.reduce((sum, row) => sum + Number(row.amount || 0), 0)).toLocaleString()} left from earlier days`}
                         </button>}
                     </div>}
                     {showClearingModal && (
                         <div className='closingsession' onClick={() => { if (!clearingLoading) setShowClearingModal(false) }}>
                             <div className='modal-content' onClick={(e) => e.stopPropagation()}>
                                 <div className='modal-header'>
-                                    <h2>{`Automatic Account Clearing (${clearingPostingDate})`}</h2>
+                                    <h2>{clearingScope === 'earlier' ? `Clear money left from before ${clearingPostingDate}` : `Account Clearing (${clearingPostingDate})`}</h2>
                                     <button className='close-btn' disabled={clearingLoading} onClick={() => setShowClearingModal(false)}>×</button>
                                 </div>
                                 {!clearingPreview.length ? (
-                                    <p>Nothing to clear. Every auto-clear-enabled payment method's account is already at zero, or none are configured (Settings &gt; Payment Methods).</p>
+                                    <p>{clearingScope === 'earlier'
+                                        ? 'Nothing is left from earlier days. Every auto-clear payment method had already been cleared up to the day before.'
+                                        : `Nothing to clear for ${clearingPostingDate}. No auto-clear payment method has received anything that day that is still on its account, or none are set up (Settings > Payment Methods).`}</p>
                                 ) : (
                                     <>
-                                        <p>This will post one journal entry per payment method below, debiting its configured receiving account and crediting the payment method's own account to bring it to zero.</p>
+                                        <p>
+                                            {clearingScope === 'earlier'
+                                                ? `This moves everything still on each account below from before ${clearingPostingDate}, whenever it came in. One journal entry is posted per payment method, dated the day before, so the figures for ${clearingPostingDate} are left alone.`
+                                                : `This moves what each payment method below received on ${clearingPostingDate}. One journal entry is posted per payment method, dated that day.`}
+                                            {' '}Each entry debits the receiving account and credits the payment method's own account.
+                                        </p>
                                         <div style={{ overflowX: 'auto' }}>
                                             <table className='dd-table'>
                                                 <thead>
@@ -5275,25 +5346,41 @@ const POSDashboard = ({
                                                         <th>Debit (Dr)</th>
                                                         <th>Credit (Cr)</th>
                                                         <th>Amount</th>
+                                                        <th>Progress</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {clearingPreview.map((row, index) => (
+                                                    {(clearingSteps.length ? clearingSteps : clearingPreview).map((row, index) => (
                                                         <tr key={index}>
                                                             <td>{row.method}</td>
                                                             <td>{`${row.debitAccountCode} - ${row.debitAccountName}`}</td>
                                                             <td>{`${row.creditAccountCode} - ${row.creditAccountName}`}</td>
                                                             <td>{'₦' + Number(row.amount || 0).toLocaleString()}</td>
+                                                            <td style={{ color: row.state === 'failed' ? '#b91c1c' : (row.state === 'posted' ? '#15803d' : undefined), fontWeight: row.state === 'posting' ? 700 : undefined }}>
+                                                                {row.state ? row.note : 'Not started'}
+                                                            </td>
                                                         </tr>
                                                     ))}
+                                                    <tr>
+                                                        <td colSpan={3}><strong>Total</strong></td>
+                                                        <td><strong>{'₦' + (clearingSteps.length ? clearingSteps : clearingPreview).reduce((sum, row) => sum + Number(row.amount || 0), 0).toLocaleString()}</strong></td>
+                                                        <td></td>
+                                                    </tr>
                                                 </tbody>
                                             </table>
                                         </div>
+                                        {clearingSteps.length > 0 && (
+                                            <p role='status' style={{ marginTop: '12px', fontWeight: 600 }}>
+                                                {clearingFinishedAt
+                                                    ? `Finished at ${new Date(clearingFinishedAt).toLocaleTimeString()}: ${clearingSteps.filter((row) => row.state === 'posted').length} posted (₦${clearingSteps.filter((row) => row.state === 'posted').reduce((sum, row) => sum + Number(row.amount || 0), 0).toLocaleString()}), ${clearingSteps.filter((row) => row.state === 'nothing').length} with nothing left, ${clearingSteps.filter((row) => row.state === 'failed').length} failed.`
+                                                    : `Posting ${clearingSteps.filter((row) => ['posted', 'nothing', 'failed'].includes(row.state)).length + 1} of ${clearingSteps.length}. Keep this window open until it finishes.`}
+                                            </p>
+                                        )}
                                     </>
                                 )}
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                                    <button className='pos-session-board-btn' disabled={clearingLoading} onClick={() => setShowClearingModal(false)}>Cancel</button>
-                                    {!!clearingPreview.length && (
+                                    <button className='pos-session-board-btn' disabled={clearingLoading} onClick={() => setShowClearingModal(false)}>{clearingFinishedAt ? 'Close' : 'Cancel'}</button>
+                                    {!!clearingPreview.length && !clearingFinishedAt && (
                                         <button className='pos-session-board-btn' disabled={clearingLoading} onClick={confirmClearing}>
                                             {clearingLoading ? 'Posting...' : 'Confirm & Post'}
                                         </button>
@@ -5383,7 +5470,7 @@ const POSDashboard = ({
                                                                         }
                                                                     }
                                                                 } else {
-                                                                    if (currSessionManager && currSessionManager?.active) {
+                                                                    if (sessionManagerRequired && currSessionManager && currSessionManager?.active) {
                                                                         viewModal = false
                                                                         setAlertState('error')
                                                                         setAlert('Session Manager is currently active. Stop Session Manager to Continue!')
@@ -5470,7 +5557,7 @@ const POSDashboard = ({
                                                                     setEndSession(true)
                                                                 } else {
                                                                     let canStartSession = true
-                                                                    if (!currSessionManager || currSessionManager?.end) {
+                                                                    if (sessionManagerRequired && (!currSessionManager || currSessionManager?.end)) {
                                                                          canStartSession = false                                                                           
                                                                     }
                                                                     setSessionUser({

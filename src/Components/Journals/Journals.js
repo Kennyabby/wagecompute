@@ -506,6 +506,23 @@ const Journals = () => {
     // action behind it needs a real modal instead. { message, onConfirm } | null.
     const [confirmModal, setConfirmModal] = useState(null)
 
+    // A run this browser does not know about: started on another computer,
+    // or before the browser's own note of it was lost (clearing site data or
+    // reinstalling the desktop app does that). The server is asked, and the
+    // run is shown like any other, so it can be stopped or force stopped.
+    useEffect(() => {
+        if (glBacklogOperationId || !server || !company) return;
+        let active = true;
+        fetchServer('POST', {}, 'accounting/postingOperations/active', server).then((resp) => {
+            if (!active || !resp?.ok || !resp.operation?._id) return;
+            try { window.localStorage.setItem(glBacklogStorageKey, resp.operation._id); } catch (e) {}
+            setGlBacklogSeed(resp.operation);
+            setGlBacklogOperationId(resp.operation._id);
+        }).catch(() => {});
+        return () => { active = false; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [server, company]);
+
     useEffect(() => {
         if (!glBacklogOperationId || !server) return;
         // Reattach: fetch the current state immediately on mount/reload
@@ -514,7 +531,9 @@ const Journals = () => {
         // sitting between two documents right now with nothing new to
         // broadcast for a moment.
         checkPostingOperationStatus(glBacklogOperationId, server).then((status) => {
-            if (!status || status.status === 'unknown') {
+            // A run that has already ended needs no panel. Leaving it up showed
+            // a finished run as if it could still be stopped.
+            if (!status || status.status === 'unknown' || status.status !== 'in-progress') {
                 try { window.localStorage.removeItem(glBacklogStorageKey); } catch (e) {}
                 setGlBacklogOperationId(null);
                 return;
@@ -545,6 +564,13 @@ const Journals = () => {
     // what's actually keeping the buttons disabled and the progress panel up.
     // So the run controls are free again at once, and a fresh run can be
     // started right away if wanted.
+    // Asked for first, since it lets go of a run without waiting for it.
+    const confirmForceStopBacklog = () => setConfirmModal({
+        title: 'Force Stop',
+        message: 'This releases the run at once so a fresh one can be started. Whatever record is being posted at this moment still finishes safely. Everything posted so far stays posted, and a new run skips what is already there.',
+        onConfirm: handleForceStopBacklog,
+    })
+
     const handleForceStopBacklog = async () => {
         if (!glBacklogOperationId) return;
         const operationId = glBacklogOperationId;
@@ -592,6 +618,13 @@ const Journals = () => {
                 try { window.localStorage.setItem(glBacklogStorageKey, resp.operationId || operationId); } catch (e) {}
                 setGlBacklogOperationId(resp.operationId || operationId);
                 setAlertState('success'); setAlert(`Backlog run started. ${resp.total || 0} records to process.`); setAlertTimeout(4000);
+            } else if (resp?.alreadyRunning && resp.operationId) {
+                // Another run is going. Show it instead of leaving the user
+                // with a refusal and nothing to stop.
+                try { window.localStorage.setItem(glBacklogStorageKey, resp.operationId); } catch (e) {}
+                setGlBacklogOperationId(resp.operationId);
+                checkPostingOperationStatus(resp.operationId, server).then((status) => { if (status) setGlBacklogSeed(status); });
+                setAlertState('info'); setAlert(resp.mess); setAlertTimeout(7000);
             } else {
                 setAlertState('error'); setAlert(resp?.mess || 'Failed to start General Ledger backlog'); setAlertTimeout(4000);
             }
@@ -4069,11 +4102,11 @@ const Journals = () => {
                                                     {glBacklogDisplay?.cancelRequested ? 'Stopping…' : 'Stop'}
                                                 </button>
                                             )}
-                                            {!isDone && glBacklogDisplay?.cancelRequested === true && (
+                                            {!isDone && (
                                                 <button
                                                     className="j-btn-danger btn-sm"
                                                     style={{ marginLeft: 8 }}
-                                                    onClick={handleForceStopBacklog}
+                                                    onClick={confirmForceStopBacklog}
                                                     title="Frees up the controls right away instead of waiting. Whatever record is currently mid-post still finishes safely in the background, it just won't keep you waiting for it. Safe to start a new run immediately after."
                                                 >
                                                     Force Stop

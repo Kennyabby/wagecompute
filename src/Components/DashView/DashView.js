@@ -42,7 +42,7 @@ const DashView = () =>{
         accommodations, getAccommodations,
         rentals, getRentals,
         employees, getEmployees, getSessionEnd,
-        salesSessions, lastActiveSessions, sessionManagers,
+        salesSessions, lastActiveSessions, sessionManagers, sessionManagerRequired,
         setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
     // Default date range (current month)
@@ -920,19 +920,20 @@ const DashView = () =>{
         if (Array.isArray(lastActiveSessions)){
             let activeSessions = lastActiveSessions.filter(s => s.active && getSessionEnd(s.start) <= Date.now())
             let endedCount = (lastActiveSessions?.filter(s => s.end))?.length;
-            if (activeSessions.length > 0 && companyRecord?.status === 'admin'){
+            // Only where the Session Manager is in use.
+            if (sessionManagerRequired && activeSessions.length > 0 && companyRecord?.status === 'admin'){
                 setAlertState('info')
                 setAlert('Session as ended. Please Stop Session Manager')
                 setAlertTimeout(5000)
             }
 
-            if (endedCount && endedCount === lastActiveSessions?.length && companyRecord?.status === 'admin'){
+            if (sessionManagerRequired && endedCount && endedCount === lastActiveSessions?.length && companyRecord?.status === 'admin'){
                 setAlertState('info')
                 setAlert('All sesisons ended, Please Start Session Manager!')
                 setAlertTimeout(8000)
             }
         }
-    },[salesSessions, lastActiveSessions, companyRecord])
+    },[salesSessions, lastActiveSessions, companyRecord, sessionManagerRequired])
 
     useEffect(() => {
         loadDashData();        

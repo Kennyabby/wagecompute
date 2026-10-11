@@ -32,7 +32,7 @@ const Sales = () => {
         employees, setEmployees, getEmployees, getPendingSalesDates,
         sales, setSales, getSales, months, years, initialYear,
         allSessions, getAllSessions, getSessionEnd, fetchAllSessions,
-        fetchSessionManagers, sessionManagers,
+        fetchSessionManagers, sessionManagers, sessionManagerRequired,
         accommodations, getAccommodations,
         rentals, setRentals, getRentals,
         products, setProducts, getProducts, getProductsWithStock,
@@ -44,7 +44,7 @@ const Sales = () => {
         alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         curApproval, setCurApproval, showApprovalBox, setShowApprovalBox,
-        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval, canApproveSection,
         setApprovalStatus, setApprovalMessage,
         paymentReceipts, obtainPaymentReceipts,
     } = useContext(ContextProvider)
@@ -177,8 +177,14 @@ const Sales = () => {
         setGlDeepLinkTargetKey(null)
     })
 
-    const [isApprover, setIsApprover] = useState(false)
-    const [isProductApprover, setIsProductApprover] = useState(false)
+    const [isApproverByRole, setIsApprover] = useState(false)
+    const [isProductApproverByRole, setIsProductApprover] = useState(false)
+    // The same rule the posting itself follows (see getApprovalConfig in
+    // App.js), so the button never says one thing and does another. Each tab
+    // of this screen posts under its own section.
+    const approvalSection = salesOpts === 'rentals' ? 'postrentals' : (salesOpts === 'recovery' ? 'postrecovery' : 'postsales')
+    const isApprover = isApproverByRole || canApproveSection('sales', approvalSection)
+    const isProductApprover = isProductApproverByRole || canApproveSection('sales', 'addSalesProduct')
     const [ftrApprovals, setFtrApprovals] = useState([])
     const [productsApprovals, setProductsApprovals] = useState([])
     const [salesApprovals, setSalesApprovals] = useState([])
@@ -325,6 +331,14 @@ const Sales = () => {
     useEffect(()=>{
         const pendingDays = getPendingSalesDates()
         setPendingSalesDates(pendingDays)
+        // Automatic sales posting belongs to the Session Manager: it is what
+        // starting a new day's manager sets off. A workspace that does not use
+        // the Session Manager posts its sales by hand, so a request left over
+        // from before the setting was switched off is dropped, not run.
+        if (!sessionManagerRequired) {
+            window.localStorage.removeItem('auto-sales')
+            return
+        }
         if (pendingDays.length && window.localStorage.getItem('auto-sales') && !autoPostSales) {
             setPostingDate('')
             setAlertState('info')
@@ -463,6 +477,7 @@ const Sales = () => {
                 return
             }
             // console.log('************autoPostSales triggered, running automatic sales posting...***************')
+            if (!sessionManagerRequired) { setAutoPostSales(false); return }
             runAutomaticSalesPosting()            
         }
     }, [autoPostRunning, autoPostSales, payPoints, salesUnits])

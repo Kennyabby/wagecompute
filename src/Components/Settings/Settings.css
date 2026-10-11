@@ -349,10 +349,16 @@
     margin: 16px 0;
 }
 
+/* The approver's ID sits on a line of its own, with rank, sections and the
+   delete button under it. The four used to share one line with fixed minimum
+   widths that added up to more than a card is wide, which pushed the delete
+   button out past the card's edge. Every column here can shrink, so the row
+   fits a card of any width, on a desktop or a phone. */
 .settings-accounting-list-row {
     display: grid;
-    grid-template-columns: minmax(140px, 1fr) 84px minmax(180px, 1.2fr) auto;
+    grid-template-columns: 72px minmax(0, 1fr) 42px;
     gap: 10px;
+    min-width: 0;
     align-items: center;
     padding: 12px;
     border: 1px solid rgba(23, 56, 41, 0.07);
@@ -361,12 +367,23 @@
 }
 
 .settings-accounting-list-row strong {
+    grid-column: 1 / -1;
     min-width: 0;
-    overflow: hidden;
     color: var(--settings-primary);
     font-size: 13px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* A long e-mail address wraps instead of being cut off or widening the row. */
+    overflow-wrap: anywhere;
+}
+
+.settings-accounting-list-row .forminp {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.settings-accounting-list,
+.settings-accounting-card {
+    min-width: 0;
 }
 
 .settings-accounting-list-row .deletebtn {
@@ -859,8 +876,7 @@ input:checked + .slider:before {
     .settings-accounting-hero,
     .settings-accounting-fields,
     .settings-accounting-grid,
-    .settings-accounting-row,
-    .settings-accounting-list-row {
+    .settings-accounting-row {
         grid-template-columns: 1fr;
         flex-direction: column;
     }
@@ -879,14 +895,10 @@ input:checked + .slider:before {
 
     .settings-accounting-save,
     .settings-accounting-list-row .forminp,
-    .settings-accounting-list-row .deletebtn,
     .settings-accounting-card .general-propSet-add {
         width: 100%;
     }
 
-    .settings-accounting-list-row strong {
-        white-space: normal;
-    }
 
     .settings-accounting-actions {
         width: 100%;

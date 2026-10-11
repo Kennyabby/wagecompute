@@ -328,10 +328,13 @@ const Products = ({
         setProductData([])
         setLoadPivot(0)
         if (isNewProduct) {
-            // console.log(isNewProduct)
-            // setIsNewView(false)
-            // setProductFields({...defaultProductFields})
-            // setIsView(false)
+            // Pressing New always opens a blank form with the next free ID.
+            // defaultProductFields holds the ID worked out when this page
+            // first opened, so reusing it as it stands showed the ID of the
+            // product just created until the page was left and reopened.
+            if (!isProductView) {
+                setProductFields({ ...defaultProductFields, i_d: generateSeries('PD', products, 'i_d') })
+            }
         }else{            
             setFilteredProducts(products)            
         }
@@ -339,7 +342,9 @@ const Products = ({
 
     useEffect(() => {
         if (!isProductView) {
-            setProductFields({ ...defaultProductFields })            
+            // The ID is worked out now, from the products as they are now
+            // (see the note on the effect above).
+            setProductFields({ ...defaultProductFields, i_d: generateSeries('PD', products, 'i_d') })
         }
     }, [isProductView])
 

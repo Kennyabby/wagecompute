@@ -2529,6 +2529,18 @@ const Settings = () => {
                                                 </div>
                                             </div>
 
+                                            <div className='inpcov toggle-row'>
+                                                <div>
+                                                    Require Session Manager
+                                                    <div className='settings-toggle-hint'>When on, the Session Manager has to be started before anyone can start a session, and stopped before a session can be ended. When off, users start and end their sessions at any time, and the Session Manager is not shown on the All Sessions page.</div>
+                                                </div>
+                                                <label className='toggle-switch'>
+                                                    {/* Off unless a POS mode turns it on. */}
+                                                    <input type='checkbox' name='requireSessionManager' checked={curPropSet.requireSessionManager === true} onChange={handlePropSetChange} />
+                                                    <span className='slider'></span>
+                                                </label>
+                                            </div>
+
                                             <div className="section-divider">Operation & Printing</div>
                                             <div className="toggles-grid">
                                                 <div className='inpcov toggle-row'>
