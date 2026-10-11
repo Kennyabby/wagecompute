@@ -24,7 +24,7 @@ const Inventory = ()=>{
         company, companyRecord, centralCompany,
         monthDays,months, years,
         employees, getEmployees, sales,
-        products, setProducts, getProducts
+        products, setProducts, getProducts, canApproveSection
     } = useContext(ContextProvider)
 
     const targetRef = useRef(null)
@@ -56,9 +56,13 @@ const Inventory = ()=>{
     
     const popModals = ['Unit of Measures', 'Warehouses', 'Locations']
     const isInventoryAdmin = companyRecord?.status === 'admin' || companyRecord?.access === 'admin'
-    const canImport = isInventoryAdmin || companyRecord?.permissions?.includes('imports')
-    const canTransfer = isInventoryAdmin || ['internal_transfer', 'stock_transfer', 'transfer_order', 'inventory_transfer'].some((permission) => companyRecord?.permissions?.includes(permission))
-    const canPostTransferDirectly = isInventoryAdmin || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('approve_posttransfer');
+    // 'all' is the permission that stands for every other one. It was not
+    // counted here, so a user holding it saw Delete in the settings menu
+    // but not Import.
+    const hasAllPermissions = !!companyRecord?.permissions?.includes('all')
+    const canImport = isInventoryAdmin || hasAllPermissions || companyRecord?.permissions?.includes('imports')
+    const canTransfer = isInventoryAdmin || hasAllPermissions || ['internal_transfer', 'stock_transfer', 'transfer_order', 'inventory_transfer'].some((permission) => companyRecord?.permissions?.includes(permission))
+    const canPostTransferDirectly = isInventoryAdmin || companyRecord?.permissions?.includes('all') || companyRecord?.permissions?.includes('approve_posttransfer') || canApproveSection('inventory', 'posttransfer');
     const settingsMenu = {
         Products: [
             { name: 'bill of materials', status: 'always' },

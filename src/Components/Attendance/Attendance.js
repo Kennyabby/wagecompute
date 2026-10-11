@@ -16,7 +16,7 @@ const Attendance = () => {
         months, monthDays, years,
         company, companyRecord, getDate,
         attendance, setAttendance, getAttendance, getEmployees,
-        employees, settings, runApprovalWorkFlow, approvals, getApprovals, removeApproval,
+        employees, settings, runApprovalWorkFlow, approvals, getApprovals, removeApproval, canApproveSection,
         curApproval, setCurApproval, postApprovalUpdate, showApprovalBox, setShowApprovalBox,
         setApprovalStatus, setApprovalMessage, setAlert, setAlertState, setAlertTimeout
     } = useContext(ContextProvider)
@@ -41,7 +41,10 @@ const Attendance = () => {
     // green-badge visibility rule.
     const [attendancePending, setAttendancePending] = useState([])
     const [attendanceApproved, setAttendanceApproved] = useState([])
-    const [isApprover, setIsApprover] = useState(false)
+    const [isApproverByRole, setIsApprover] = useState(false)
+    // The same rule the posting itself follows (see getApprovalConfig in
+    // App.js), so the button never says one thing and does another.
+    const isApprover = isApproverByRole || canApproveSection('attendance', 'postattendance')
     const selectedAttendance = curApproval?.data || attendance.find((att) => String(att.no) === String(viewNo)) || null
 
     useEffect(() => {

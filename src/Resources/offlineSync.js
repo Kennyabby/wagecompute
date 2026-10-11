@@ -1,7 +1,51 @@
 // offlineSync.js
 // STRICT offline → online sync with server acknowledgment
 
-import { loadPendingChanges, markPendingChangeSynced } from './offlineDb';
+import { loadPendingChanges, markPendingChangeSynced, queuePendingChange } from './offlineDb';
+
+// How to reach the server, handed over once by App.js. Kept here so a screen
+// can submit a change without passing these along every time.
+let transport = { fetchServer: null, server: '' };
+export function setSyncTransport(fetchServer, server) {
+  transport = { fetchServer, server };
+}
+
+const onDesktop = () => typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
+
+// Changes posted straight away go one after another, in the order they were
+// made, so an order is never updated before the request that created it.
+let line = Promise.resolve();
+
+/**
+ * Submits one change (an order, a table, a session, stock) made on the POS
+ * or Delivery screens.
+ *
+ * In the browser a change is put in the local queue and sent by the next
+ * sync, which is what lets those screens keep working while the internet is
+ * down. The desktop app has no such problem: its server is on the same
+ * machine. Queueing there only made every sale, delivery and payment wait
+ * for a sync, so on the desktop the change is posted at once.
+ *
+ * `immediate` asks for the same in the browser, for an action whose result
+ * has to be seen at once, such as cancelling an order.
+ *
+ * A change that cannot be posted (the connection dropped, the server
+ * refused it) goes into the queue instead, so it is retried by the next sync
+ * and never lost. Resolves once the change is posted or queued.
+ */
+export function submitChange(company, userId, change, { immediate = false } = {}) {
+  if (!transport.fetchServer || !(immediate || onDesktop())) return queuePendingChange(company, userId, change);
+  const run = line.then(async () => {
+    try {
+      return await processChange(change, company, transport.fetchServer, transport.server);
+    } catch (error) {
+      console.warn(`[OfflineSync] ${change.entityType}:${change.op} could not be posted at once, queued instead`, error?.message || error);
+      return queuePendingChange(company, userId, change);
+    }
+  });
+  line = run.catch(() => {});
+  return run;
+}
 
 /**
  * Sync all pendingChanges for a given company + user.

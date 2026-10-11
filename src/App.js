@@ -57,7 +57,7 @@ import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer, { setConnectivityStatus, callDesktop } from './Resources/ClientServerAPIConn/fetchServer'
 import createSSE from './Resources/ClientServerAPIConn/sseClient'
-import { syncPendingChanges } from './Resources/offlineSync';
+import { syncPendingChanges, setSyncTransport } from './Resources/offlineSync';
 import { useConnectionStatus } from './Resources/useConnectionStatus';
 import {
   getAppCache,
@@ -88,6 +88,9 @@ import {
 const SERVER = process.env.REACT_APP_API_URL
   || (window.electronAPI?.isElectron ? window.location.origin : "http://localhost:3001")
 // const SERVER = process.env.REACT_APP_API_URL || "https://api.epxcentral.com"
+// POS and Delivery submit their changes through offlineSync, which needs to
+// know how to reach the server.
+setSyncTransport(fetchServer, SERVER)
 if (process.env.NODE_ENV === 'production' && SERVER.includes('localhost')) {
   // Loud, unmissable warning rather than a silent guaranteed-to-fail deploy.
   // A real build-time check belongs in CI, but this catches it at runtime too.
@@ -1614,8 +1617,14 @@ function App() {
   const generateSeries = (pre, array, id) => {
 
     let max = 0
-    array.forEach((obj => {
-      let idVal = Number(obj[id].slice(pre.split('').length,))
+    // A record with no ID, or one that does not follow the series (an
+    // imported code, say), is skipped. It used to throw or turn the
+    // largest number into NaN, which froze the series at 00001.
+    ;(array || []).forEach((obj => {
+      const raw = obj?.[id]
+      if (typeof raw !== 'string' || !raw.startsWith(pre)) return
+      let idVal = Number(raw.slice(pre.split('').length,))
+      if (!Number.isFinite(idVal)) return
       if (idVal > max) {
         max = idVal
       }
@@ -1638,6 +1647,13 @@ function App() {
     }
   }
 
+  // Whether this workspace ties POS sessions to the Session Manager: it has
+  // to be started before a session can start, and stopped before one can
+  // end. Set per POS mode (Settings, POS Settings) and read from the active
+  // one. Off unless switched on. Every screen that behaves differently with
+  // it reads this one value, so they cannot disagree.
+  const sessionManagerRequired = (settings || []).find((setting) => setting?.name === 'posSettings')?.posSettings?.find((mode) => mode?.active)?.requireSessionManager === true
+
   const getApprovalConfig = (module, section, approverId) => {
     const respConfig = {
       isApprover: false
@@ -1646,21 +1662,50 @@ function App() {
     const approvalDoc = settings?.find((setting) => setting?.name === 'approvalConfig')
     const moduleApprovers = approvalDoc?.modules || DEFAULT_APPROVAL_CONFIG.modules
     const moduleApproval = moduleApprovers[module]
-    const canApprove = ![null, undefined].includes(moduleApproval?.approverIds?.[approverId])
-    if (canApprove) {
-      const approverSections = moduleApproval?.approverIds?.[approverId].sections
-      if (approverSections.includes('all') || approverSections.includes(section)) {
+    // The approver list is typed by hand on the Approval Rules tab, so a
+    // user ID entered as "Sales" has to match the account "sales", with or
+    // without a stray space. An exact-key lookup silently left such a user
+    // out, and they kept being asked to request approval.
+    const wanted = String(approverId || '').trim().toLowerCase()
+    const listedKey = wanted ? Object.keys(moduleApproval?.approverIds || {}).find((key) => String(key).trim().toLowerCase() === wanted) : undefined
+    const listed = listedKey !== undefined ? moduleApproval.approverIds[listedKey] : null
+    const sectionWanted = String(section || '').toLowerCase()
+    if (listed) {
+      const approverSections = (Array.isArray(listed.sections) ? listed.sections : ['all']).map((entry) => String(entry).toLowerCase())
+      if (approverSections.includes('all') || approverSections.includes(sectionWanted)) {
         respConfig.isApprover = true
         const approvalType = moduleApproval.type
         const finalLevel = moduleApproval.finalLevel
-        const approverLevel = moduleApproval.approverIds?.[approverId][approvalType]
+        const approverLevel = listed[approvalType]
         respConfig.approverLevel = approverLevel
         respConfig.finalLevel = finalLevel
       }
     }
 
+    // Someone not on the list can still hold the authority another way: as
+    // an admin, through the 'all' permission, or through the Approval
+    // Authority checkbox for this very posting on Team Access
+    // (approve_postpurchase for section postPurchase, and so on). Those
+    // checkboxes used to change only what a button said, so a user could be
+    // shown "Post" and still have a request sent, or the other way round.
+    // They are given the final level, since none of these has a rank.
+    const isSelf = wanted && wanted === String(companyRecord?.emailid || '').trim().toLowerCase()
+    if (!respConfig.isApprover && isSelf && moduleApproval) {
+      const held = (companyRecord?.permissions || []).map((entry) => String(entry).toLowerCase())
+      if (companyRecord?.status === 'admin' || held.includes('all') || held.includes(`approve_${sectionWanted}`)) {
+        respConfig.isApprover = true
+        respConfig.approverLevel = moduleApproval.finalLevel
+        respConfig.finalLevel = moduleApproval.finalLevel
+      }
+    }
+
     return respConfig
   }
+
+  // Whether the signed-in user posts this kind of transaction directly. The
+  // screens use it for what their button says, so the wording and what the
+  // button then does come from the same answer.
+  const canApproveSection = (module, section) => getApprovalConfig(module, section, companyRecord?.emailid).isApprover
 
   const postApprovalUpdate = async (company, module, section, curApproval) => {
     const { isApprover, approverLevel, finalLevel } = getApprovalConfig(module, section, companyRecord?.emailid)
@@ -4241,7 +4286,7 @@ function App() {
         tables, setTables, fetchTables,
 
         approvals, setApprovals, getApprovals,
-        runApprovalWorkFlow, requestApproval, postApprovalUpdate,
+        runApprovalWorkFlow, requestApproval, postApprovalUpdate, canApproveSection,
         updateApproval, removeApproval,
         approvalStatus, setApprovalStatus,
         approvalMessage, setApprovalMessage,
@@ -4266,7 +4311,7 @@ function App() {
         settings, setSettings, getSettings,
         settingsLoadState,
         colSettings, setColSettings,
-        posSettings, setPosSettings,
+        posSettings, setPosSettings, sessionManagerRequired,
         paymentMethods, setPaymentMethods,
         wrhs, setWrhs,
         recoveryVal, setRecoveryVal,
