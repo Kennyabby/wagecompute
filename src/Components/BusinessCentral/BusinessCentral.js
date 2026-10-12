@@ -9,6 +9,7 @@ import BCDashboard from './BCDashboard'
 import BCReports from './BCReports'
 import BCTransactions from './BCTransactions'
 import BCBankStatement from './BCBankStatement'
+import BCEInvoice from './BCEInvoice'
 import BCChanges from './BCChanges'
 import BCSync from './BCSync'
 import BCLive from './BCLive'
@@ -345,6 +346,7 @@ const BusinessCentral = () => {
         { key: 'transactions', label: 'Transactions' },
         { key: 'reports', label: 'Reports' },
         { key: 'bank', label: 'Bank statements' },
+        { key: 'einvoice', label: 'E-Invoicing' },
         // The change log compares Business Central with a stored copy, so it
         // only exists when there is one.
         ...(stored ? [{ key: 'changes', label: 'Changes' }] : []),
@@ -408,6 +410,9 @@ const BusinessCentral = () => {
                         {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} />}
                     </>
                 )}
+                {/* Works from its own staging records, so it does not wait for the live reading the reports need. */}
+                {activeTab === 'einvoice' && !notDiscovered && <BCEInvoice api={api} canManage={canManage} notify={notify} />}
+                {activeTab === 'einvoice' && notDiscovered && <div className='bc-banner bc-banner-info'>Finish the Business Central connection first. E-invoicing reads posted invoices through it.</div>}
                 {activeTab === 'changes' && <BCChanges api={api} datasets={datasets} lastSyncedAt={lastSyncedAt} onGoTo={setTab} />}
                 {activeTab === 'data' && stored && (
                     <BCSync

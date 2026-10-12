@@ -5,6 +5,7 @@ import BusinessCentral from './BusinessCentral'
 // The PDF library needs browser features the test environment lacks, and
 // nothing here exports a file.
 jest.mock('../../utils/exportUtils', () => ({ generatePDF: jest.fn(), generateExcel: jest.fn() }))
+jest.mock('./bcEinvFiles', () => ({ downloadTemplate: jest.fn(), printInvoice: jest.fn(), readSpreadsheet: jest.fn() }))
 
 // The server, reduced to what the module's shell asks of it. `live` is what
 // the next look at Business Central will report.
