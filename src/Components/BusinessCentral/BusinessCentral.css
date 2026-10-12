@@ -369,3 +369,44 @@ button.bc-th-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transfo
     .bc-field, .bc-field-range, .bc-field-narrow { max-width: none; flex-basis: 100%; }
     .bc-filter-bar { padding: var(--space-4); }
 }
+
+/* ---- E-invoicing ---- */
+.bc-einv { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.bc-einv-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
+.bc-einv-tile {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--space-3) var(--space-4);
+    background: var(--brand-card); border: 1px solid var(--brand-border); border-left-width: 4px; border-radius: var(--radius-md);
+}
+.bc-einv-tile strong { font-size: var(--font-xl, 1.4rem); line-height: 1.2; }
+.bc-einv-tile-needsAttention, .bc-einv-tile-failed { border-left-color: var(--color-warning); }
+.bc-einv-tile-rejected { border-left-color: var(--color-error); }
+.bc-einv-tile-ready { border-left-color: var(--color-info); }
+.bc-einv-tile-signed { border-left-color: var(--color-success); }
+.bc-einv-tile-excluded { border-left-color: var(--gray-300); }
+.bc-einv-status { display: inline-block; padding: 2px var(--space-2); border-radius: 999px; font-size: var(--font-xs); font-weight: 700; white-space: nowrap; background: var(--gray-100); color: var(--gray-700); }
+.bc-einv-status-needsAttention, .bc-einv-status-failed { background: var(--color-warning-bg); color: var(--color-warning); }
+.bc-einv-status-rejected { background: var(--color-error-bg); color: var(--color-error); }
+.bc-einv-status-ready, .bc-einv-status-sending { background: var(--color-info-bg); color: var(--color-info); }
+.bc-einv-status-signed { background: var(--color-success-bg); color: var(--color-success); }
+.bc-einv-toolbar, .bc-einv-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.bc-einv-form, .bc-einv-gap-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+/* Long reasons wrap inside their cell, so the table never pushes wider than the card. */
+.bc-einv-reason { min-width: 220px; max-width: 460px; white-space: normal; overflow-wrap: anywhere; color: var(--brand-text-muted); }
+.bc-einv-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-3); }
+.bc-einv-facts > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; align-items: flex-start; }
+.bc-einv-list { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--font-sm); line-height: 1.5; }
+.bc-einv-gap { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 0; border-top: 1px solid var(--brand-border); }
+.bc-einv-gap-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); }
+.bc-einv-payload { max-height: 360px; overflow: auto; padding: var(--space-3); background: var(--gray-50); border: 1px solid var(--brand-border); border-radius: var(--radius-sm); font-size: var(--font-xs); }
+.bc-einv textarea.bc-input { resize: vertical; font-family: inherit; }
+.bc-einv-live { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--font-sm); color: var(--brand-text-muted); }
+.bc-einv-stamp { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.bc-einv-stamp img { border: 1px solid var(--brand-border); border-radius: var(--radius-sm); background: #fff; }
+.bc-einv-stamp p { flex: 1 1 220px; margin: 0; }
+.bc-einv-switch { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--font-sm); line-height: 1.5; cursor: pointer; }
+.bc-einv-switch input { margin-top: 3px; }
+/* The file input sits inside its button-styled label and is not shown itself. */
+.bc-einv-upload { position: relative; overflow: hidden; }
+.bc-einv-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.bc-einv-entry-line { padding-top: var(--space-3); border-top: 1px solid var(--brand-border); }
+.bc-einv-key { display: inline-block; margin-top: var(--space-1); padding: 2px var(--space-2); background: #fff; border-radius: var(--radius-sm); overflow-wrap: anywhere; user-select: all; }

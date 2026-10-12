@@ -51,5 +51,30 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         getReports: () => call('GET', 'reports'),
         runReport: (key, params) => call('POST', 'reports/run', { key, params }),
         drillReport: (key, params, target) => call('POST', 'reports/drill', { key, params, target }),
+
+        // E-invoicing: posted invoices staged here and tendered to NRS.
+        einvOverview: () => call('GET', 'einvoice/overview'),
+        einvSaveSettings: (settings) => call('POST', 'einvoice/settings', { settings }),
+        einvTestKeys: () => call('POST', 'einvoice/test', {}),
+        einvSource: () => call('GET', 'einvoice/source'),
+        // The heartbeat: has the server look at the ERP for new documents.
+        einvLive: () => call('GET', 'einvoice/live'),
+        einvFetch: (range) => call('POST', 'einvoice/fetch', range),
+        // `source` is 'upload' for a spreadsheet and 'manual' for one typed in.
+        einvImport: (source, documents) => call('POST', 'einvoice/import', { source, documents }),
+        einvPaymentsSync: () => call('POST', 'einvoice/payments/sync', {}),
+        einvPayment: (id, paidTotal) => call('POST', 'einvoice/payment', { id, paidTotal }),
+        einvStamps: () => call('POST', 'einvoice/stamps', {}),
+        einvCreateKey: (name) => call('POST', 'einvoice/apikeys', { name }),
+        einvRemoveKey: (id) => call('POST', 'einvoice/apikeys/remove', { id }),
+        einvDocuments: (query) => call('GET', 'einvoice/documents', query),
+        einvDocument: (id) => call('GET', 'einvoice/document', { id }),
+        // With no ids, everything that is due goes.
+        einvSend: (ids) => call('POST', 'einvoice/send', { ids }),
+        einvExclude: (ids, exclude, reason) => call('POST', 'einvoice/exclude', { ids, exclude, reason }),
+        einvRefresh: (id) => call('POST', 'einvoice/refresh', { id }),
+        einvGaps: () => call('GET', 'einvoice/gaps'),
+        einvSaveMappings: (mappings) => call('POST', 'einvoice/mappings', { mappings }),
+        einvLog: () => call('GET', 'einvoice/log'),
     }
 }
