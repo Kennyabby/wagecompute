@@ -31,6 +31,7 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         cancelSync: () => call('POST', 'sync/cancel', {}),
         getSyncStatus: () => call('GET', 'sync/status'),
         getSyncHistory: () => call('GET', 'sync/history', { limit: 15 }),
+        getSyncStorage: () => call('GET', 'sync/storage'),
         getChanges: (query) => call('GET', 'changes', query),
 
         getLiveStatus: () => call('GET', 'live/status'),
