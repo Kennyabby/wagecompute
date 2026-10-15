@@ -176,7 +176,7 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
                         <div className='bc-th-card'>
                             <span className='bc-th-label'>Possible duplicate sales</span>
                             <strong className='bc-th-value'>{(report.meta.duplicates || 0).toLocaleString()}</strong>
-                            <span className='bc-th-line'>Same document, item, quantity, place, day and customer</span>
+                            <span className='bc-th-line'>Same entry number, document, item, quantity, place, day and customer</span>
                             <span className='bc-th-actions'>
                                 <button type='button' className='bc-button' disabled={!report.meta.duplicates} onClick={() => setDuplicatesOnly((current) => !current)}>
                                     {duplicatesOnly ? 'Show all transactions' : 'Show only these'}

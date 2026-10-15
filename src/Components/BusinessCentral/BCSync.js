@@ -35,6 +35,12 @@ const describeDataset = (config, state, progress) => {
     return { tone: 'ok', text: 'In step with Business Central' }
 }
 
+const megabytes = (bytes) => `${((bytes || 0) / 1048576).toLocaleString(undefined, { maximumFractionDigits: 0 })} MB`
+const summaryLine = (label, state) => {
+    if (!state?.rebuiltAt) return `${label}: not built yet. The next sync builds it, and until then reports add up the entries themselves, which is slower.`
+    return `${label}: up to date as of ${formatDateTime(state.rebuiltAt)}${state.pendingFrom ? `, with entries from ${state.pendingFrom} waiting for the next sync` : ''}.`
+}
+
 const BCSync = ({ api, connection, datasets, status, history, canManage, onStart, onCancel, busy, onGoTo }) => {
     // Re-render once a minute so "5 min ago" keeps moving while the page is open.
     const [, setTick] = useState(0)
@@ -42,6 +48,15 @@ const BCSync = ({ api, connection, datasets, status, history, canManage, onStart
         const timer = setInterval(() => setTick((value) => value + 1), 60000)
         return () => clearInterval(timer)
     }, [])
+
+    // Size and indexes of the stored copy, asked for again after each run.
+    const [storage, setStorage] = useState(null)
+    const lastFinished = connection.lastSyncFinishedAt || 0
+    useEffect(() => {
+        let active = true
+        api.getSyncStorage?.().then((response) => { if (active) setStorage(response.storage) }).catch(() => {})
+        return () => { active = false }
+    }, [api, lastFinished])
 
     const run = status?.run
     const running = !!status?.running
@@ -162,6 +177,25 @@ const BCSync = ({ api, connection, datasets, status, history, canManage, onStart
                     </section>
                 )
             })}
+
+            {storage && (
+                <section className='bc-card'>
+                    <h3>Storage and speed</h3>
+                    <p className='bc-muted'>
+                        The stored copy takes {megabytes(storage.totalStorageBytes)} in the database. Check this against your database plan: a full database stops every sync.
+                    </p>
+                    <ul className='bc-sync-health'>
+                        <li>
+                            {storage.indexes.every((entry) => !entry.missing.length)
+                                ? `All ${storage.indexes.length} stored tables have their indexes.`
+                                : `Tables missing an index (the next sync adds them): ${storage.indexes.filter((entry) => entry.missing.length).map((entry) => `${entry.dataset} (${entry.missing.join(', ')})`).join('; ')}.`}
+                        </li>
+                        <li>{summaryLine('Item summary', storage.summaries.items)}</li>
+                        <li>{summaryLine('G/L summary, which account balances are read from', storage.summaries.generalLedger)}</li>
+                        <li>Largest tables: {storage.largest.map((entry) => `${entry.name.replace(/^BC_?/, '')} ${megabytes(entry.storageBytes)}`).join(', ')}.</li>
+                    </ul>
+                </section>
+            )}
 
             <section className='bc-card'>
                 <h3>Recent runs</h3>
