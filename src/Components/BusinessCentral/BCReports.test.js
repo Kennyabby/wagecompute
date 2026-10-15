@@ -9,6 +9,9 @@ const catalogue = {
     reports: [{ key: 'custom:r1', title: 'Item Sales Customer Wise', domain: 'custom', description: 'Built from Value Entries.', filters: [], available: true, custom: { id: 'r1', createdBy: 'me@test', pinned: true, draft: false } }],
 }
 
+// Where the reader is lives in the address, so each test starts on a clean one.
+beforeEach(() => { window.history.replaceState(null, '', '/business-central') })
+
 test('a built report is only deleted after its name has been typed', async () => {
     const api = { getReports: jest.fn().mockResolvedValue(catalogue), deleteReport: jest.fn().mockResolvedValue({ ok: true }) }
     const notify = jest.fn()

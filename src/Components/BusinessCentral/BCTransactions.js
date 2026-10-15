@@ -20,14 +20,16 @@ const signed = (value) => `${value > 0 ? '+' : ''}${quantity(value)}`
 const cardsFrom = (summary) => [
     { key: 'openingStock', label: 'Opening stock', value: quantity(summary.openingStock), figure: summary.openingStock, lines: [`Cost: ${money(summary.openingStockCost)}`] },
     { key: 'purchases', label: 'Purchases', tone: 'in', value: signed(summary.purchases), figure: summary.purchases, lines: [`Cost: ${money(summary.purchasesCost)}`] },
-    { key: 'sales', label: 'Sales', tone: 'out', value: quantity(summary.sales), figure: summary.sales, lines: [`Value: ${money(summary.salesValue)}`, `Cost of goods sold: ${money(summary.costOfGoodsSold)}`] },
+    { key: 'sales', label: 'Sales', tone: 'out', value: quantity(summary.sales), figure: summary.sales, lines: [`Value: ${money(summary.salesValue)}`, ...(summary.itemCharges ? [`Item charges: ${money(summary.itemCharges)}`] : []), `Cost of goods sold: ${money(summary.costOfGoodsSold)}`] },
     {
         key: 'transfers', label: 'Transfers', value: `${signed(summary.transfersIn)} / ${quantity(summary.transfersOut)}`, figure: summary.transfersIn + summary.transfersOut,
         lines: [`In: ${money(summary.transfersInCost)}`, `Out: ${money(summary.transfersOutCost)}`, `Net: ${money(summary.netTransferCost)}`],
     },
     {
         key: 'adjustments', label: 'Adjustments', value: `${signed(summary.positiveAdjustments)} / ${quantity(summary.negativeAdjustments)}`, figure: summary.positiveAdjustments + summary.negativeAdjustments,
-        lines: [`Positive: ${money(summary.positiveAdjustmentsCost)}`, `Negative: ${money(summary.negativeAdjustmentsCost)}`, `Net: ${money(summary.netAdjustmentCost)}`],
+        lines: [`Positive: ${money(summary.positiveAdjustmentsCost)}`, `Negative: ${money(summary.negativeAdjustmentsCost)}`, `Net: ${money(summary.netAdjustmentCost)}`,
+            // By document class, when classes are named: damages, consumption...
+            ...(summary.adjustmentClasses || []).map((entry) => `${entry.label}: ${money(entry.cost)}`)],
     },
     {
         key: 'production', label: 'Production', value: `${signed(summary.produced)} / ${quantity(summary.consumed)}`, figure: summary.produced + summary.consumed,

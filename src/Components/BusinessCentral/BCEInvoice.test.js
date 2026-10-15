@@ -58,6 +58,9 @@ const makeApi = (overrides = {}) => {
     return { api, calls }
 }
 
+// Where the reader is lives in the address, so each test starts on a clean one.
+beforeEach(() => { window.history.replaceState(null, '', '/business-central') })
+
 const mount = (api, canManage = true) => {
     const alerts = []
     render(<BCEInvoice api={api} canManage={canManage} notify={(type, message) => alerts.push([type, message])} />)
@@ -217,6 +220,28 @@ test('the printed invoice carries the reference and QR code once cleared, and sa
     expect(texts()).toContain('TAX INVOICE (DRAFT)')
     expect(texts().some((text) => /has not been cleared/.test(text))).toBe(true)
     expect(mockDrawn.some(([kind]) => kind === 'image')).toBe(false)
+})
+
+test('the section and the status tab are kept in the address, so a refresh lands on them', async () => {
+    window.history.replaceState(null, '', '/business-central?tab=einvoice&section=invoices&status=ready')
+    const { api, calls } = makeApi()
+    mount(api)
+    const tabs = within(await screen.findByRole('navigation', { name: 'Documents by status' }))
+    expect(tabs.getByRole('button', { name: 'Ready to send (2)' })).toHaveAttribute('aria-current', 'page')
+    await waitFor(() => expect(calls.filter(([name]) => name === 'documents').pop()[1].status).toBe('ready'))
+    fireEvent.click(tabs.getByRole('button', { name: 'Rejected by NRS (0)' }))
+    expect(window.location.search).toBe('?tab=einvoice&section=invoices&status=rejected')
+    // Leaving the list drops its status tab, and keeps the module tab.
+    fireEvent.click(screen.getByRole('button', { name: 'Activity' }))
+    expect(window.location.search).toBe('?tab=einvoice&section=activity')
+})
+
+test('a refresh on a section other than the list opens that section', async () => {
+    window.history.replaceState(null, '', '/business-central?tab=einvoice&section=mapping')
+    const { api } = makeApi()
+    mount(api)
+    expect(await screen.findByText('holds up 4 documents')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fix what is missing (1)' })).toHaveAttribute('aria-current', 'page')
 })
 
 test('someone who is not an admin sees no setup section', async () => {

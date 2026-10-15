@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
@@ -39,7 +39,13 @@ const FinancialSummary = ({ financial, comparedWith, onOpen, onOpenReport }) => 
     // A chart with no cost-of-sales section goes straight from revenue to
     // expenses, and tiles for kinds of cost the chart does not have are left off.
     const cards = FINANCIAL.filter((card) => (financial.hasCostOfSales || (card.key !== 'cogs' && card.key !== 'grossProfit')) && (!card.when || financial[card.when]))
-    const openCard = (card) => (card.link && financial[card.link] ? onOpenReport(financial[card.link].report, financial[card.link].params) : onOpen())
+    // Each tile opens the accounts it is made of. An answer kept from before
+    // tiles had links of their own falls back to the report it used to open.
+    const openCard = (card) => {
+        const target = financial.links?.[card.key] || (card.link && financial[card.link])
+        if (target) onOpenReport(target.report, target.params)
+        else onOpen()
+    }
     return (
         <section className='bc-card bc-financial'>
             <header className='bc-chart-head'>
@@ -62,7 +68,9 @@ const FinancialSummary = ({ financial, comparedWith, onOpen, onOpenReport }) => 
                                 {card.key === 'grossProfit' ? `Margin ${formatValue(financial.grossMargin, 'percent')}` : ''}
                                 {card.key === 'netProfit' ? `Margin ${formatValue(financial.netMargin, 'percent')}` : ''}
                                 {card.cost && value < 0 ? 'A net credit: it adds to profit. ' : ''}
-                                {card.key === 'adjustments' ? 'Click for positive, negative and detail' : ''}
+                                {card.key === 'adjustments' && financial.adjustmentClasses?.length
+                                    ? financial.adjustmentClasses.map((entry) => `${entry.label}: ${Number(entry.amount).toLocaleString(undefined, { maximumFractionDigits: 0 })}`).join('; ')
+                                    : (card.key === 'adjustments' ? 'Click for positive, negative and detail' : '')}
                                 {card.key !== 'grossProfit' && card.key !== 'netProfit' && card.key !== 'adjustments' ? describeChange(financial.change?.[card.key], comparedWith) : ''}
                             </span>
                         </button>
@@ -191,7 +199,76 @@ const MonthlyPerformance = ({ api, monthly, branches }) => {
     )
 }
 
-const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport, onLoaded, onDiscovered }) => {
+const BLOCK_LABELS = {
+    'section:profit': 'Profit for the period',
+    'section:tiles': 'Tiles',
+    'section:mainChart': 'Main chart',
+    'section:monthly': 'Monthly performance',
+    'section:pinned': 'Your pinned reports',
+    'section:charts': 'Other charts',
+    'section:lists': 'Reorder and idle stock lists',
+}
+
+// Everything on the dashboard that can be shown, hidden or moved.
+const allBlocks = (dashboard) => [
+    { group: 'Sections', items: Object.entries(BLOCK_LABELS).map(([id, label]) => ({ id, label })) },
+    { group: 'Tiles', items: (dashboard.kpis || []).map((kpi) => ({ id: `tile:${kpi.key}`, label: kpi.label })) },
+    { group: 'Charts', items: (dashboard.charts || []).map((chart) => ({ id: `chart:${chart.key}`, label: chart.title || chart.key })) },
+]
+
+/**
+ * Lets an admin choose what the dashboard shows and in what order, section
+ * by section, tile by tile and chart by chart. Saved for everyone who opens
+ * this connection's dashboard.
+ */
+const ArrangePanel = ({ blocks, layout, onSave, onClose }) => {
+    const ordered = (items) => [...items].sort((a, b) => {
+        const at = (id) => { const found = (layout.order || []).indexOf(id); return found === -1 ? 1000 + items.findIndex((item) => item.id === id) : found }
+        return at(a.id) - at(b.id)
+    })
+    const [groups, setGroups] = useState(() => blocks.map((block) => ({ ...block, items: ordered(block.items) })))
+    const [hidden, setHidden] = useState(() => new Set(layout.hidden || []))
+    const move = (groupIndex, index, step) => setGroups(groups.map((group, at) => {
+        if (at !== groupIndex) return group
+        const items = [...group.items]
+        const target = index + step
+        if (target < 0 || target >= items.length) return group
+        ;[items[index], items[target]] = [items[target], items[index]]
+        return { ...group, items }
+    }))
+    const toggle = (id) => { const next = new Set(hidden); if (next.has(id)) next.delete(id); else next.add(id); setHidden(next) }
+    return (
+        <section className='bc-card'>
+            <h3>Arrange the dashboard</h3>
+            <p className='bc-muted'>Untick what should not show, and move things up or down. Saved for everyone who opens this dashboard.</p>
+            <div className='bc-arrange'>
+                {groups.map((group, groupIndex) => (
+                    <div key={group.group}>
+                        <h4>{group.group}</h4>
+                        <ul className='bc-arrange-list'>
+                            {group.items.map((item, index) => (
+                                <li key={item.id}>
+                                    <label className='bc-einv-switch'><input type='checkbox' checked={!hidden.has(item.id)} onChange={() => toggle(item.id)} /><span>{item.label}</span></label>
+                                    <span className='bc-arrange-moves'>
+                                        <button type='button' className='bc-button' aria-label={`Move ${item.label} up`} disabled={index === 0} onClick={() => move(groupIndex, index, -1)}>Up</button>
+                                        <button type='button' className='bc-button' aria-label={`Move ${item.label} down`} disabled={index === group.items.length - 1} onClick={() => move(groupIndex, index, 1)}>Down</button>
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+            </div>
+            <div className='bc-einv-actions'>
+                <button type='button' className='bc-button bc-button-primary' onClick={() => onSave({ hidden: [...hidden], order: groups.flatMap((group) => group.items.map((item) => item.id)) })}>Save the layout</button>
+                <button type='button' className='bc-button' onClick={() => onSave({ hidden: [], order: [] })}>Back to the standard layout</button>
+                <button type='button' className='bc-button' onClick={onClose}>Cancel</button>
+            </div>
+        </section>
+    )
+}
+
+const BCDashboard = ({ api, lookups, lastSyncedAt, syncedAt, live, canManage, onOpenReport, onLoaded, onDiscovered }) => {
     const filters = [
         { key: 'dateRange', type: 'dateRange', label: 'Period' },
         { key: 'locations', type: 'multi', label: 'Location', lookup: 'locations' },
@@ -203,6 +280,30 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
     const [error, setError] = useState('')
     const { preparing, updating, awaitData } = usePreparingRetry()
     const [discovering, setDiscovering] = useState(false)
+    // Which blocks, tiles and charts show, and in what order, as an admin
+    // arranged them. Empty means the dashboard as it comes.
+    const [layout, setLayout] = useState({ hidden: [], order: [] })
+    const [arranging, setArranging] = useState(false)
+    useEffect(() => {
+        let active = true
+        api.getDashboardLayout?.().then((response) => { if (active && response?.layout) setLayout(response.layout) }).catch(() => {})
+        return () => { active = false }
+    }, [api])
+    const saveLayout = async (next) => {
+        try {
+            const response = await api.saveDashboardLayout(next)
+            setLayout(response.layout)
+            setArranging(false)
+        } catch (failure) {
+            setError(failure.message)
+        }
+    }
+    const hidden = new Set(layout.hidden || [])
+    const rank = (id, fallback) => { const at = (layout.order || []).indexOf(id); return at === -1 ? 1000 + fallback : at }
+    const visible = (list, kind) => (list || []).map((entry, index) => ({ entry, index })).filter(({ entry }) => !hidden.has(`${kind}:${entry.key}`))
+        .sort((a, b) => rank(`${kind}:${a.entry.key}`, a.index) - rank(`${kind}:${b.entry.key}`, b.index)).map(({ entry }) => entry)
+    const orderBlocks = (blocks) => blocks.map((block, index) => ({ ...block, index })).filter((block) => !hidden.has(block.id) && block.node)
+        .sort((a, b) => rank(a.id, a.index) - rank(b.id, b.index)).map((block) => <Fragment key={block.id}>{block.node}</Fragment>)
     const [discoverNote, setDiscoverNote] = useState('')
 
     const load = useCallback(async (params) => {
@@ -254,7 +355,7 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
         <div className='bc-page'>
             <BCFilterBar filters={filters} values={values} onChange={setValues} lookups={lookups} onSubmit={() => load(values)} submitLabel='Apply' busy={loading} />
             <p className='bc-muted bc-data-age'>
-                {live ? 'Read live from Business Central.' : `Data as of the last sync: ${formatAgo(lastSyncedAt)}.`}
+                {live ? 'Read live from Business Central.' : `Data as of the last sync: ${formatAgo(syncedAt)}.`}
                 {' '}Click a tile or a chart to open the report behind it.
             </p>
 
@@ -296,14 +397,20 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
 
             {dashboard && (dashboard.notes || []).map((note) => <div key={note} className='bc-banner bc-banner-info'>{note}</div>)}
 
-            {dashboard?.financial && (
-                <FinancialSummary financial={dashboard.financial} comparedWith={dashboard.comparedWith} onOpen={() => onOpenReport(dashboard.financial.link.report, dashboard.financial.link.params)} onOpenReport={onOpenReport} />
+            {canManage && dashboard && (
+                <div className='bc-einv-actions'>
+                    <button type='button' className='bc-button' aria-expanded={arranging} onClick={() => setArranging(!arranging)}>{arranging ? 'Close arranging' : 'Arrange dashboard'}</button>
+                </div>
             )}
+            {arranging && dashboard && <ArrangePanel blocks={allBlocks(dashboard)} layout={layout} onSave={saveLayout} onClose={() => setArranging(false)} />}
 
-            {dashboard && (
-                <>
+            {dashboard && orderBlocks([
+                { id: 'section:profit', node: dashboard.financial ? (
+                <FinancialSummary financial={dashboard.financial} comparedWith={dashboard.comparedWith} onOpen={() => onOpenReport(dashboard.financial.link.report, dashboard.financial.link.params)} onOpenReport={onOpenReport} />
+                ) : null },
+                { id: 'section:tiles', node: (
                     <StatCardGrid min={170}>
-                        {dashboard.kpis.map((kpi) => {
+                        {visible(dashboard.kpis, 'tile').map((kpi) => {
                             const card = (
                                 <StatCard
                                     label={kpi.label}
@@ -320,18 +427,16 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
                             ) : <div key={kpi.key}>{card}</div>
                         })}
                     </StatCardGrid>
-
-                    {/* The order down the page: the main trend, the year month by
-                        month, then what people built and pinned, then the
-                        other charts. */}
-                    {dashboard.charts.slice(0, 1).map((chart) => (
+                ) },
+                // The order down the page, unless an admin arranged it: the
+                // main trend, the year month by month, pinned reports, then
+                // the other charts and the lists.
+                { id: 'section:mainChart', node: visible(dashboard.charts, 'chart').slice(0, 1).map((chart) => (
                         <BCChart key={chart.key} chart={chart} onOpen={chart.link ? () => onOpenReport(chart.link.report, chart.link.params) : undefined} />
-                    ))}
-
-                    {/* Keyed by when the dashboard was built, so a reload starts it again on the dashboard's own year. */}
-                    {dashboard.monthly && <MonthlyPerformance key={dashboard.generatedAt || 'monthly'} api={api} monthly={dashboard.monthly} branches={dashboard.params?.branches || []} />}
-
-                    {(dashboard.pinned || []).length > 0 && (
+                    )) },
+                // Keyed by when the dashboard was built, so a reload starts it again on the dashboard's own year.
+                { id: 'section:monthly', node: dashboard.monthly ? <MonthlyPerformance key={dashboard.generatedAt || 'monthly'} api={api} monthly={dashboard.monthly} branches={dashboard.params?.branches || []} /> : null },
+                { id: 'section:pinned', node: (dashboard.pinned || []).length > 0 && (
                         <section className='bc-pinned'>
                             <h3>Your reports</h3>
                             {dashboard.pinned.map((pinned) => (
@@ -351,16 +456,15 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
                                 </div>
                             ))}
                         </section>
-                    )}
-
-                    {dashboard.charts.length > 1 && (
+                    ) },
+                { id: 'section:charts', node: visible(dashboard.charts, 'chart').length > 1 && (
                         <div className='bc-chart-grid'>
-                            {dashboard.charts.slice(1).map((chart) => (
+                            {visible(dashboard.charts, 'chart').slice(1).map((chart) => (
                                 <BCChart key={chart.key} chart={chart} onOpen={chart.link ? () => onOpenReport(chart.link.report, chart.link.params) : undefined} />
                             ))}
                         </div>
-                    )}
-
+                    ) },
+                { id: 'section:lists', node: (
                     <div className='bc-chart-grid'>
                         <section className='bc-card'>
                             <header className='bc-chart-head'>
@@ -409,8 +513,8 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, live, canManage, onOpenReport
                             )}
                         </section>
                     </div>
-                </>
-            )}
+                ) },
+            ])}
         </div>
     )
 }
