@@ -1,4 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import BCCustomise from './BCCustomise'
+import { useUrlState } from './bcUrl'
 import ContextProvider from '../../Resources/ContextProvider'
 import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
@@ -39,7 +41,7 @@ const describeRow = (columns, row) => columns
     .map((column) => row[column.key])
     .join(', ')
 
-const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset }) => {
+const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset, canManage, onChanged, notify }) => {
     const context = useContext(ContextProvider)
     const { setAlert, setAlertState, setAlertTimeout } = context
     const [drill, setDrill] = useState(null)
@@ -48,7 +50,9 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
     // for are taken.
     const [values, setValues] = useState(() => {
         const initial = initialFilterValues(definition.filters)
-        Object.entries(preset || {}).forEach(([key, value]) => {
+        // Starting values this workspace saved for the report, then whatever
+        // the report was opened with.
+        Object.entries({ ...(definition.savedDefaults || {}), ...(preset || {}) }).forEach(([key, value]) => {
             if (key in initial && value !== undefined && value !== null) initial[key] = value
         })
         return initial
@@ -57,6 +61,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [exporting, setExporting] = useState('')
+    const [customising, setCustomising] = useState(false)
     const { preparing, updating, awaitData } = usePreparingRetry()
 
     const run = useCallback(async (params) => {
@@ -122,10 +127,13 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                     <p className='bc-muted'>{definition.description}</p>
                 </div>
                 <div className='bc-actions'>
+                    {canManage && !definition.custom && <button type='button' className='bc-button' aria-expanded={customising} onClick={() => setCustomising(!customising)}>Customise</button>}
                     <button type='button' className='bc-button' disabled={!report?.rows.length || !!exporting} onClick={() => exportReport('excel')}>{exporting === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
                     <button type='button' className='bc-button' disabled={!report?.rows.length || !!exporting} onClick={() => exportReport('pdf')}>{exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
                 </div>
             </div>
+
+            {customising && report && <BCCustomise api={api} definition={definition} report={report} values={values} notify={notify || (() => {})} onClose={() => setCustomising(false)} onSaved={() => { setCustomising(false); if (onChanged) onChanged(); run(values) }} />}
 
             <BCFilterBar filters={filters} values={values} onChange={setValues} lookups={lookups} onSubmit={() => run(values)} busy={loading} />
 
@@ -215,13 +223,36 @@ export const DeleteReportDialog = ({ report, busy, onConfirm, onCancel }) => {
     )
 }
 
-const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded, notify = () => {} }) => {
+const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded, notify = () => {}, canManage = false }) => {
     const [catalogue, setCatalogue] = useState(null)
     const [error, setError] = useState('')
     const [search, setSearch] = useState('')
     // The builder: null when closed, { saved } while a report is being made
     // or edited. `version` makes the list load again after a save or delete.
-    const [building, setBuilding] = useState(null)
+    // Which one is open is kept in the address ("new", or the saved report's
+    // id), so a refresh reopens it.
+    const [building, setBuildingState] = useState(null)
+    const [builderInUrl, setBuilderInUrl] = useUrlState('builder', '')
+    const setBuilding = useCallback((next) => {
+        setBuildingState(next)
+        setBuilderInUrl(next ? (next.saved?.id || 'new') : '')
+    }, [setBuilderInUrl])
+    useEffect(() => {
+        if (!builderInUrl) { setBuildingState(null); return undefined }
+        if (builderInUrl === 'new') { setBuildingState((current) => current || {}); return undefined }
+        if (building?.saved?.id === builderInUrl) return undefined
+        let active = true
+        api.getSavedReports()
+            .then((response) => {
+                if (!active) return
+                const saved = response.reports.find((entry) => entry.id === builderInUrl)
+                if (saved) setBuildingState({ saved })
+                else setBuilderInUrl('')
+            })
+            .catch(() => { if (active) setBuilderInUrl('') })
+        return () => { active = false }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [api, builderInUrl])
     const [version, setVersion] = useState(0)
 
     useEffect(() => {
@@ -274,7 +305,7 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
     }
 
     if (selected) {
-        return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} />
+        return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} canManage={canManage} notify={notify} onChanged={() => setVersion((current) => current + 1)} />
     }
 
     const needle = search.trim().toLowerCase()

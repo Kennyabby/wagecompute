@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatAgo, formatDateTime, formatValue, todayString } from './bcFormat'
 import { downloadTemplate, printInvoice, readSpreadsheet } from './bcEinvFiles'
+import { useUrlState } from './bcUrl'
 
 // How often the page asks the server to look at the ERP for new documents.
 const LIVE_POLL_MS = 45000
@@ -202,7 +203,7 @@ const LiveStrip = ({ live }) => {
 }
 
 const Invoices = ({ api, counts, onCounts, notify, onGoTo, ready }) => {
-    const [status, setStatus] = useState('needsAttention')
+    const [status, setStatus] = useUrlState('status', 'needsAttention')
     const [search, setSearch] = useState('')
     const [page, setPage] = useState(1)
     const [list, setList] = useState({ documents: [], total: 0, pageSize: 50 })
@@ -707,7 +708,9 @@ const Activity = ({ api }) => {
 const BCEInvoice = ({ api, canManage, notify }) => {
     const [overview, setOverview] = useState(null)
     const [error, setError] = useState('')
-    const [section, setSection] = useState('invoices')
+    const [section, setSectionInUrl] = useUrlState('section', 'invoices')
+    // The status tab belongs to the invoice list and is dropped on leaving it.
+    const setSection = useCallback((next) => setSectionInUrl(next, { status: '' }), [setSectionInUrl])
     const [counts, setCounts] = useState(null)
 
     const load = useCallback(async () => {

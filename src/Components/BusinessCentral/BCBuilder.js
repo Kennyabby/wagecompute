@@ -398,6 +398,8 @@ const BCBuilder = ({ api, saved = null, onSaved, onClose, notify }) => {
         </select>
     )
     const limits = { ...LIMITS, ...(schema?.limits || {}) }
+    // Names from the Connection tab, offered for "is in document class".
+    const classNames = schema?.documentClasses
     const joins = schema?.joins || JOINS
 
     // One test on one field: the field, the test, the value, and a list of
@@ -413,7 +415,7 @@ const BCBuilder = ({ api, saved = null, onSaved, onClose, notify }) => {
                         {Object.entries(schema.operators).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                     </select>
                     {!NO_VALUE.includes(test.operator) && (
-                        <input className='bc-input' value={test.value || ''} onChange={(event) => set({ value: event.target.value })} placeholder={typeOf(page, test.field) === 'date' ? '2026-09-30' : (['in', 'notin'].includes(test.operator) ? 'Values, with commas between' : 'Value')} aria-label={`${named_} value`} />
+                        <input className='bc-input' value={test.value || ''} onChange={(event) => set({ value: event.target.value })} placeholder={typeOf(page, test.field) === 'date' ? '2026-09-30' : (['inclass', 'notinclass'].includes(test.operator) ? `Classes: ${(classNames || []).join(', ') || 'name them on the Connection tab first'}` : (['in', 'notin'].includes(test.operator) ? 'Values, with commas between' : 'Value'))} aria-label={`${named_} value`} />
                     )}
                     {source && <button type='button' className='bc-button' aria-expanded={picking === id} onClick={() => setPicking(picking === id ? '' : id)}>Pick values</button>}
                     <button type='button' className='bc-link-button' onClick={onRemove}>Remove</button>

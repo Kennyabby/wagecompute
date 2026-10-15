@@ -14,6 +14,8 @@ import BCChanges from './BCChanges'
 import BCSync from './BCSync'
 import BCLive from './BCLive'
 import BCConnection from './BCConnection'
+import BCDocClasses from './BCDocClasses'
+import { SUB_KEYS, updateUrl, useUrlState } from './bcUrl'
 
 const POLL_MS = 5000
 // How often Business Central is looked at for changes while the module is open.
@@ -54,13 +56,24 @@ const BusinessCentral = () => {
     const [dataVersion, setDataVersion] = useState(0)
     const seenChange = useRef(null)
 
-    const [tab, setTab] = useState('dashboard')
+    // The tab and the open report live in the address, so a refresh lands
+    // where the reader was. Moving to another tab drops what belonged to the
+    // one left (its report, its section).
+    const [tab, setTabInUrl] = useUrlState('tab', 'dashboard')
+    const setTab = useCallback((next) => setTabInUrl(next, SUB_KEYS), [setTabInUrl])
     const [info, setInfo] = useState(null)
     const [status, setStatus] = useState(null)
     const [history, setHistory] = useState([])
     const [lookups, setLookups] = useState(null)
-    const [reportKey, setReportKey] = useState(null)
-    const [reportPreset, setReportPreset] = useState(null)
+    const [reportInUrl] = useUrlState('report', '')
+    const reportKey = reportInUrl || null
+    // The filters a report was opened with (from a dashboard tile, say) are
+    // kept in the address with it, so a refresh opens it the same way.
+    const [presetInUrl] = useUrlState('preset', '')
+    const reportPreset = useMemo(() => {
+        if (!presetInUrl) return null
+        try { return { values: JSON.parse(presetInUrl), stamp: presetInUrl } } catch (failure) { return null }
+    }, [presetInUrl])
     const [loadError, setLoadError] = useState('')
     const [busy, setBusy] = useState(false)
     const wasRunning = useRef(false)
@@ -148,9 +161,7 @@ const BusinessCentral = () => {
         setInfo(null)
         setLookups(null)
         setStatus(null)
-        setReportKey(null)
-        setReportPreset(null)
-        setTab('dashboard')
+        updateUrl({ tab: '', ...SUB_KEYS })
         setConnectionId(next)
     }
 
@@ -222,6 +233,33 @@ const BusinessCentral = () => {
         }
     }
 
+    // Builds every stored summary again and drops kept answers, then has
+    // every page load again.
+    const rebuild = async () => {
+        setBusy('rebuild')
+        try {
+            await api.rebuildSummaries()
+            notify('success', 'Summaries rebuilt. The figures on every page are worked out again.')
+            setDataVersion((version) => version + 1)
+        } catch (failure) {
+            notify('error', failure.message)
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const readAgain = async () => {
+        setBusy(true)
+        try {
+            await api.refreshLive()
+            notify('info', 'Reading everything from Business Central again. The figures follow as it finishes.')
+        } catch (failure) {
+            notify('error', failure.message)
+        } finally {
+            setBusy(false)
+        }
+    }
+
     const cancelSync = async () => {
         setBusy(true)
         try {
@@ -238,11 +276,10 @@ const BusinessCentral = () => {
     // `preset` is the set of filters to open the report with. The stamp makes
     // the same report open afresh when it is reached again with other filters.
     const openReport = (key, preset) => {
-        setReportPreset(preset ? { values: preset, stamp: Date.now() } : null)
-        setReportKey(key)
-        setTab('reports')
+        // One step in the history, so Back returns to where the report was opened from.
+        updateUrl({ ...SUB_KEYS, tab: 'reports', report: key, preset: preset ? JSON.stringify(preset) : '' })
     }
-    const pickReport = (key) => { setReportPreset(null); setReportKey(key) }
+    const pickReport = (key) => updateUrl({ report: key || '', preset: '' })
 
     // When reports run live, the list of branches comes from the ledger
     // entries, which have not been read when the page first opens. Once a
@@ -264,7 +301,9 @@ const BusinessCentral = () => {
     const connections = info.connections || []
     // In live mode there is no sync time. The reload signal is the count of
     // changes picked up instead.
-    const lastSyncedAt = stored ? (connection?.lastSyncFinishedAt || 0) : dataVersion
+    // What the pages watch to know the data has changed: a finished sync,
+    // changes picked up live, or summaries rebuilt by hand.
+    const lastSyncedAt = stored ? `${connection?.lastSyncFinishedAt || 0}|${dataVersion}` : dataVersion
 
     const addConnectionPage = (
         <BCConnection
@@ -359,7 +398,7 @@ const BusinessCentral = () => {
     const needsFirstSync = stored && !hasData
 
     let chip = 'Live from Business Central'
-    if (stored) chip = running ? 'Syncing now' : `Synced ${formatAgo(lastSyncedAt).toLowerCase()}`
+    if (stored) chip = running ? 'Syncing now' : `Synced ${formatAgo(connection?.lastSyncFinishedAt || 0).toLowerCase()}`
 
     return (
         <PageShell maxWidth={1400}>
@@ -370,6 +409,12 @@ const BusinessCentral = () => {
                         <p className='bc-muted'>{connection.name && connection.name !== connection.company ? `${connection.name}: ` : ''}{connection.company || 'No company selected'}</p>
                     </div>
                     {switcher}
+                    <div className='bc-header-actions'>
+                        {stored
+                            ? <button type='button' className='bc-button' disabled={busy || running} onClick={() => startSync('incremental')}>{running ? 'Syncing...' : 'Sync now'}</button>
+                            : <button type='button' className='bc-button' disabled={busy} onClick={readAgain}>Read everything again</button>}
+                        {stored && canManage && <button type='button' className='bc-button' disabled={busy || running} title='Builds every summary again from the stored data, so changes in how figures are worked out show at once' onClick={rebuild}>{busy === 'rebuild' ? 'Rebuilding...' : 'Rebuild summaries'}</button>}
+                    </div>
                     <button type='button' className='bc-sync-chip' onClick={() => setTab('data')}>
                         <span className={`bc-dot ${running ? 'bc-dot-live' : ''} ${!stored ? 'bc-dot-on' : ''}`} />
                         {chip}
@@ -404,10 +449,10 @@ const BusinessCentral = () => {
                 )}
                 {wantsData && !notDiscovered && !needsFirstSync && (
                     <>
-                        {activeTab === 'dashboard' && <BCDashboard api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} live={!stored} canManage={canManage} onOpenReport={openReport} onLoaded={onDataLoaded} onDiscovered={refreshAll} />}
+                        {activeTab === 'dashboard' && <BCDashboard api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} syncedAt={connection?.lastSyncFinishedAt || 0} live={!stored} canManage={canManage} onOpenReport={openReport} onLoaded={onDataLoaded} onDiscovered={refreshAll} />}
                         {activeTab === 'transactions' && <BCTransactions api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} onLoaded={onDataLoaded} onGoTo={setTab} />}
                         {activeTab === 'bank' && <BCBankStatement api={api} lookups={lookups} />}
-                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} />}
+                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} canManage={canManage} />}
                     </>
                 )}
                 {/* Works from its own staging records, so it does not wait for the live reading the reports need. */}
@@ -430,6 +475,7 @@ const BusinessCentral = () => {
                 )}
                 {activeTab === 'data' && !stored && <BCLive api={api} canManage={canManage} notify={notify} onGoTo={setTab} />}
                 {activeTab === 'connection' && canManage && connectionPage}
+                {activeTab === 'connection' && canManage && !notDiscovered && <BCDocClasses api={api} notify={notify} />}
             </div>
         </PageShell>
     )

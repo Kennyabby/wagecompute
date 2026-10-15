@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import BCDashboard from './BCDashboard'
 import BCFilterBar from './BCFilterBar'
 
@@ -163,4 +163,59 @@ test('a kept answer is shown at once and replaced when the fresh one arrives', a
     expect(screen.queryByRole('status')).toBeNull()
     expect(api.getDashboard).toHaveBeenCalledTimes(2)
     jest.useRealTimers()
+})
+
+test('each profit tile opens the accounts it is made of, for the same period', async () => {
+    const onOpenReport = jest.fn()
+    const period = { from: '2026-09-01', to: '2026-09-30', branches: [] }
+    const financial = {
+        revenue: 450000, cogs: 180000, grossProfit: 270000, expenses: 600, netProfit: 269400, grossMargin: 60, netMargin: 59.87, hasCostOfSales: true,
+        change: {},
+        link: { report: 'incomeStatement', params: { from: '2026-09-01', to: '2026-09-30' } },
+        links: Object.fromEntries(['revenue', 'cogs', 'grossProfit', 'expenses', 'netProfit'].map((section) => [section, { report: 'accountSection', params: { ...period, section } }])),
+        steps: [],
+    }
+    const api = { getDashboard: jest.fn().mockResolvedValue({ dashboard: { ...dashboard, financial } }) }
+    render(<BCDashboard api={api} lookups={{ hasBranch: false, locations: [] }} live onOpenReport={onOpenReport} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Total expenses/ }))
+    expect(onOpenReport).toHaveBeenLastCalledWith('accountSection', { ...period, section: 'expenses' })
+    fireEvent.click(screen.getByRole('button', { name: /Total revenue/ }))
+    expect(onOpenReport).toHaveBeenLastCalledWith('accountSection', { ...period, section: 'revenue' })
+    fireEvent.click(screen.getByRole('button', { name: /Net profit/ }))
+    expect(onOpenReport).toHaveBeenLastCalledWith('accountSection', { ...period, section: 'netProfit' })
+    // The full statement is still one click away.
+    fireEvent.click(screen.getByRole('button', { name: 'Open income statement' }))
+    expect(onOpenReport).toHaveBeenLastCalledWith('incomeStatement', { from: '2026-09-01', to: '2026-09-30' })
+})
+
+test('an admin arranges the dashboard: a tile hidden, sections reordered, and saved for everyone', async () => {
+    let saved = null
+    const api = {
+        getDashboard: jest.fn().mockResolvedValue({ dashboard }),
+        getDashboardLayout: jest.fn().mockResolvedValue({ layout: { hidden: [], order: [] } }),
+        saveDashboardLayout: jest.fn(async (layout) => { saved = layout; return { layout } }),
+    }
+    render(<BCDashboard api={api} lookups={{ hasBranch: false, locations: [] }} live canManage onOpenReport={() => {}} />)
+    const firstTile = dashboard.kpis[0]
+    expect(await screen.findByText(firstTile.label)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Arrange dashboard' }))
+    // Untick the first tile, and move the lists to the top of the sections.
+    fireEvent.click(screen.getByRole('checkbox', { name: firstTile.label }))
+    for (let step = 0; step < 6; step += 1) fireEvent.click(screen.getByRole('button', { name: 'Move Reorder and idle stock lists up' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save the layout' }))
+    await waitFor(() => expect(saved).not.toBeNull())
+    expect(saved.hidden).toEqual([`tile:${firstTile.key}`])
+    expect(saved.order[0]).toBe('section:lists')
+    // The tile is gone from the page once saved.
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save the layout' })).toBeNull())
+    expect(screen.queryByText(firstTile.label)).toBeNull()
+})
+
+test('someone who is not an admin cannot arrange the dashboard', async () => {
+    const api = { getDashboard: jest.fn().mockResolvedValue({ dashboard }), getDashboardLayout: jest.fn().mockResolvedValue({ layout: { hidden: [], order: [] } }) }
+    render(<BCDashboard api={api} lookups={{ hasBranch: false, locations: [] }} live onOpenReport={() => {}} />)
+    await screen.findByText(dashboard.kpis[0].label)
+    expect(screen.queryByRole('button', { name: 'Arrange dashboard' })).toBeNull()
 })

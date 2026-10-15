@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import ContextProvider from '../../Resources/ContextProvider'
 import BusinessCentral from './BusinessCentral'
 
@@ -43,7 +43,11 @@ const mountModule = (server) => {
     return alerts
 }
 
-beforeEach(() => { window.localStorage.clear() })
+beforeEach(() => {
+    window.localStorage.clear()
+    // Where the reader is lives in the address, so each test starts on a clean one.
+    window.history.replaceState(null, '', '/business-central')
+})
 afterEach(() => { jest.useRealTimers() })
 
 test('connections can be switched, and each request names the one chosen', async () => {
@@ -110,4 +114,77 @@ test('changes found in Business Central are announced and the figures reloaded',
     // The same changes are not announced twice.
     await act(async () => { jest.advanceTimersByTime(46000); await Promise.resolve() })
     expect(alerts).toHaveLength(1)
+})
+
+test('each tab has its own address, a refresh lands on it, and Back returns to the one before', async () => {
+    const server = makeServer()
+    mountModule(server)
+    const tabs = within(await screen.findByRole('navigation', { name: 'Business Central sections' }))
+    expect(tabs.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
+    // The default tab leaves the address clean.
+    expect(window.location.search).toBe('')
+
+    fireEvent.click(tabs.getByRole('button', { name: 'Reports' }))
+    expect(window.location.search).toBe('?tab=reports')
+    fireEvent.click(tabs.getByRole('button', { name: 'E-Invoicing' }))
+    expect(window.location.search).toBe('?tab=einvoice')
+
+    // Back, as the browser does it.
+    act(() => {
+        window.history.replaceState(null, '', '/business-central?tab=reports')
+        window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    expect(tabs.getByRole('button', { name: 'Reports' })).toHaveAttribute('aria-current', 'page')
+})
+
+test('opening the module at a tab address opens that tab', async () => {
+    window.history.replaceState(null, '', '/business-central?tab=bank')
+    const server = makeServer()
+    mountModule(server)
+    const tabs = within(await screen.findByRole('navigation', { name: 'Business Central sections' }))
+    expect(tabs.getByRole('button', { name: 'Bank statements' })).toHaveAttribute('aria-current', 'page')
+})
+
+test('an address with a tab that does not exist falls back to the dashboard', async () => {
+    window.history.replaceState(null, '', '/business-central?tab=nonsense')
+    const server = makeServer()
+    mountModule(server)
+    const tabs = within(await screen.findByRole('navigation', { name: 'Business Central sections' }))
+    expect(tabs.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
+})
+
+test('a report opened with filters keeps them in the address, so a refresh opens it the same way', async () => {
+    window.history.replaceState(null, '', `/business-central?tab=reports&report=accountSection&preset=${encodeURIComponent(JSON.stringify({ from: '2026-09-01', to: '2026-09-30', section: 'expenses' }))}`)
+    const server = makeServer()
+    mountModule(server)
+    const tabs = within(await screen.findByRole('navigation', { name: 'Business Central sections' }))
+    expect(tabs.getByRole('button', { name: 'Reports' })).toHaveAttribute('aria-current', 'page')
+    // Leaving the tab drops the report and its filters together.
+    fireEvent.click(tabs.getByRole('button', { name: 'Dashboard' }))
+    expect(window.location.search).toBe('')
+})
+
+test('document classes are found in the data, then named and saved', async () => {
+    window.history.replaceState(null, '', '/business-central?tab=connection')
+    const server = makeServer()
+    const base = server.fetchServer.getMockImplementation()
+    let saved = null
+    server.fetchServer.mockImplementation(async (method, body, endpoint, ...rest) => {
+        if (endpoint === 'bc/connection/document-classes/discover') return { ok: true, from: '2025-10-15', to: '2026-10-15', classes: [{ prefix: 'IJ', label: 'Adjustment' }], prefixes: [
+            { prefix: 'IJ', items: 40, ledger: 40, amount: 120000, examples: ['IJ0001', 'IJ0002'], currentClass: 'Adjustment' },
+            { prefix: 'DMG', items: 5, ledger: 5, amount: 9000, examples: ['DMG-0001'], currentClass: 'Other' },
+        ] }
+        if (endpoint === 'bc/connection/document-classes') { saved = body.classes; return { ok: true, documentClasses: body.classes } }
+        return base(method, body, endpoint, ...rest)
+    })
+    const alerts = mountModule(server)
+    const damages = await screen.findByLabelText('Class name for DMG')
+    expect(screen.getByLabelText('Class name for IJ')).toHaveValue('Adjustment')
+    fireEvent.change(damages, { target: { value: 'Damages' } })
+    fireEvent.change(screen.getByPlaceholderText('For example DMG'), { target: { value: 'csm' } })
+    fireEvent.change(screen.getByPlaceholderText('For example Damages'), { target: { value: 'Consumption' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save document classes' }))
+    await waitFor(() => expect(saved).toEqual([{ prefix: 'IJ', label: 'Adjustment' }, { prefix: 'DMG', label: 'Damages' }, { prefix: 'CSM', label: 'Consumption' }]))
+    await waitFor(() => expect(alerts.some((message) => /3 document class/.test(message))).toBe(true))
 })

@@ -26,8 +26,16 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         discover: () => call('POST', 'connection/discover', {}),
         saveMapping: (datasets) => call('POST', 'connection/mapping', { datasets }),
         removeConnection: (purge) => call('POST', 'connection/remove', { purge }),
+        discoverDocumentClasses: () => call('GET', 'connection/document-classes/discover'),
+        saveDocumentClasses: (classes) => call('POST', 'connection/document-classes', { classes }),
 
         startSync: (mode, datasets) => call('POST', 'sync/start', { mode, datasets }),
+        rebuildSummaries: () => call('POST', 'sync/rebuild', {}),
+        // Changes to a built-in report, and the dashboard's layout.
+        customiseReport: (key, changes) => call('POST', 'reports/customise', { key, ...changes }),
+        resetReport: (key) => call('POST', 'reports/customise/reset', { key }),
+        getDashboardLayout: () => call('GET', 'dashboard/layout'),
+        saveDashboardLayout: (layout) => call('POST', 'dashboard/layout', { layout }),
         cancelSync: () => call('POST', 'sync/cancel', {}),
         getSyncStatus: () => call('GET', 'sync/status'),
         getSyncHistory: () => call('GET', 'sync/history', { limit: 15 }),
