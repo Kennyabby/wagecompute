@@ -1,3 +1,4 @@
+import { useBCAccess } from './bcAccess'
 import { useCallback, useEffect, useState } from 'react'
 import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
@@ -17,6 +18,7 @@ const describeChange = (change) => [
 ].filter(Boolean).join(', ')
 
 const BCLive = ({ api, canManage, notify, onGoTo }) => {
+    const { can } = useBCAccess()
     const [live, setLive] = useState(null)
     const [busy, setBusy] = useState(false)
 
@@ -85,7 +87,7 @@ const BCLive = ({ api, canManage, notify, onGoTo }) => {
                             </p>
                         )}
                     </div>
-                    <button type='button' className='bc-button bc-button-primary' disabled={busy || loading} onClick={reload}>
+                    <button type='button' className='bc-button bc-button-primary' disabled={!can('sync.run') || busy || loading} onClick={reload}>
                         {loading ? 'Reading...' : 'Reload from Business Central'}
                     </button>
                 </div>

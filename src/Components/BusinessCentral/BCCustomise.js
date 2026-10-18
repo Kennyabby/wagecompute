@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useBCAccess } from './bcAccess'
 
 /**
  * The editor for a report that comes with the module. What the report works
@@ -28,7 +29,13 @@ const emptyCalc = () => ({ key: `calc_${Date.now().toString(36)}${Math.floor(Mat
 
 const BCCustomise = ({ api, definition, report, values, onSaved, onClose, notify }) => {
     const saved = definition.customised || {}
-    const [tab, setTab] = useState('columns')
+    // The parts of the editor this user may change: the report's look, its
+    // reconciliation, or both. The server keeps the other part as it was.
+    const { can } = useBCAccess()
+    const mayEdit = can('reports.edit')
+    const mayReconcile = can('recon.configure')
+    const shownTabs = TABS.filter(([key]) => (key === 'reconcile' ? mayReconcile : mayEdit))
+    const [tab, setTab] = useState(() => shownTabs[0]?.[0] || 'columns')
     // The report's own columns, without the calculated ones the editor adds.
     const ownColumns = useMemo(() => {
         const shown = (report?.columns || []).filter((column) => !column.calculated)
@@ -147,7 +154,7 @@ const BCCustomise = ({ api, definition, report, values, onSaved, onClose, notify
             <p className='bc-muted'>Change how the report shows and what it lets readers do. What it works out does not change, and every change can be undone with "Back to the original". Saved for everyone who opens it in this workspace.</p>
             <label className='bc-field bc-field-wide'><span className='bc-field-label'>Report title</span><input className='bc-input' placeholder={definition.originalTitle || definition.title} value={title} onChange={(event) => setTitle(event.target.value)} /></label>
             <nav className='bc-tabs bc-tabs-inner' aria-label='Parts of the report to edit'>
-                {TABS.map(([key, label]) => <button key={key} type='button' className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>)}
+                {shownTabs.map(([key, label]) => <button key={key} type='button' className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>)}
             </nav>
 
             {tab === 'columns' && (

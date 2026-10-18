@@ -1,3 +1,4 @@
+import { useBCAccess } from './bcAccess'
 import { useEffect, useState } from 'react'
 import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
@@ -42,6 +43,7 @@ const summaryLine = (label, state) => {
 }
 
 const BCSync = ({ api, connection, datasets, status, history, canManage, onStart, onCancel, busy, onGoTo }) => {
+    const { can } = useBCAccess()
     // Re-render once a minute so "5 min ago" keeps moving while the page is open.
     const [, setTick] = useState(0)
     useEffect(() => {
@@ -104,12 +106,12 @@ const BCSync = ({ api, connection, datasets, status, history, canManage, onStart
                     </div>
                     <div className='bc-actions'>
                         {running ? (
-                            <button type='button' className='bc-button bc-button-danger' disabled={busy} onClick={onCancel}>Cancel</button>
+                            can('sync.run') ? <button type='button' className='bc-button bc-button-danger' disabled={busy} onClick={onCancel}>Cancel</button> : null
                         ) : (
                             <>
-                                <button type='button' className='bc-button bc-button-primary' disabled={busy || !usable.length} onClick={() => onStart('incremental')}>Sync now</button>
-                                <button type='button' className='bc-button' disabled={busy || !usable.length} onClick={() => onStart('verify')}>Check for changes</button>
-                                {canManage && <button type='button' className='bc-button' disabled={busy || !usable.length} onClick={() => onStart('full')}>Full reload</button>}
+                                {can('sync.run') && <button type='button' className='bc-button bc-button-primary' disabled={busy || !usable.length} onClick={() => onStart('incremental')}>Sync now</button>}
+                                {can('sync.run') && <button type='button' className='bc-button' disabled={busy || !usable.length} onClick={() => onStart('verify')}>Check for changes</button>}
+                                {can('sync.full') && <button type='button' className='bc-button' disabled={busy || !usable.length} onClick={() => onStart('full')}>Full reload</button>}
                             </>
                         )}
                     </div>

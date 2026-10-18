@@ -15,6 +15,9 @@ import BCSync from './BCSync'
 import BCLive from './BCLive'
 import BCConnection from './BCConnection'
 import BCDocClasses from './BCDocClasses'
+import BCAccessUsers from './BCAccessUsers'
+import BCTransfer from './BCTransfer'
+import { BCAccessProvider, makeAccess } from './bcAccess'
 import { SUB_KEYS, updateUrl, useUrlState } from './bcUrl'
 
 const POLL_MS = 5000
@@ -103,7 +106,8 @@ const BusinessCentral = () => {
 
     const loadSync = useCallback(async () => {
         try {
-            const [current, past] = await Promise.all([api.getSyncStatus(), api.getSyncHistory()])
+            // History is for the Data Sync tab; without it the status still shows.
+            const [current, past] = await Promise.all([api.getSyncStatus(), api.getSyncHistory().catch(() => ({ runs: [] }))])
             setStatus(current)
             setHistory(past.runs)
         } catch (failure) {
@@ -297,7 +301,10 @@ const BusinessCentral = () => {
         return <PageShell maxWidth={1400}><div className='bc-root'><p className='bc-empty'>Loading Business Central Reports...</p></div></PageShell>
     }
 
-    const { connection, datasets, canManage, secretsConfigured } = info
+    const { connection, datasets, secretsConfigured } = info
+    // What this user may do here. The Connection tab is what an admin had.
+    const access = makeAccess(info.access || (info.canManage ? null : { admin: false, tabs: ['dashboard', 'transactions', 'reports', 'bank', 'einvoice', 'changes', 'data'], actions: [], reports: { all: true, custom: true } }))
+    const canManage = access.canTab('connection')
     const connections = info.connections || []
     // In live mode there is no sync time. The reload signal is the count of
     // changes picked up instead.
@@ -359,6 +366,7 @@ const BusinessCentral = () => {
                     {canManage ? connectionPage : (
                         <div className='bc-banner bc-banner-info'>Business Central is not connected yet. An admin needs to set up the connection first.</div>
                     )}
+                    {access.admin && <BCTransfer api={api} connection={null} onChanged={refreshAll} notify={notify} />}
                 </div>
             </PageShell>
         )
@@ -391,8 +399,11 @@ const BusinessCentral = () => {
         ...(stored ? [{ key: 'changes', label: 'Changes' }] : []),
         { key: 'data', label: stored ? 'Data Sync' : 'Data' },
         ...(canManage ? [{ key: 'connection', label: 'Connection' }] : []),
-    ]
-    const activeTab = tabs.some((entry) => entry.key === tab) ? tab : 'dashboard'
+        // Who may do what in the module: for admins.
+        ...(access.admin ? [{ key: 'access', label: 'Access' }] : []),
+    ].filter((entry) => entry.key === 'access' || entry.key === 'connection' || access.canTab(entry.key))
+    // A tab the user may not open falls back to the first one they may.
+    const activeTab = tabs.some((entry) => entry.key === tab) ? tab : (tabs[0]?.key || '')
     const wantsData = ['dashboard', 'reports', 'transactions', 'bank'].includes(activeTab)
     const notDiscovered = !connection.company || !connection.discoveredAt
     const needsFirstSync = stored && !hasData
@@ -401,6 +412,7 @@ const BusinessCentral = () => {
     if (stored) chip = running ? 'Syncing now' : `Synced ${formatAgo(connection?.lastSyncFinishedAt || 0).toLowerCase()}`
 
     return (
+        <BCAccessProvider value={access}>
         <PageShell maxWidth={1400}>
             <div className='bc-root'>
                 <header className='bc-header'>
@@ -410,17 +422,19 @@ const BusinessCentral = () => {
                     </div>
                     {switcher}
                     <div className='bc-header-actions'>
-                        {stored
+                        {access.can('sync.run') && (stored
                             ? <button type='button' className='bc-button' disabled={busy || running} onClick={() => startSync('incremental')}>{running ? 'Syncing...' : 'Sync now'}</button>
-                            : <button type='button' className='bc-button' disabled={busy} onClick={readAgain}>Read everything again</button>}
-                        {stored && canManage && <button type='button' className='bc-button' disabled={busy || running} title='Builds every summary again from the stored data, so changes in how figures are worked out show at once' onClick={rebuild}>{busy === 'rebuild' ? 'Rebuilding...' : 'Rebuild summaries'}</button>}
+                            : <button type='button' className='bc-button' disabled={busy} onClick={readAgain}>Read everything again</button>)}
+                        {stored && access.can('sync.rebuild') && <button type='button' className='bc-button' disabled={busy || running} title='Builds every summary again from the stored data, so changes in how figures are worked out show at once' onClick={rebuild}>{busy === 'rebuild' ? 'Rebuilding...' : 'Rebuild summaries'}</button>}
                     </div>
-                    <button type='button' className='bc-sync-chip' onClick={() => setTab('data')}>
+                    <button type='button' className='bc-sync-chip' disabled={!access.canTab('data')} onClick={() => setTab('data')}>
                         <span className={`bc-dot ${running ? 'bc-dot-live' : ''} ${!stored ? 'bc-dot-on' : ''}`} />
                         {chip}
                     </button>
                 </header>
 
+                {info.moving && <div className='bc-banner bc-banner-info'>This connection is being moved between workspaces. Reports and syncs are held until the move has finished{access.admin ? '; its progress is on the Connection tab' : ''}.</div>}
+                {info.boundElsewhere && <div className='bc-banner bc-banner-error'>{connection.company} now belongs to another workspace, so it cannot be used here. {access.admin ? 'Remove this connection on the Connection tab, or ask that workspace for a transfer code.' : 'Ask an admin.'}</div>}
                 <nav className='bc-tabs' aria-label='Business Central sections'>
                     {tabs.map((entry) => (
                         <button key={entry.key} type='button' className={activeTab === entry.key ? 'active' : ''} aria-current={activeTab === entry.key ? 'page' : undefined} onClick={() => setTab(entry.key)}>
@@ -452,11 +466,11 @@ const BusinessCentral = () => {
                         {activeTab === 'dashboard' && <BCDashboard api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} syncedAt={connection?.lastSyncFinishedAt || 0} live={!stored} canManage={canManage} onOpenReport={openReport} onLoaded={onDataLoaded} onDiscovered={refreshAll} />}
                         {activeTab === 'transactions' && <BCTransactions api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} onLoaded={onDataLoaded} onGoTo={setTab} />}
                         {activeTab === 'bank' && <BCBankStatement api={api} lookups={lookups} />}
-                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} canManage={canManage} />}
+                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} />}
                     </>
                 )}
                 {/* Works from its own staging records, so it does not wait for the live reading the reports need. */}
-                {activeTab === 'einvoice' && !notDiscovered && <BCEInvoice api={api} canManage={canManage} notify={notify} />}
+                {activeTab === 'einvoice' && !notDiscovered && <BCEInvoice api={api} notify={notify} />}
                 {activeTab === 'einvoice' && notDiscovered && <div className='bc-banner bc-banner-info'>Finish the Business Central connection first. E-invoicing reads posted invoices through it.</div>}
                 {activeTab === 'changes' && <BCChanges api={api} datasets={datasets} lastSyncedAt={lastSyncedAt} onGoTo={setTab} />}
                 {activeTab === 'data' && stored && (
@@ -476,8 +490,12 @@ const BusinessCentral = () => {
                 {activeTab === 'data' && !stored && <BCLive api={api} canManage={canManage} notify={notify} onGoTo={setTab} />}
                 {activeTab === 'connection' && canManage && connectionPage}
                 {activeTab === 'connection' && canManage && !notDiscovered && <BCDocClasses api={api} notify={notify} />}
+                {activeTab === 'connection' && access.admin && <BCTransfer api={api} connection={connection} onChanged={refreshAll} notify={notify} />}
+                {activeTab === 'access' && access.admin && <BCAccessUsers api={api} notify={notify} />}
+                {!tabs.length && <div className='bc-banner bc-banner-info'>Your access to Business Central does not include any of its pages yet. An admin can give it on the Access tab.</div>}
             </div>
         </PageShell>
+        </BCAccessProvider>
     )
 }
 

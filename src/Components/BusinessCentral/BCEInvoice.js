@@ -1,3 +1,4 @@
+import { useBCAccess } from './bcAccess'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatAgo, formatDateTime, formatValue, todayString } from './bcFormat'
 import { downloadTemplate, printInvoice, readSpreadsheet } from './bcEinvFiles'
@@ -72,6 +73,7 @@ const reasonOf = (doc) => {
 // ------------------------------------------------------------ Invoices ----
 
 const InvoiceDetail = ({ api, id, onClose, onChanged, notify }) => {
+    const canSend = useBCAccess().can('einvoice.send')
     const [data, setData] = useState(null)
     const [error, setError] = useState('')
     const [busy, setBusy] = useState(false)
@@ -135,17 +137,17 @@ const InvoiceDetail = ({ api, id, onClose, onChanged, notify }) => {
                             {doc.warnings?.length > 0 && <ul className='bc-einv-list bc-muted'>{doc.warnings.map((warning) => <li key={warning.code}>{warning.message}</li>)}</ul>}
 
                             <div className='bc-einv-actions'>
-                                {['ready', 'failed', 'rejected'].includes(doc.status) && doc.payload && <button type='button' className='bc-button bc-button-primary' disabled={busy} onClick={() => act(() => api.einvSend([doc.id]), 'Sent to NRS. See the status above for the answer.')}>{doc.status === 'ready' ? 'Send to NRS' : 'Try again'}</button>}
+                                {canSend && ['ready', 'failed', 'rejected'].includes(doc.status) && doc.payload && <button type='button' className='bc-button bc-button-primary' disabled={busy} onClick={() => act(() => api.einvSend([doc.id]), 'Sent to NRS. See the status above for the answer.')}>{doc.status === 'ready' ? 'Send to NRS' : 'Try again'}</button>}
                                 <button type='button' className='bc-button' onClick={print}>{doc.status === 'signed' ? 'Print stamped invoice' : 'Print draft'}</button>
-                                {doc.status === 'signed' && <button type='button' className='bc-button' disabled={busy} onClick={() => act(() => api.einvRefresh(doc.id))}>Check with NRS</button>}
-                                {!['signed', 'sending', 'excluded'].includes(doc.status) && <button type='button' className='bc-button' disabled={busy} onClick={() => act(() => api.einvExclude([doc.id], true), 'Left out of e-invoicing.')}>Leave out</button>}
-                                {doc.status === 'excluded' && <button type='button' className='bc-button' disabled={busy} onClick={() => act(() => api.einvExclude([doc.id], false), 'Brought back.')}>Bring back</button>}
+                                {canSend && doc.status === 'signed' && <button type='button' className='bc-button' disabled={busy} onClick={() => act(() => api.einvRefresh(doc.id))}>Check with NRS</button>}
+                                {canSend && !['signed', 'sending', 'excluded'].includes(doc.status) && <button type='button' className='bc-button' disabled={busy} onClick={() => act(() => api.einvExclude([doc.id], true), 'Left out of e-invoicing.')}>Leave out</button>}
+                                {canSend && doc.status === 'excluded' && <button type='button' className='bc-button' disabled={busy} onClick={() => act(() => api.einvExclude([doc.id], false), 'Brought back.')}>Bring back</button>}
                             </div>
 
                             {doc.status === 'signed' && doc.docType === 'invoice' && !ownLedger && doc.payment?.status !== 'PAID' && (
                                 <div className='bc-einv-toolbar'>
                                     <label className='bc-field'><span className='bc-field-label'>Total paid so far</span><input className='bc-input' inputMode='decimal' value={paid} onChange={(event) => setPaid(event.target.value)} /></label>
-                                    <button type='button' className='bc-button' disabled={busy || !(Number(paid) > 0)} onClick={() => act(() => api.einvPayment(doc.id, Number(paid)), 'Payment reported to NRS.')}>Report payment</button>
+                                    <button type='button' className='bc-button' disabled={!canSend || busy || !(Number(paid) > 0)} onClick={() => act(() => api.einvPayment(doc.id, Number(paid)), 'Payment reported to NRS.')}>Report payment</button>
                                 </div>
                             )}
 
@@ -203,6 +205,7 @@ const LiveStrip = ({ live }) => {
 }
 
 const Invoices = ({ api, counts, onCounts, notify, onGoTo, ready }) => {
+    const canSend = useBCAccess().can('einvoice.send')
     const [status, setStatus] = useUrlState('status', 'needsAttention')
     const [search, setSearch] = useState('')
     const [page, setPage] = useState(1)
@@ -271,11 +274,11 @@ const Invoices = ({ api, counts, onCounts, notify, onGoTo, ready }) => {
                     <label className='bc-field bc-field-narrow'><span className='bc-field-label'>Show posted from</span><input type='date' className='bc-input' value={range.from} onChange={(event) => { setRange({ ...range, from: event.target.value }); setPage(1) }} /></label>
                     <label className='bc-field bc-field-narrow'><span className='bc-field-label'>To</span><input type='date' className='bc-input' value={range.to} onChange={(event) => { setRange({ ...range, to: event.target.value }); setPage(1) }} /></label>
                     <button type='button' className='bc-button' onClick={() => { setRange({ from: '', to: '' }); setPage(1) }}>All dates</button>
-                    <button type='button' className='bc-button bc-button-primary' disabled={!!busy || !ready || !counts?.ready?.count} title={ready ? '' : 'Finish the setup page first'} onClick={() => run('send', () => api.einvSend(), sentSummary)}>{busy === 'send' ? 'Sending...' : `Send all ready (${counts?.ready?.count || 0})`}</button>
+                    {canSend && <button type='button' className='bc-button bc-button-primary' disabled={!!busy || !ready || !counts?.ready?.count} title={ready ? '' : 'Finish the setup page first'} onClick={() => run('send', () => api.einvSend(), sentSummary)}>{busy === 'send' ? 'Sending...' : `Send all ready (${counts?.ready?.count || 0})`}</button>}
                 </div>
                 <p className='bc-muted'>
                     The dates only choose what is shown. Invoices posted in Business Central arrive here by themselves, whatever period is picked.{' '}
-                    <button type='button' className='bc-link-button' disabled={!!busy} onClick={() => run('fetch', () => api.einvFetch(range), fetchSummary)}>{busy === 'fetch' ? 'Reading...' : 'Read this period again now'}</button>
+                    {canSend && <button type='button' className='bc-link-button' disabled={!!busy} onClick={() => run('fetch', () => api.einvFetch(range), fetchSummary)}>{busy === 'fetch' ? 'Reading...' : 'Read this period again now'}</button>}
                     {' '}to pick up a correction made in Business Central to an invoice that has not been sent.
                 </p>
             </div>
@@ -290,10 +293,10 @@ const Invoices = ({ api, counts, onCounts, notify, onGoTo, ready }) => {
                 </nav>
                 <div className='bc-einv-toolbar'>
                     <input type='search' className='bc-input bc-search' placeholder='Search number, customer or reference' aria-label='Search documents' value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} />
-                    {chosen.length > 0 && sendable && <button type='button' className='bc-button bc-button-primary' disabled={!!busy || !ready} onClick={() => run('send', () => api.einvSend(chosen), sentSummary)}>Send {chosen.length} selected</button>}
-                    {chosen.length > 0 && !['signed', 'excluded'].includes(status) && <button type='button' className='bc-button' disabled={!!busy} onClick={() => run('exclude', () => api.einvExclude(chosen, true), (response) => `${response.changed} document(s) left out.`)}>Leave out {chosen.length}</button>}
-                    {chosen.length > 0 && status === 'excluded' && <button type='button' className='bc-button' disabled={!!busy} onClick={() => run('exclude', () => api.einvExclude(chosen, false), (response) => `${response.changed} document(s) brought back.`)}>Bring back {chosen.length}</button>}
-                    {status === 'needsAttention' && (counts?.needsAttention?.count || 0) > 0 && <button type='button' className='bc-link-button' onClick={() => onGoTo('mapping')}>Fix what is missing</button>}
+                    {canSend && chosen.length > 0 && sendable && <button type='button' className='bc-button bc-button-primary' disabled={!!busy || !ready} onClick={() => run('send', () => api.einvSend(chosen), sentSummary)}>Send {chosen.length} selected</button>}
+                    {canSend && chosen.length > 0 && !['signed', 'excluded'].includes(status) && <button type='button' className='bc-button' disabled={!!busy} onClick={() => run('exclude', () => api.einvExclude(chosen, true), (response) => `${response.changed} document(s) left out.`)}>Leave out {chosen.length}</button>}
+                    {canSend && chosen.length > 0 && status === 'excluded' && <button type='button' className='bc-button' disabled={!!busy} onClick={() => run('exclude', () => api.einvExclude(chosen, false), (response) => `${response.changed} document(s) brought back.`)}>Bring back {chosen.length}</button>}
+                    {canSend && status === 'needsAttention' && (counts?.needsAttention?.count || 0) > 0 && <button type='button' className='bc-link-button' onClick={() => onGoTo('mapping')}>Fix what is missing</button>}
                 </div>
                 {error && <div className='bc-banner bc-banner-error'>{error}</div>}
                 {list.documents.length === 0 && !error ? <p className='bc-empty'>No documents here{search ? ' match the search' : ''}{range.from || range.to ? ' for this period' : ''}.</p> : (
@@ -705,7 +708,11 @@ const Activity = ({ api }) => {
 
 // ---------------------------------------------------------------- Shell ----
 
-const BCEInvoice = ({ api, canManage, notify }) => {
+const BCEInvoice = ({ api, notify }) => {
+    // Setup was for admins; it is now a permission of its own, as is acting on invoices.
+    const { can } = useBCAccess()
+    const canManage = can('einvoice.setup')
+    const canSend = can('einvoice.send')
     const [overview, setOverview] = useState(null)
     const [error, setError] = useState('')
     const [section, setSectionInUrl] = useUrlState('section', 'invoices')
@@ -730,8 +737,10 @@ const BCEInvoice = ({ api, canManage, notify }) => {
     const ready = overview.gaps.filter((gap) => !/QR code/.test(gap)).length === 0
     const sections = [
         { key: 'invoices', label: 'Invoices' },
-        { key: 'mapping', label: `Fix what is missing${counts?.needsAttention?.count ? ` (${counts.needsAttention.count})` : ''}` },
-        { key: 'add', label: 'Add invoices' },
+        ...(canSend ? [
+            { key: 'mapping', label: `Fix what is missing${counts?.needsAttention?.count ? ` (${counts.needsAttention.count})` : ''}` },
+            { key: 'add', label: 'Add invoices' },
+        ] : []),
         { key: 'activity', label: 'Activity' },
         ...(canManage ? [{ key: 'setup', label: 'Setup' }] : []),
     ]

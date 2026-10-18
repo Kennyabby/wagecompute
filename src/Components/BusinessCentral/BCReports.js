@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import BCCustomise from './BCCustomise'
+import { useBCAccess } from './bcAccess'
 import { useUrlState } from './bcUrl'
 import ContextProvider from '../../Resources/ContextProvider'
 import StatCard from '../Shared/ui/StatCard'
@@ -42,7 +43,10 @@ const describeRow = (columns, row) => columns
     .map((column) => row[column.key])
     .join(', ')
 
-const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset, canManage, onChanged, notify }) => {
+const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset, onChanged, notify }) => {
+    const { can } = useBCAccess()
+    // Editing a report covers its look and its reconciliation, each a permission.
+    const mayEdit = can('reports.edit') || can('recon.configure')
     const context = useContext(ContextProvider)
     const { setAlert, setAlertState, setAlertTimeout } = context
     const [drill, setDrill] = useState(null)
@@ -141,9 +145,9 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                     <p className='bc-muted'>{definition.description}</p>
                 </div>
                 <div className='bc-actions'>
-                    {canManage && !definition.custom && <button type='button' className='bc-button' aria-expanded={customising} onClick={() => setCustomising(!customising)}>Edit report</button>}
-                    <button type='button' className='bc-button' disabled={!report?.rows.length || !!exporting} onClick={() => exportReport('excel')}>{exporting === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
-                    <button type='button' className='bc-button' disabled={!report?.rows.length || !!exporting} onClick={() => exportReport('pdf')}>{exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
+                    {mayEdit && !definition.custom && <button type='button' className='bc-button' aria-expanded={customising} onClick={() => setCustomising(!customising)}>Edit report</button>}
+                    <button type='button' className='bc-button' disabled={!can('reports.export') || !report?.rows.length || !!exporting} onClick={() => exportReport('excel')}>{exporting === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
+                    <button type='button' className='bc-button' disabled={!can('reports.export') || !report?.rows.length || !!exporting} onClick={() => exportReport('pdf')}>{exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
                 </div>
             </div>
 
@@ -188,7 +192,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                         />
                     </section>
                     {/* Below the report, since its results can run long. */}
-                    {definition.reconcile && report.rows && <BCReconcile key={`${definition.key}:${JSON.stringify(report.params)}`} api={api} definition={definition} report={report} companyInfo={companyInfoFrom(context)} />}
+                    {definition.reconcile && can('recon.import') && report.rows && <BCReconcile key={`${definition.key}:${JSON.stringify(report.params)}`} api={api} definition={definition} report={report} companyInfo={companyInfoFrom(context)} />}
                 </div>
             )}
             {drill && report && (
@@ -239,7 +243,8 @@ export const DeleteReportDialog = ({ report, busy, onConfirm, onCancel }) => {
     )
 }
 
-const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded, notify = () => {}, canManage = false }) => {
+const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded, notify = () => {} }) => {
+    const { can } = useBCAccess()
     const [catalogue, setCatalogue] = useState(null)
     const [error, setError] = useState('')
     const [search, setSearch] = useState('')
@@ -321,7 +326,7 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
     }
 
     if (selected) {
-        return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} canManage={canManage} notify={notify} onChanged={() => setVersion((current) => current + 1)} />
+        return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} notify={notify} onChanged={() => setVersion((current) => current + 1)} />
     }
 
     const needle = search.trim().toLowerCase()
@@ -337,7 +342,7 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
                     <div className='bc-report-head'>
                         <input className='bc-input bc-search' placeholder='Search reports' value={search} onChange={(event) => setSearch(event.target.value)} aria-label='Search reports' />
                         <div className='bc-actions'>
-                            <button type='button' className='bc-button bc-button-primary' onClick={() => setBuilding({})}>Build a report</button>
+                            {can('builder.use') && <button type='button' className='bc-button bc-button-primary' onClick={() => setBuilding({})}>Build a report</button>}
                         </div>
                     </div>
                     {catalogue.domains.map((domain) => {
@@ -368,8 +373,8 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
                                             <div key={report.key} className='bc-report-own'>
                                                 {card}
                                                 <span className='bc-report-own-actions'>
-                                                    <button type='button' className='bc-link-button' onClick={() => edit(report)}>{report.custom.draft ? 'Continue' : 'Edit'}</button>
-                                                    <button type='button' className='bc-link-button' onClick={() => setToDelete(report)}>Delete</button>
+                                                    {can('builder.use') && <button type='button' className='bc-link-button' onClick={() => edit(report)}>{report.custom.draft ? 'Continue' : 'Edit'}</button>}
+                                                    {can('builder.save') && <button type='button' className='bc-link-button' onClick={() => setToDelete(report)}>Delete</button>}
                                                     {report.custom.createdBy && <span className='bc-muted'>By {report.custom.createdBy}</span>}
                                                 </span>
                                             </div>
