@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import BCEInvoice from './BCEInvoice'
+import { BCAccessProvider, makeAccess } from './bcAccess'
 import { rowsToInvoices, printInvoice } from './bcEinvFiles'
 
 // The PDF and spreadsheet libraries need browser features the test
@@ -61,9 +62,11 @@ const makeApi = (overrides = {}) => {
 // Where the reader is lives in the address, so each test starts on a clean one.
 beforeEach(() => { window.history.replaceState(null, '', '/business-central') })
 
-const mount = (api, canManage = true) => {
+// An admin by default; without it, a user who may work invoices but not the setup.
+const mount = (api, admin = true) => {
     const alerts = []
-    render(<BCEInvoice api={api} canManage={canManage} notify={(type, message) => alerts.push([type, message])} />)
+    const access = makeAccess(admin ? null : { admin: false, tabs: ['einvoice'], actions: ['einvoice.send'], reports: { all: true } })
+    render(<BCAccessProvider value={access}><BCEInvoice api={api} notify={(type, message) => alerts.push([type, message])} /></BCAccessProvider>)
     return alerts
 }
 
@@ -249,6 +252,16 @@ test('someone who is not an admin sees no setup section', async () => {
     mount(api, false)
     await screen.findByRole('navigation', { name: 'E-invoicing sections' })
     expect(screen.queryByRole('button', { name: 'Setup' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Add invoices/ })).toBeInTheDocument()
+})
+
+test('someone who may only look at invoices cannot send or change them', async () => {
+    const { api } = makeApi()
+    render(<BCAccessProvider value={makeAccess({ admin: false, tabs: ['einvoice'], actions: [], reports: { all: true } })}><BCEInvoice api={api} notify={() => {}} /></BCAccessProvider>)
+    await screen.findByRole('navigation', { name: 'E-invoicing sections' })
+    expect(screen.queryByRole('button', { name: /Send all ready/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Add invoices/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Fix what is missing/ })).not.toBeInTheDocument()
 })
 
 test('a document opens with its lines, its reference and what can be done with it', async () => {

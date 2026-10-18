@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ContextProvider from '../../Resources/ContextProvider'
+import { useBCAccess } from './bcAccess'
 import BCDataTable from './BCDataTable'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
@@ -85,7 +86,7 @@ const BCDrillModal = ({ api, report, target, filters, onClose }) => {
     }
 
     const hasRows = breakdown?.rows.length > 0
-    const canExport = hasRows && (!view || view.rows.length > 0)
+    const canExport = useBCAccess().can('reports.export') && hasRows && (!view || view.rows.length > 0)
     const exportHint = view?.filtered ? 'Exports the filtered rows and their totals' : undefined
     // Rendered on the page body, outside the module, so it sits above the
     // side menu and the top banner instead of being cut off by them.

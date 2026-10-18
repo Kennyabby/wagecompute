@@ -460,3 +460,28 @@ button.bc-th-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transfo
 .bc-recon-edit-row .bc-input { min-width: 140px; flex: 0 1 180px; }
 .bc-recon-edit-row .bc-recon-edit-wide { flex: 1 1 280px; }
 .bc-recon-edit-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-1) var(--space-3); }
+
+/* Who may do what in the module */
+.bc-access { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: var(--space-4); align-items: start; }
+@media (max-width: 900px) { .bc-access { grid-template-columns: 1fr; } }
+.bc-access-users { display: flex; flex-direction: column; gap: var(--space-2); }
+.bc-access-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); max-height: 60vh; overflow-y: auto; }
+.bc-access-user { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); border: 1px solid var(--brand-border); border-radius: var(--radius-sm); background: var(--brand-card); cursor: pointer; }
+.bc-access-user.active { border-color: var(--brand-primary); box-shadow: 0 0 0 1px var(--brand-primary); }
+.bc-access-user .bc-status { align-self: flex-start; }
+.bc-access-editor h4 { margin: var(--space-4) 0 var(--space-2); }
+.bc-access-presets { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.bc-access-domains { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-3); margin-top: var(--space-2); }
+.bc-access-domain { border: 1px solid var(--brand-border); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.bc-access-domain legend { padding: 0 var(--space-1); font-weight: 600; }
+.bc-access-group { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
+
+/* Moving a connection between workspaces */
+.bc-transfer { display: flex; flex-direction: column; gap: var(--space-3); }
+.bc-transfer-part { border-top: 1px solid var(--brand-border); padding-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.bc-transfer-part h4 { margin: 0; }
+.bc-transfer-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.bc-transfer-row .bc-input { flex: 0 1 260px; font-family: var(--font-mono, monospace); letter-spacing: 0.08em; }
+.bc-transfer-code { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.bc-transfer-code p { margin: 0; flex-basis: 100%; }
+.bc-transfer-code code { font-size: var(--font-lg, 1.25rem); font-weight: 700; letter-spacing: 0.12em; padding: var(--space-1) var(--space-3); background: var(--brand-card); border-radius: var(--radius-sm); }

@@ -20,6 +20,17 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
 
     return {
         getConnection: () => call('GET', 'connection'),
+        // Who may do what in the module. The list and changes are for admins.
+        getMyAccess: () => call('GET', 'access/me'),
+        // Moving a connection between workspaces, by one-time code.
+        listTransfers: () => call('GET', 'transfer/list'),
+        startTransfer: (options) => call('POST', 'transfer/start', options),
+        cancelTransfer: (id) => call('POST', 'transfer/cancel', { id }),
+        acceptTransfer: (code) => call('POST', 'transfer/accept', { code }),
+        getAccessCatalogue: () => call('GET', 'access/catalogue'),
+        getAccessUsers: () => call('GET', 'access/users'),
+        saveAccess: (email, access) => call('POST', 'access/save', { email, access }),
+        resetAccess: (email) => call('POST', 'access/reset', { email }),
         // `target` is { id: 'new', copyFrom } when adding a connection.
         testConnection: (connection, target = {}) => call('POST', 'connection/test', { connection, ...target }),
         saveConnection: (connection, target = {}) => call('POST', 'connection/save', { connection, ...target }),

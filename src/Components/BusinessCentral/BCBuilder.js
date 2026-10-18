@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import StatCard from '../Shared/ui/StatCard'
+import { useBCAccess } from './bcAccess'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
 import BCChart from './BCChart'
 import BCDataTable from './BCDataTable'
@@ -214,6 +215,8 @@ const ValuePicker = ({ api, source, chosen, onChange, onClose }) => {
  * edited, or null for a new one.
  */
 const BCBuilder = ({ api, saved = null, onSaved, onClose, notify }) => {
+    // Trying a report out is one permission; keeping it is another.
+    const canSave = useBCAccess().can('builder.save')
     const [schema, setSchema] = useState(null)
     const [spec, setSpec] = useState(() => (saved ? opened(saved.spec) : EMPTY))
     // Set once the report exists on the server, as a draft or finished, so
@@ -801,8 +804,8 @@ const BCBuilder = ({ api, saved = null, onSaved, onClose, notify }) => {
                                     </div>
                                     <div className='bc-actions'>
                                         <button type='button' className='bc-button' disabled={!!busy} onClick={preview}>{busy === 'preview' ? 'Running...' : 'Preview'}</button>
-                                        <button type='button' className='bc-button' disabled={!!busy || !spec.name.trim()} title={spec.name.trim() ? 'Keep it as a draft, finished or not, and carry on later' : 'Give the report a name first'} onClick={() => save(true)}>{busy === 'draft' ? 'Saving...' : 'Save progress'}</button>
-                                        <button type='button' className='bc-button bc-button-primary' disabled={!!busy || !spec.name.trim()} title={spec.name.trim() ? '' : 'Give the report a name first'} onClick={() => save(false)}>{busy === 'save' ? 'Saving...' : (saved && !saved.draft ? 'Save changes' : 'Save report')}</button>
+                                        <button type='button' className='bc-button' disabled={!canSave || !!busy || !spec.name.trim()} title={!canSave ? 'Your access does not include saving reports' : spec.name.trim() ? 'Keep it as a draft, finished or not, and carry on later' : 'Give the report a name first'} onClick={() => save(true)}>{busy === 'draft' ? 'Saving...' : 'Save progress'}</button>
+                                        <button type='button' className='bc-button bc-button-primary' disabled={!canSave || !!busy || !spec.name.trim()} title={!canSave ? 'Your access does not include saving reports' : spec.name.trim() ? '' : 'Give the report a name first'} onClick={() => save(false)}>{busy === 'save' ? 'Saving...' : (saved && !saved.draft ? 'Save changes' : 'Save report')}</button>
                                     </div>
                                 </div>
                                 <BCPreparing progress={preparing} />

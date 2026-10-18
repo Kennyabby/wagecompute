@@ -1,3 +1,4 @@
+import { useBCAccess } from './bcAccess'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import StatCard from '../Shared/ui/StatCard'
@@ -269,6 +270,7 @@ const ArrangePanel = ({ blocks, layout, onSave, onClose }) => {
 }
 
 const BCDashboard = ({ api, lookups, lastSyncedAt, syncedAt, live, canManage, onOpenReport, onLoaded, onDiscovered }) => {
+    const { can } = useBCAccess()
     const filters = [
         { key: 'dateRange', type: 'dateRange', label: 'Period' },
         { key: 'locations', type: 'multi', label: 'Location', lookup: 'locations' },
@@ -397,7 +399,7 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, syncedAt, live, canManage, on
 
             {dashboard && (dashboard.notes || []).map((note) => <div key={note} className='bc-banner bc-banner-info'>{note}</div>)}
 
-            {canManage && dashboard && (
+            {can('dashboard.arrange') && dashboard && (
                 <div className='bc-einv-actions'>
                     <button type='button' className='bc-button' aria-expanded={arranging} onClick={() => setArranging(!arranging)}>{arranging ? 'Close arranging' : 'Arrange dashboard'}</button>
                 </div>

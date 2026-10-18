@@ -1,3 +1,4 @@
+import { useBCAccess } from './bcAccess'
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import BCDataTable from './BCDataTable'
@@ -44,6 +45,7 @@ const cardsFrom = (summary) => [
  * items and locations behind them, and the list of transactions.
  */
 const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
+    const canExport = useBCAccess().can('reports.export')
     const context = useContext(ContextProvider)
     const { setAlert, setAlertState, setAlertTimeout } = context
     const [definition, setDefinition] = useState(null)
@@ -202,8 +204,8 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
                                 </p>
                             </div>
                             <div className='bc-actions'>
-                                <button type='button' className='bc-button' disabled={!rows.length || !!exporting} onClick={() => runExport('excel')}>{exporting === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
-                                <button type='button' className='bc-button' disabled={!rows.length || !!exporting} onClick={() => runExport('pdf')}>{exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
+                                <button type='button' className='bc-button' disabled={!canExport || !rows.length || !!exporting} onClick={() => runExport('excel')}>{exporting === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
+                                <button type='button' className='bc-button' disabled={!canExport || !rows.length || !!exporting} onClick={() => runExport('pdf')}>{exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
                             </div>
                         </div>
                         <BCDataTable columns={report.columns} rows={rows} totals={report.totals} filterable manageColumns pageSizes={PAGE_SIZES} onView={onView} />

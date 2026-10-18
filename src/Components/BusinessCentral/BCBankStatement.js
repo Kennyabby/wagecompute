@@ -3,6 +3,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
 import BCDataTable from './BCDataTable'
+import { useBCAccess } from './bcAccess'
 import { companyInfoFrom, exportTable } from './bcExport'
 import { formatValue, todayString } from './bcFormat'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
@@ -41,6 +42,7 @@ const Findings = ({ tone, heading, findings, describeRows }) => (findings.length
  * and only then sent for matching. Nothing is saved on the server.
  */
 const BCBankStatement = ({ api, lookups }) => {
+    const canExport = useBCAccess().can('reports.export')
     const context = useContext(ContextProvider)
     const { setAlert, setAlertState, setAlertTimeout } = context
     const banks = lookups?.banks || []
@@ -286,8 +288,8 @@ const BCBankStatement = ({ api, lookups }) => {
                                 </p>
                             </div>
                             <div className='bc-actions'>
-                                <button type='button' className='bc-button' disabled={!table.rows.length || !!busy} onClick={() => runExport('excel')}>{busy === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
-                                <button type='button' className='bc-button' disabled={!table.rows.length || !!busy} onClick={() => runExport('pdf')}>{busy === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
+                                <button type='button' className='bc-button' disabled={!canExport || !table.rows.length || !!busy} onClick={() => runExport('excel')}>{busy === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
+                                <button type='button' className='bc-button' disabled={!canExport || !table.rows.length || !!busy} onClick={() => runExport('pdf')}>{busy === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
                             </div>
                         </div>
                         <nav className='bc-tabs bc-tabs-inner' aria-label='Results of the match'>

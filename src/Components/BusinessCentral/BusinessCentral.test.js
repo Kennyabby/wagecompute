@@ -20,7 +20,7 @@ const makeServer = () => {
     }
     const fetchServer = jest.fn(async (method, body, endpoint) => {
         state.calls.push({ method, endpoint, connectionId: body?.connectionId || '' })
-        if (endpoint === 'bc/connection') return { ok: true, connection: connectionOf(body?.connectionId), connections: state.connections, datasets: [], secretsConfigured: true, canManage: true, storageMode: 'live' }
+        if (endpoint === 'bc/connection') return { ok: true, connection: connectionOf(body?.connectionId), connections: state.connections, datasets: [], secretsConfigured: true, canManage: !state.access, storageMode: 'live', ...(state.access ? { access: state.access } : {}) }
         if (endpoint === 'bc/lookups') return { ok: true, lookups: { hasBranch: false, branchesKnown: true, items: [], locations: [], categories: [] } }
         if (endpoint === 'bc/dashboard') return { ok: true, dashboard: { comparedWith: { days: 30 }, kpis: [{ key: 'sales', label: `Sales of ${body?.connectionId || 'primary'}`, value: 1, format: 'money' }], charts: [], lists: { lowStock: [], idleStock: [] }, missing: [] } }
         if (endpoint === 'bc/live/status') return { ok: true, live: state.live }
@@ -199,4 +199,22 @@ test('document classes are found in the data, then named and saved', async () =>
     fireEvent.click(screen.getByRole('button', { name: 'Save document classes' }))
     await waitFor(() => expect(saved).toEqual([{ prefix: 'IJ', label: 'Adjustment' }, { prefix: 'DMG', label: 'Damages' }, { prefix: 'CSM', label: 'Consumption' }]))
     await waitFor(() => expect(alerts.some((message) => /3 document class/.test(message))).toBe(true))
+})
+
+test('a user sees only the tabs and buttons their access allows', async () => {
+    const server = makeServer()
+    server.state.access = { admin: false, saved: true, tabs: ['reports'], actions: [], reports: { all: false, custom: false, domains: ['inventory'], keys: [] } }
+    mountModule(server)
+    const tabs = await screen.findByRole('navigation', { name: 'Business Central sections' })
+    expect(within(tabs).getAllByRole('button').map((button) => button.textContent)).toEqual(['Reports'])
+    expect(screen.queryByRole('button', { name: 'Read everything again' })).not.toBeInTheDocument()
+    // The dashboard was asked for by nobody: the user may not open it.
+    expect(server.state.calls.some((call) => call.endpoint === 'bc/dashboard')).toBe(false)
+})
+
+test('an admin gets the Access tab', async () => {
+    const server = makeServer()
+    mountModule(server)
+    const tabs = await screen.findByRole('navigation', { name: 'Business Central sections' })
+    expect(within(tabs).getByRole('button', { name: 'Access' })).toBeInTheDocument()
 })

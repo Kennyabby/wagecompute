@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import BCDashboard from './BCDashboard'
+import { BCAccessProvider, makeAccess } from './bcAccess'
 import BCFilterBar from './BCFilterBar'
 
 // The chart library measures its container, which the test environment has
@@ -213,9 +214,10 @@ test('an admin arranges the dashboard: a tile hidden, sections reordered, and sa
     expect(screen.queryByText(firstTile.label)).toBeNull()
 })
 
-test('someone who is not an admin cannot arrange the dashboard', async () => {
+test('someone not allowed to arrange the dashboard does not see the button', async () => {
     const api = { getDashboard: jest.fn().mockResolvedValue({ dashboard }), getDashboardLayout: jest.fn().mockResolvedValue({ layout: { hidden: [], order: [] } }) }
-    render(<BCDashboard api={api} lookups={{ hasBranch: false, locations: [] }} live onOpenReport={() => {}} />)
+    const viewer = makeAccess({ admin: false, tabs: ['dashboard'], actions: [], reports: { all: true } })
+    render(<BCAccessProvider value={viewer}><BCDashboard api={api} lookups={{ hasBranch: false, locations: [] }} live onOpenReport={() => {}} /></BCAccessProvider>)
     await screen.findByText(dashboard.kpis[0].label)
     expect(screen.queryByRole('button', { name: 'Arrange dashboard' })).toBeNull()
 })
