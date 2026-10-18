@@ -29,7 +29,7 @@ export const stepText = (progress) => {
     return STEPS[progress.step] || progress.step
 }
 
-const BCTransfer = ({ api, connection, onChanged, notify = () => {} }) => {
+const BCTransfer = ({ api, connection, connections = [], onChanged, notify = () => {} }) => {
     const [transfers, setTransfers] = useState([])
     const [code, setCode] = useState('')
     const [made, setMade] = useState(null)
@@ -100,11 +100,17 @@ const BCTransfer = ({ api, connection, onChanged, notify = () => {} }) => {
         } catch (failure) { setError(failure.message) }
     }
     const stored = connection?.storageMode === 'stored' && connection?.primary !== false
+    // Every company on the same server moves together, so the switching
+    // between them is there in the new workspace too.
+    const serverOf = (entry) => String(entry?.baseUrl || '').trim().toLowerCase().replace(/\/+$/, '')
+    const server = serverOf(connection)
+    const together = connections.filter((entry) => serverOf(entry) === server)
+    const companies = together.length ? together.map((entry) => entry.company || entry.name).filter(Boolean) : [connection?.company].filter(Boolean)
 
     return (
         <section className='bc-card bc-transfer'>
             <h3>Move between workspaces</h3>
-            <p className='bc-muted'>A Business Central company belongs to one workspace at a time. To move it to another, make a code here and enter it in the workspace that should have it. The connection moves with its report edits, built reports, saved column mappings, dashboard layout and, if chosen, its stored copy and e-invoicing records.</p>
+            <p className='bc-muted'>A Business Central company belongs to one workspace at a time, and once moved it is no longer here. To move it to another, make a code here and enter it in the workspace that should have it. The connection moves with its report edits, built reports, saved column mappings, dashboard layout and, if chosen, its stored copy and e-invoicing records.</p>
             {error && <div className='bc-banner bc-banner-error'>{error}</div>}
 
             <div className='bc-transfer-part'>
@@ -117,7 +123,8 @@ const BCTransfer = ({ api, connection, onChanged, notify = () => {} }) => {
 
             {connection && (
                 <div className='bc-transfer-part'>
-                    <h4>Move {connection.company || 'this connection'} to another workspace</h4>
+                    <h4>Move {companies.length > 1 ? `${companies.length} companies on this server` : companies[0] || 'this connection'} to another workspace</h4>
+                    {companies.length > 1 && <p className='bc-muted'>{companies.join(', ')} move together, so they can be switched between in the new workspace as they are here, each with its own settings and reports.</p>}
                     {stored && (
                         <label className='bc-einv-switch'>
                             <input type='checkbox' checked={moveData} onChange={(event) => setMoveData(event.target.checked)} />

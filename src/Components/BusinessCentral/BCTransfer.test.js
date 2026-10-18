@@ -11,8 +11,11 @@ test('the workspace that has the connection makes a code, shown once, and can ca
         startTransfer: jest.fn(() => { listed = [pending]; return Promise.resolve({ ok: true, code: 'ABCD-EFGH-JKLM-NPQR', transfer: { ...pending, expiresAt: Date.now() + 86400000 } }) }),
         cancelTransfer: jest.fn(() => { listed = [{ ...pending, status: 'cancelled' }]; return Promise.resolve({ ok: true }) }),
     }
-    render(<BCTransfer api={api} connection={connection} />)
-    expect(await screen.findByText('Move Jazmye Water Factory LIVE to another workspace')).toBeInTheDocument()
+    const sameServer = [{ id: 'connection', company: connection.company, baseUrl: 'http://bc.test/bcodata' }, { id: 'c2', company: 'Jazmye Drinks', baseUrl: 'http://BC.test/bcodata/' }, { id: 'c3', company: 'Elsewhere', baseUrl: 'http://other.test' }]
+    render(<BCTransfer api={api} connection={{ ...connection, baseUrl: 'http://bc.test/bcodata' }} connections={sameServer} />)
+    // Every company on the same server moves together.
+    expect(await screen.findByText('Move 2 companies on this server to another workspace')).toBeInTheDocument()
+    expect(screen.getByText(/Jazmye Water Factory LIVE, Jazmye Drinks move together/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('checkbox', { name: /Move the stored copy too/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Make a transfer code' }))
     expect(await screen.findByLabelText('The transfer code')).toHaveTextContent('ABCD-EFGH-JKLM-NPQR')
