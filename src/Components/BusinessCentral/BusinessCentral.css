@@ -416,3 +416,47 @@ button.bc-th-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transfo
 .bc-arrange-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .bc-arrange-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
 .bc-arrange-moves { display: flex; gap: var(--space-1); flex-shrink: 0; }
+
+/* Reconciling a report against the person's own records */
+.bc-recon { display: flex; flex-direction: column; gap: var(--space-3); }
+.bc-recon-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.bc-recon-filters .bc-chip { border: 1px solid var(--brand-border); cursor: pointer; padding: var(--space-1) var(--space-3); font-size: var(--font-sm); }
+.bc-recon-filters .bc-chip.active { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.bc-recon-lines .bc-row-open td { background: var(--gray-50); }
+.bc-recon-detail > td { white-space: normal; padding: var(--space-3); background: var(--gray-50); }
+.bc-recon-detail h4 { margin: 0 0 var(--space-2); }
+.bc-recon-finding { border: 1px solid var(--brand-border); border-left-width: 4px; border-radius: var(--radius-md); padding: var(--space-3); margin-top: var(--space-3); background: var(--brand-card); white-space: normal; }
+.bc-recon-finding header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.bc-recon-finding p { margin: var(--space-2) 0; }
+.bc-recon-info { border-left-color: var(--color-info-border); }
+.bc-recon-warn { border-left-color: var(--color-warning-border); }
+.bc-recon-error { border-left-color: var(--color-error-border); }
+.bc-recon-muted { border-left-color: var(--gray-300); }
+.bc-recon-headline { font-weight: 600; }
+.bc-recon-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.bc-recon-option { border: 1px solid var(--brand-border); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
+.bc-recon-last { border-style: dashed; border-color: var(--color-error-border); }
+.bc-recon-option-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.bc-recon-steps { margin: var(--space-2) 0 0; padding-left: var(--space-5); }
+.bc-recon-steps li { margin-bottom: var(--space-1); }
+.bc-recon-pair th { text-align: left; font-weight: 600; }
+.bc-recon-entries summary { cursor: pointer; font-size: var(--font-sm); color: var(--brand-primary); }
+.bc-recon-plus { color: var(--color-success); }
+.bc-recon-minus { color: var(--color-error); }
+.bc-recon-group > .bc-muted { margin: var(--space-3) 0 0; font-weight: 600; }
+.bc-recon-export { border: 1px solid var(--brand-border); border-radius: var(--radius-md); padding: var(--space-3); background: var(--gray-50); }
+.bc-recon-export p { margin: 0 0 var(--space-2); }
+
+/* Mapping a file of the person's own, and editing a built report */
+.bc-recon-mapper { border: 1px solid var(--brand-border); border-radius: var(--radius-md); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); background: var(--brand-card); }
+.bc-recon-mapper h4 { margin: 0; }
+.bc-recon-map-part { display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--brand-border); padding-top: var(--space-3); }
+.bc-recon-map-head { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; }
+.bc-recon-map-pick { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.bc-recon-map-bad td { background: var(--color-error-bg); }
+.bc-recon-map-errors { margin: 0; padding-left: var(--space-5); color: var(--color-error); }
+.bc-recon-map-warnings { margin: 0; padding-left: var(--space-5); color: var(--color-warning); }
+.bc-recon-edit-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-bottom: var(--space-2); }
+.bc-recon-edit-row .bc-input { min-width: 140px; flex: 0 1 180px; }
+.bc-recon-edit-row .bc-recon-edit-wide { flex: 1 1 280px; }
+.bc-recon-edit-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-1) var(--space-3); }

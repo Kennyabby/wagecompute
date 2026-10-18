@@ -8,6 +8,7 @@ import BCChart from './BCChart'
 import BCDataTable, { isNumericColumn } from './BCDataTable'
 import BCBuilder from './BCBuilder'
 import BCDrillModal from './BCDrillModal'
+import BCReconcile from './BCReconcile'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
 import BCFilterBar, { initialFilterValues } from './BCFilterBar'
 import { formatKpi, formatValue } from './bcFormat'
@@ -60,6 +61,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
     const [report, setReport] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [lotNumbers, setLotNumbers] = useState(null)
     const [exporting, setExporting] = useState('')
     const [customising, setCustomising] = useState(false)
     const { preparing, updating, awaitData } = usePreparingRetry()
@@ -94,6 +96,18 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
         const found = (report?.meta?.prompts || []).find((prompt) => prompt.key === filter.key)
         return found ? { ...filter, options: found.options } : filter
     }), [definition.filters, report])
+    const reportLookups = useMemo(() => (
+        lotNumbers === null ? lookups : { ...lookups, lotNumbers }
+    ), [lookups, lotNumbers])
+
+    useEffect(() => {
+        if (!definition.filters.some((filter) => filter.lookup === 'lotNumbers')) return undefined
+        let active = true
+        api.getLotNumbers()
+            .then((response) => { if (active) setLotNumbers(response.lots || []) })
+            .catch((failure) => { if (active) setError(failure.message) })
+        return () => { active = false }
+    }, [api, definition.key, definition.filters])
 
     const exportReport = async (kind) => {
         if (!report) return
@@ -127,7 +141,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                     <p className='bc-muted'>{definition.description}</p>
                 </div>
                 <div className='bc-actions'>
-                    {canManage && !definition.custom && <button type='button' className='bc-button' aria-expanded={customising} onClick={() => setCustomising(!customising)}>Customise</button>}
+                    {canManage && !definition.custom && <button type='button' className='bc-button' aria-expanded={customising} onClick={() => setCustomising(!customising)}>Edit report</button>}
                     <button type='button' className='bc-button' disabled={!report?.rows.length || !!exporting} onClick={() => exportReport('excel')}>{exporting === 'excel' ? 'Exporting...' : 'Export Excel'}</button>
                     <button type='button' className='bc-button' disabled={!report?.rows.length || !!exporting} onClick={() => exportReport('pdf')}>{exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}</button>
                 </div>
@@ -135,7 +149,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
 
             {customising && report && <BCCustomise api={api} definition={definition} report={report} values={values} notify={notify || (() => {})} onClose={() => setCustomising(false)} onSaved={() => { setCustomising(false); if (onChanged) onChanged(); run(values) }} />}
 
-            <BCFilterBar filters={filters} values={values} onChange={setValues} lookups={lookups} onSubmit={() => run(values)} busy={loading} />
+            <BCFilterBar filters={filters} values={values} onChange={setValues} lookups={reportLookups} onSubmit={() => run(values)} busy={loading} />
 
             {error && <div className='bc-banner bc-banner-error'>{error}</div>}
             <BCPreparing progress={preparing} />
@@ -173,6 +187,8 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                             onDrill={(row, column) => setDrill({ row, column, caption: describeRow(report.columns, row) })}
                         />
                     </section>
+                    {/* Below the report, since its results can run long. */}
+                    {definition.reconcile && report.rows && <BCReconcile key={`${definition.key}:${JSON.stringify(report.params)}`} api={api} definition={definition} report={report} companyInfo={companyInfoFrom(context)} />}
                 </div>
             )}
             {drill && report && (

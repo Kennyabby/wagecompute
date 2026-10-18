@@ -53,6 +53,7 @@ test('a report is built step by step, previewed and saved', async () => {
     expect(await screen.findByRole('heading', { name: 'How to build a report' })).toBeInTheDocument()
     expect(GUIDE).toHaveLength(14)
     expect(screen.getByText(/A formula works on the figures by their letters/)).toBeInTheDocument()
+    expect(GUIDE[7].body).toMatch(/Inbound_Item_Entry_No.*Outbound_Item_Entry_No.*Lot_No/)
 
     fireEvent.change(await screen.findByPlaceholderText('For example: Profit by customer'), { target: { value: 'Profit by customer' } })
     fireEvent.change(screen.getByLabelText('Business Central page'), { target: { value: 'ValueEntries' } })

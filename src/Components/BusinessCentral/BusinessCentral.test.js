@@ -13,10 +13,10 @@ const makeServer = () => {
     const state = { calls: [], live: { ready: true, seq: 0, changes: [] }, connections: [
         { id: 'connection', name: 'Water factory', company: 'Jazmye Water Factory LIVE', primary: true, ready: true },
         { id: 'c2', name: 'Drinks factory', company: 'Jazmye Drinks', primary: false, ready: true },
-    ] }
+    ], publishedServices: ['ItemApplicationEntries', 'PostedItemTrackingLines'] }
     const connectionOf = (id) => {
         const entry = state.connections.find((candidate) => candidate.id === (id || 'connection')) || state.connections[0]
-        return { ...entry, baseUrl: 'http://203.0.113.10:8080/bcodata', authType: 'ntlm', username: 'reader', hasPassword: true, discoveredAt: 1, storageMode: 'live', datasets: {}, services: [] }
+        return { ...entry, baseUrl: 'http://203.0.113.10:8080/bcodata', authType: 'ntlm', username: 'reader', hasPassword: true, discoveredAt: 1, storageMode: 'live', datasets: {}, services: state.publishedServices }
     }
     const fetchServer = jest.fn(async (method, body, endpoint) => {
         state.calls.push({ method, endpoint, connectionId: body?.connectionId || '' })
@@ -89,6 +89,18 @@ test('an admin can open the form for another connection and cancel out of it', a
     expect(screen.getByDisplayValue('http://203.0.113.10:8080/bcodata')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(await screen.findByText('Sales of primary')).toBeInTheDocument()
+})
+
+test('the connection tab lists published services not mapped to built-in datasets', async () => {
+    window.history.replaceState(null, '', '/business-central?tab=connection')
+    const server = makeServer()
+    mountModule(server)
+
+    expect(await screen.findByText('Other published pages (2)')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Show service names'))
+    expect(screen.getByText('ItemApplicationEntries')).toBeInTheDocument()
+    expect(screen.getByText('PostedItemTrackingLines')).toBeInTheDocument()
+    expect(screen.getByText(/the VM does not sync them/)).toBeInTheDocument()
 })
 
 test('changes found in Business Central are announced and the figures reloaded', async () => {

@@ -171,6 +171,14 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
         rows: datasets.filter((dataset) => dataset.group === group),
     })), [datasets])
 
+    const mappedServices = new Set(datasets
+        .map((dataset) => connection?.datasets?.[dataset.key])
+        .filter((config) => config?.available)
+        .map((config) => config.service))
+    const otherServices = (connection?.services || [])
+        .filter((service) => !mappedServices.has(service))
+        .sort((a, b) => a.localeCompare(b))
+
     const readyCount = datasets.filter((dataset) => {
         const config = connection?.datasets?.[dataset.key]
         return config?.available && config.enabled && !config.missingRequired?.length
@@ -413,6 +421,22 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
                             </div>
                         </div>
                     ))}
+
+                    {connection.discoveredAt && otherServices.length > 0 && (
+                        <div className='bc-dataset-group'>
+                            <h4>Other published pages ({otherServices.length})</h4>
+                            <p className='bc-muted'>These services are published in Business Central but are not mapped to a built-in data table, so the VM does not sync them.</p>
+                            <details>
+                                <summary>Show service names</summary>
+                                <div className='bc-table-scroll'>
+                                    <table className='bc-table'>
+                                        <thead><tr><th>Published page (service name)</th></tr></thead>
+                                        <tbody>{otherServices.map((service) => <tr key={service}><td>{service}</td></tr>)}</tbody>
+                                    </table>
+                                </div>
+                            </details>
+                        </div>
+                    )}
                 </section>
             )}
 
