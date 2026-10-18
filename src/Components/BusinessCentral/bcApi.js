@@ -46,9 +46,20 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         refreshLive: () => call('POST', 'live/refresh', {}),
 
         getLookups: () => call('GET', 'lookups'),
+        getLotNumbers: () => call('GET', 'reports/lot-numbers'),
         getDashboard: (params) => call('POST', 'dashboard', params),
         getMonthly: (params) => call('POST', 'dashboard/monthly', params),
         matchStatement: (statement) => call('POST', 'bank/match', statement),
+        // Reconciling a report against the person's own records: the template
+        // for the report's period, then the filled-in file as rows of cells.
+        reconcileTemplate: (kind, params, report) => call('POST', 'reconcile/template', { kind, params, report }),
+        reconcileRun: (kind, params, sheets, report) => call('POST', 'reconcile/run', { kind, params, sheets, report }),
+        // The columns a reconciliation reads, for mapping a file of the person's own.
+        reconcileColumns: (kind, params, report) => call('POST', 'reconcile/columns', { kind, params, report }),
+        // Remembered column mappings, by report and file layout.
+        reconcileMappings: (kind, report) => call('POST', 'reconcile/mappings', { kind, report }),
+        saveReconcileMapping: (mapping) => call('POST', 'reconcile/mappings/save', mapping),
+        deleteReconcileMapping: (id) => call('POST', 'reconcile/mappings/delete', { id }),
 
         getBuilderSchema: () => call('GET', 'builder/schema'),
         runBuilder: (spec, params) => call('POST', 'builder/run', { spec, params }),

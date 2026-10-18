@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import BCReports from './BCReports'
+import ContextProvider from '../../Resources/ContextProvider'
 
 jest.mock('../../utils/exportUtils', () => ({ generatePDF: jest.fn(), generateExcel: jest.fn() }))
 
@@ -46,4 +47,52 @@ test('a built report is only deleted after its name has been typed', async () =>
     await waitFor(() => expect(api.deleteReport).toHaveBeenCalledWith('r1'))
     await waitFor(() => expect(notify).toHaveBeenCalledWith('success', '"Item Sales Customer Wise" deleted.'))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+})
+
+test('inbound and outbound lot filters search selectable lot numbers independently', async () => {
+    const lots = Array.from({ length: 12 }, (_, index) => {
+        const value = `LOT-${String(index + 1).padStart(2, '0')}`
+        return { value, label: value }
+    })
+    lots.push({ value: 'MPD270726', label: 'MPD270726' }, { value: 'MPD280726', label: 'MPD280726' })
+    const api = {
+        getReports: jest.fn().mockResolvedValue({
+            connected: true,
+            domains: [{ key: 'inventory', label: 'Inventory' }],
+            reports: [{
+                key: 'lotApplicationHistory',
+                title: 'Lot Application History',
+                domain: 'inventory',
+                description: 'Trace applications by lot.',
+                available: true,
+                filters: [
+                    { key: 'inboundLotNos', type: 'multi', label: 'Inbound lot No.', lookup: 'lotNumbers' },
+                    { key: 'outboundLotNos', type: 'multi', label: 'Outbound lot No.', lookup: 'lotNumbers' },
+                ],
+            }],
+        }),
+        getLotNumbers: jest.fn().mockResolvedValue({ lots }),
+        runReport: jest.fn().mockResolvedValue({ report: { kpis: [], charts: [], columns: [], rows: [], totals: {}, meta: {} } }),
+    }
+    const context = { setAlert: () => {}, setAlertState: () => {}, setAlertTimeout: () => {} }
+    render(<ContextProvider.Provider value={context}><BCReports api={api} lookups={{}} openKey='lotApplicationHistory' onOpenKey={() => {}} onGoTo={() => {}} /></ContextProvider.Provider>)
+
+    expect(await screen.findByRole('heading', { name: 'Lot Application History' })).toBeInTheDocument()
+    await waitFor(() => expect(api.getLotNumbers).toHaveBeenCalled())
+    await screen.findByRole('button', { name: 'Run report' })
+    // The two lot filters, in the order the report lists them.
+    const [inboundButton, outboundButton] = screen.getAllByRole('button', { name: 'All' })
+
+    fireEvent.click(inboundButton)
+    fireEvent.change(screen.getByPlaceholderText('Search inbound lot no.'), { target: { value: 'MPD270' } })
+    fireEvent.click(screen.getByLabelText('MPD270726'))
+    fireEvent.click(outboundButton)
+    fireEvent.change(screen.getByPlaceholderText('Search outbound lot no.'), { target: { value: 'MPD280' } })
+    fireEvent.click(screen.getByLabelText('MPD280726'))
+    fireEvent.click(screen.getByRole('button', { name: 'Run report' }))
+
+    await waitFor(() => expect(api.runReport).toHaveBeenLastCalledWith('lotApplicationHistory', {
+        inboundLotNos: ['MPD270726'],
+        outboundLotNos: ['MPD280726'],
+    }))
 })

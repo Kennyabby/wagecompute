@@ -99,7 +99,7 @@ export const GUIDE = [
     },
     {
         title: '8. Link to another page for names and details',
-        body: 'A link is a lookup, like VLOOKUP in a spreadsheet. It takes a field of a page (Customer No), finds the row of another page where a field holds the same value (No on Customers), and brings in up to four of its fields (Name, City). Linked fields then appear in the field lists with the linked page\'s name in front, and can be used as rows, columns across, figures, filters and in calculated fields. Link to lists such as customers, items and accounts. A ledger is too long to look up.',
+        body: 'A link is a lookup, like VLOOKUP in a spreadsheet. It takes a field of a page (Customer No), finds the row of another page where a field holds the same value (No on Customers), and brings in up to four of its fields (Name, City). For lot applications, link ItemApplicationEntries.Inbound_Item_Entry_No and Outbound_Item_Entry_No to ItemLedgerEntries.Entry_No, then bring in Lot_No, Document_No, Entry_Type and Source_No from each side. Linked fields then appear in the field lists with the linked page\'s name in front, and can be used as rows, columns across, figures, filters and in calculated fields. Link to lists such as customers, items and accounts. A ledger is too long to look up.',
     },
     {
         title: '9. Add formulas, like a spreadsheet',
