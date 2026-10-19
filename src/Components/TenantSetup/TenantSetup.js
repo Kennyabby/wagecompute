@@ -232,7 +232,7 @@ const TenantSetup = ({ mode = 'initial' }) => {
         window.localStorage.setItem('sessn-id', resp.id)
         if (resp.refreshToken) window.electronAPI?.saveTenantRefreshToken?.(db, resp.refreshToken)
         window.electronAPI?.notifyUserLoggedIn?.()
-        loadPage(resp.id, 'dashboard')
+        loadPage(resp.id, 'dashboard', { fresh: true })
         return true
     }
 

@@ -72,7 +72,16 @@ const BCSync = ({ api, connection, datasets, status, history, canManage, onStart
     const finished = running ? Object.values(run.datasets).filter((entry) => !['pending', 'running'].includes(entry.status)).length : 0
     const total = running ? Object.keys(run.datasets).length : 0
     const lastVerified = Math.max(0, ...usable.map((dataset) => state[dataset.key]?.lastVerifiedAt || 0))
-    const outOfStep = usable.filter((dataset) => state[dataset.key]?.outOfStep).length
+    const outOfStepKeys = usable.filter((dataset) => state[dataset.key]?.outOfStep).map((dataset) => dataset.key)
+    const outOfStep = outOfStepKeys.length
+    // One table read again from the start. A ledger can hold millions of
+    // entries, so that one is confirmed first; setup and master tables are small.
+    const reloadTable = (dataset) => {
+        if (dataset.group === 'ledger' && !window.confirm(`Read every row of "${dataset.label}" again from Business Central? On a large company this can take a long time.`)) return
+        onStart('full', [dataset.key])
+    }
+    const canReload = can('sync.full')
+    const tableUsable = (key) => usable.some((dataset) => dataset.key === key)
 
     return (
         <div className='bc-page'>
@@ -126,6 +135,16 @@ const BCSync = ({ api, connection, datasets, status, history, canManage, onStart
                         The last run ended as "{RUN_STATUS[run.status] || run.status}"{run.error ? `: ${run.error}` : '.'}
                     </div>
                 )}
+                {!running && outOfStep > 0 && (
+                    <div className='bc-banner bc-banner-error bc-sync-repair'>
+                        <span>
+                            {outOfStep === 1 ? 'One table holds' : `${outOfStep} tables hold`} a different number of rows from Business Central.
+                            {' '}Repair compares every row of {outOfStep === 1 ? 'it' : 'them'} with Business Central, reads what is missing or different, and removes what Business Central no longer has.
+                            {canReload ? ' If a table is still out of step after that, use Reload on its row to read it again from the start.' : ''}
+                        </span>
+                        {can('sync.run') && <button type='button' className='bc-button' disabled={busy} onClick={() => onStart('verify', outOfStepKeys)}>Repair {outOfStep === 1 ? 'this table' : 'these tables'}</button>}
+                    </div>
+                )}
                 {!usable.length && (
                     <div className='bc-banner bc-banner-info'>
                         No table is ready to sync.
@@ -151,6 +170,7 @@ const BCSync = ({ api, connection, datasets, status, history, canManage, onStart
                                         <th>Last synced</th>
                                         <th>Last full check</th>
                                         <th>Status</th>
+                                        {canReload && <th aria-label='Actions' />}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -170,6 +190,13 @@ const BCSync = ({ api, connection, datasets, status, history, canManage, onStart
                                                         <span className='bc-sub'>{progress.fetched.toLocaleString()} read, {progress.scanned.toLocaleString()} checked</span>
                                                     )}
                                                 </td>
+                                                {canReload && (
+                                                    <td>
+                                                        {tableUsable(dataset.key) && (
+                                                            <button type='button' className='bc-link-button' disabled={busy || running} title='Read this table again from the start and remove rows Business Central no longer has' onClick={() => reloadTable(dataset)}>Reload</button>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         )
                                     })}

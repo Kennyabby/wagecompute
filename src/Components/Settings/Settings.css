@@ -603,6 +603,14 @@
     margin-bottom: 24px;
 }
 
+.inpcov .settings-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--settings-text-muted);
+}
+
 .inpcov div:not(.toggle-switch, .slider) {
     font-size: 12px;
     font-weight: 800;

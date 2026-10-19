@@ -223,11 +223,13 @@ const BusinessCentral = () => {
         wasRunning.current = running
     }, [running, refreshAll])
 
-    const startSync = async (mode) => {
-        if (mode === 'full' && !window.confirm('A full reload reads every table again from the start. On a large company this can take a long time and puts load on the Business Central server. Continue?')) return
+    // `datasets` limits the run to those tables. Reloading one table is quick
+    // for setup tables and is not worth a warning; the whole company is.
+    const startSync = async (mode, datasets) => {
+        if (mode === 'full' && !datasets?.length && !window.confirm('A full reload reads every table again from the start. On a large company this can take a long time and puts load on the Business Central server. Continue?')) return
         setBusy(true)
         try {
-            const response = await api.startSync(mode)
+            const response = await api.startSync(mode, datasets)
             setStatus((current) => ({ ...(current || { state: {} }), run: response.run, running: true }))
         } catch (failure) {
             notify('error', failure.message)

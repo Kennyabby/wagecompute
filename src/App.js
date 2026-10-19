@@ -10,6 +10,7 @@ import Epsilon from './Components/Epsilon/Epsilon';
 import PricingPage from './Components/LandingPage/PricingPage';
 import CommunityPage from './Components/LandingPage/CommunityPage';
 import PaymentConfirmPage from './Components/LandingPage/PaymentConfirmPage';
+import { landingPathOf } from './Components/Shared/modulePages';
 import HelpPage from './Components/LandingPage/HelpPage';
 import Login from './Components/Login/Login';
 import Signup from './Components/Login/Signup';
@@ -272,7 +273,7 @@ const DesktopEntry = () => {
           window.localStorage.setItem('sessn-id', resp.id)
           if (resp.refreshToken) window.electronAPI?.saveTenantRefreshToken?.(selectedDb, resp.refreshToken)
           window.electronAPI?.notifyUserLoggedIn?.()
-          loadPage(resp.id, 'dashboard')
+          loadPage(resp.id, 'dashboard', { fresh: true })
           return
         }
       }
@@ -1307,6 +1308,13 @@ function App() {
         logout()
       } else {
         if (!reloadCount) {
+          // A default module chosen for this user in Settings is where they
+          // land. The blocks below still load each permitted module's data;
+          // without a default they also pick the page, as they always have.
+          const landing = landingPathOf(companyRecord, enabledModules)
+          const go = (path) => {
+            if (!landing && window.location.pathname !== path) Navigate(path + window.location.search)
+          }
           const hasDeliveryAccess = companyRecord?.permissions.includes('delivery')
           const hasPosAccess = companyRecord?.permissions.includes('pos')
           const hasEmployeeAccess = companyRecord?.permissions.includes('employees')
@@ -1322,33 +1330,33 @@ function App() {
             getDepartments(company)
             getPositions(company)
             window.localStorage.removeItem('lgt-vw')
-            if (window.location.pathname !== '/employees') Navigate('/employees' + window.location.search)
+            go('/employees')
           }
           if (companyRecord?.permissions.includes('attendance')) {
             getAttendance(company)
             window.localStorage.removeItem('lgt-vw')
-            if (window.location.pathname !== '/attendance') Navigate('/attendance' + window.location.search)
+            go('/attendance')
           }
           if (companyRecord?.permissions.includes('purchase')) {
             getPurchase(company)
             window.localStorage.removeItem('lgt-vw')
-            if (window.location.pathname !== '/purchase') Navigate('/purchase' + window.location.search)
+            go('/purchase')
           }
           if (companyRecord?.permissions.includes('expenses')) {
             getExpenses(company)
             window.localStorage.removeItem('lgt-vw')
-            if (window.location.pathname !== '/expenses') Navigate('/expenses' + window.location.search)
+            go('/expenses')
           }
           if (companyRecord?.permissions.includes('inventory') ||
             companyRecord?.permissions.includes('pos') ||
             companyRecord?.permissions.includes('delivery')
           ) {
             getProducts(company)
-            if (window.location.pathname !== '/inventory') Navigate('/inventory' + window.location.search)
+            go('/inventory')
           }
           if (hasAssetsAccess && !hasInventoryAccess && !hasPosAccess && !hasDeliveryAccess) {
             window.localStorage.removeItem('lgt-vw')
-            if (window.location.pathname !== '/assets') Navigate('/assets' + window.location.search)
+            go('/assets')
           }
           if (companyRecord?.permissions.includes('delivery')) {
             if (companyRecord?.permissions.includes('access_delivery_sessions') || companyRecord?.permissions.includes('manage_session_manager')) {
@@ -1360,7 +1368,7 @@ function App() {
             fetchProfiles(company)
             fetchSessions(company, "delivery", companyRecord)
             fetchTables(company)
-            if (window.location.pathname !== '/delivery') Navigate('/delivery' + window.location.search)
+            go('/delivery')
           }
           if (companyRecord?.permissions.includes('pos')) {
             if (companyRecord?.permissions.includes('access_pos_sessions') || companyRecord?.permissions.includes('manage_session_manager')) {
@@ -1374,12 +1382,12 @@ function App() {
               fetchTables(company)
             }
             fetchSessions(company, "sales", companyRecord)
-            if (window.location.pathname !== '/pos') Navigate('/pos' + window.location.search)
+            go('/pos')
           }
           if (companyRecord?.permissions.includes('accommodations')) {
             getCustomers(company)
             getAccommodations(company)
-            if (window.location.pathname !== '/accommodations') Navigate('/accommodations' + window.location.search)
+            go('/accommodations')
           }
           if (companyRecord?.permissions.includes('sales')) {
             if (!hasAccomAccess) {
@@ -1397,7 +1405,7 @@ function App() {
             }
             // getSales(company, 'first', saleFrom, saleTo, 10)
             window.localStorage.removeItem('lgt-vw')
-            if (window.location.pathname !== '/sales') Navigate('/sales' + window.location.search)
+            go('/sales')
           }
           // Session Manager's "post pending sales before starting today's
           // session" check (PointOfSales.js's canUpdateSession) reads the
@@ -1415,6 +1423,10 @@ function App() {
           // should pull in on its own.
           if (!companyRecord?.permissions.includes('sales') && companyRecord?.permissions.includes('manage_session_manager')) {
             getSales(company)
+          }
+          if (landing && window.location.pathname !== landing) {
+            window.localStorage.removeItem('lgt-vw')
+            Navigate(landing + window.location.search)
           }
         }
       }
@@ -2375,7 +2387,11 @@ function App() {
     if (!isPublicPath) Navigate('/login')
   }
 
-  const loadPage = async (propVal, currPath) => {
+  // `fresh` is a sign-in that did not ask for a particular page. Only then
+  // does an admin's default module apply, so a refresh keeps the page in use.
+  // Users who are not admins are placed by the permission effect above,
+  // which applies their default module itself.
+  const loadPage = async (propVal, currPath, { fresh = false } = {}) => {
     // Removed destructive Navigate('/') that was stripping paths on refresh
     var cmp_val = window.localStorage.getItem('sessn-cmp')
     setCompany(cmp_val)
@@ -2400,6 +2416,8 @@ function App() {
         setRecoveryVal(resp.record?.enableDebtRecovery)
         setEnableBlockVal(!resp.record?.enableLogin)
       }
+      const landing = fresh ? landingPathOf(resp.record, enabledModules) : null
+      if (landing) currPath = landing.slice(1)
       setLoadedCurPath(currPath)
       const targetPath = '/' + (currPath || 'dashboard');
       if (
