@@ -337,6 +337,8 @@ button.bc-th-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transfo
 /* ---- Sync ---- */
 .bc-sync-actions { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
 .bc-sync-actions > div:first-child { flex: 1 1 320px; display: flex; flex-direction: column; gap: var(--space-1); }
+.bc-sync-repair { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.bc-sync-repair > span { flex: 1 1 280px; }
 .bc-progress { height: 6px; border-radius: var(--radius-pill); background: var(--color-info-bg); overflow: hidden; }
 .bc-progress > div { height: 100%; background: var(--color-info); transition: width 0.3s; }
 /* Used when the amount of work is not known in advance. */

@@ -226,7 +226,7 @@ const Login = () => {
       window.sessionStorage.removeItem(redeemKey)
       window.history.replaceState(null, '', '/login')
       setSigninStatus('Sign In')
-      loadPage(resp.sessionId, requestedNext)
+      loadPage(resp.sessionId, requestedNext, { fresh: requestedNext === 'dashboard' })
     }
 
     redeemHandoff()
@@ -289,7 +289,7 @@ const Login = () => {
           return ({ ...field, emailid: "", password: "" })
         })
         setSigninStatus("Sign In")
-        loadPage(idVal, requestedNext)
+        loadPage(idVal, requestedNext, { fresh: requestedNext === 'dashboard' })
       }
     }
   }

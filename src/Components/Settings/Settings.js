@@ -9,6 +9,10 @@ import EpsilonBillingCard from './EpsilonBillingCard'
 import DesktopLicensePanel from './DesktopLicensePanel'
 import { uploadCompanyFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import heic2any from 'heic2any'
+import { openablePages } from '../Shared/modulePages'
+
+const isAdminProfile = (profile) => profile?.status === 'admin' || profile?.access === 'admin'
+const sameEmail = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
 
 // Mirrors the server default in wageserver/UserModule/SettingsModule/settings.js
 // so the UI doesn't flash a "disabled" state before the real doc loads.
@@ -199,7 +203,9 @@ const Settings = () => {
         permissions: [],
         enableLogin: false,
         enableDebtRecovery: false,
-        aiAccess: false
+        aiAccess: false,
+        accessLevel: 'user',
+        defaultModule: ''
     })
 
     const [sessionPeriods, setSessionPeriods] = useState([])
@@ -1257,6 +1263,13 @@ const Settings = () => {
         }
     }
 
+    // The owner is the admin who signed the workspace up. The server enforces
+    // the same rule; this only greys out a choice it would refuse.
+    const isOwnerProfile = (profile) => !!centralCompany?.email && sameEmail(profile?.emailid, centralCompany.email)
+    // Pages the user being edited could open, following the ticks below as
+    // they change, so the first page offered is never one they are refused.
+    const landingChoices = openablePages({ permissions: loginDetails.permissions, admin: loginDetails.accessLevel === 'admin' }, enabledModules)
+
     const handleProfileSelect = (profile) => {
         setShowPass(false)
         setDeleteCount(0)
@@ -1267,7 +1280,9 @@ const Settings = () => {
             permissions: profile.permissions || [],
             enableLogin: profile.enableLogin || false,
             enableDebtRecovery: profile.enableDebtRecovery || false,
-            aiAccess: profile.aiAccess || false
+            aiAccess: profile.aiAccess || false,
+            accessLevel: isAdminProfile(profile) ? 'admin' : 'user',
+            defaultModule: profile.defaultModule || ''
         })
     }
 
@@ -1295,12 +1310,24 @@ const Settings = () => {
             setSaveStatus('Saving...')
             delete selectedEmployee._id
             delete selectedEmployee.sessionId
+            // Access level and password each have their own route with its own
+            // checks, so they are left out of this write. Sending the stale
+            // status back here would also undo an access change just made.
+            const { status: _status, access: _access, password: _password, ...unchanged } = selectedEmployee
             const updatedProfile = {
-                ...selectedEmployee,
+                ...unchanged,
                 permissions: loginDetails.permissions,
                 enableLogin: loginDetails.enableLogin,
                 enableDebtRecovery: loginDetails.enableDebtRecovery,
-                aiAccess: loginDetails.aiAccess
+                aiAccess: loginDetails.aiAccess,
+                defaultModule: loginDetails.defaultModule || ''
+            }
+            const fail = (mess) => {
+                console.log(mess)
+                setSaveStatus(mess)
+                setTimeout(() => {
+                    setSaveStatus('')
+                }, 3000)
             }
             const resps = await fetchServer("POST", {
                 database: company,
@@ -1308,38 +1335,37 @@ const Settings = () => {
                 prop: [{ emailid: selectedEmployee.emailid }, updatedProfile]
             }, "updateOneDoc", server)
             if (resps.err) {
-                console.log(resps.mess)
-                setSaveStatus(resps.mess)
+                fail(resps.mess)
+            } else {
+                if (loginDetails.password) {
+                    const passResp = await fetchServer("POST", {
+                        emailid: selectedEmployee.emailid,
+                        password: loginDetails.password
+                    }, "setUserPassword", server)
+                    if (passResp.err) {
+                        fail(passResp.mess)
+                        return
+                    }
+                }
+                const wasLevel = isAdminProfile(selectedEmployee) ? 'admin' : 'user'
+                if (loginDetails.accessLevel && loginDetails.accessLevel !== wasLevel) {
+                    const accessResp = await fetchServer("POST", {
+                        emailid: selectedEmployee.emailid,
+                        level: loginDetails.accessLevel
+                    }, "setUserAccess", server)
+                    if (accessResp.err) {
+                        fail(accessResp.mess)
+                        return
+                    }
+                    setSelectedEmployee((current) => current && ({ ...current, status: loginDetails.accessLevel, access: loginDetails.accessLevel }))
+                }
+                setLoginDetails((current) => ({ ...current, password: '' }))
+                setSaveStatus('Saved')
                 setTimeout(() => {
                     setSaveStatus('')
                 }, 3000)
-            } else {
-                if (loginDetails.password) {
-                    const resps = await fetchServer("POST", {
-                        prop: [{ emailid: selectedEmployee.emailid }, { password: loginDetails.password }]
-                    }, "updateDBProfiles", server)
-                    if (resps.err) {
-                        console.log(resps.mess)
-                        setSaveStatus(resps.mess)
-                        setTimeout(() => {
-                            setSaveStatus('')
-                        }, 3000)
-                    } else {
-                        setSaveStatus('Saved')
-                        setTimeout(() => {
-                            setSaveStatus('')
-                        }, 3000)
-                        fetchProfiles(company)
-                        fetchEpsilonSeatInfo(company)
-                    }
-                } else {
-                    setSaveStatus('Saved')
-                    setTimeout(() => {
-                        setSaveStatus('')
-                    }, 3000)
-                    fetchProfiles(company)
-                    fetchEpsilonSeatInfo(company)
-                }
+                fetchProfiles(company)
+                fetchEpsilonSeatInfo(company)
             }
         } else {
             if (loginDetails.email && loginDetails.password && loginDetails.permissions.length) {
@@ -1360,9 +1386,13 @@ const Settings = () => {
                     // instead of the admin explicitly granting one via this toggle.
                     aiAccess: loginDetails.aiAccess,
                     sessionId: '',
-                    status: 'user',
-                    access: 'user'
+                    status: loginDetails.accessLevel === 'admin' ? 'admin' : 'user',
+                    access: loginDetails.accessLevel === 'admin' ? 'admin' : 'user',
+                    defaultModule: loginDetails.defaultModule || ''
                 }
+                // The admin's record may carry a default page of its own, or a
+                // password field; neither belongs to the new login.
+                delete newProfile.password
                 // postUserDetails now creates BOTH the per-company Profile
                 // (permissions, this newProfile payload) AND the cross-tenant
                 // login-routing record (WCDatabase/Profiles) in one server-side
@@ -1371,10 +1401,14 @@ const Settings = () => {
                 // allowlist deliberately rejects that cross-tenant target
                 // (403 "not permitted... use the dedicated route"), so that
                 // second call could never actually succeed.
+                // The password used to be left out of this request entirely,
+                // so every new login was created without one.
                 const resps = await fetchServer("POST", {
                     database: company,
                     collection: "Profile",
-                    update: newProfile
+                    update: newProfile,
+                    password: loginDetails.password,
+                    accessLevel: loginDetails.accessLevel
                 }, "postUserDetails", server)
                 if (resps.err) {
                     console.log(resps.mess)
@@ -1443,7 +1477,9 @@ const Settings = () => {
                         permissions: [],
                         enableLogin: false,
                         enableDebtRecovery: false,
-                        aiAccess: false
+                        aiAccess: false,
+                        accessLevel: 'user',
+                        defaultModule: ''
                     })
                 }
             }
@@ -1466,7 +1502,9 @@ const Settings = () => {
             permissions: [],
             enableLogin: false,
             enableDebtRecovery: false,
-            aiAccess: false
+            aiAccess: false,
+            accessLevel: 'user',
+            defaultModule: ''
         })
     }
 
@@ -1873,7 +1911,10 @@ const Settings = () => {
                                                     className='forminp'
                                                     name='password'
                                                     type={showPass ? 'text' : 'password'}
-                                                    placeholder='••••••••'
+                                                    // Without this the browser fills in the admin's own saved
+                                                    // password, which then gets saved as this user's password.
+                                                    autoComplete='new-password'
+                                                    placeholder={selectedEmployee ? 'Leave blank to keep the current password' : '••••••••'}
                                                     value={loginDetails.password}
                                                     onChange={handleLoginDetailsChange}
                                                 />
@@ -1886,10 +1927,48 @@ const Settings = () => {
                                             {selectedEmployee && (
                                                 <div className="pass-display-section" onClick={() => setShowPass(!showPass)}>
                                                     <span className="pass-toggle-text">{showPass ? 'Hide Password' : 'View Current Password'}</span>
-                                                    {showPass && <span className="actual-pass"> : {DBProfiles.find(p => p.emailid === selectedEmployee.emailid)?.password || 'Not found in database'}</span>}
+                                                    {showPass && <span className="actual-pass"> : {(() => {
+                                                        const stored = DBProfiles.find(p => p.emailid === selectedEmployee.emailid)?.password
+                                                        if (!stored) return 'Not found in database'
+                                                        return String(stored).startsWith('pbkdf2') ? 'Stored encrypted. Type a new one above to replace it.' : stored
+                                                    })()}</span>}
                                                 </div>
                                             )}
                                          </div>
+
+                                        <div className='inpcov'>
+                                            <div>Access Level</div>
+                                            <select
+                                                className='forminp'
+                                                name='accessLevel'
+                                                value={loginDetails.accessLevel || 'user'}
+                                                disabled={!!selectedEmployee && (isOwnerProfile(selectedEmployee) || sameEmail(selectedEmployee.emailid, companyRecord?.emailid))}
+                                                onChange={handleLoginDetailsChange}
+                                            >
+                                                <option value='user'>User (only the permissions ticked below)</option>
+                                                <option value='admin'>Admin (everything, including Settings)</option>
+                                            </select>
+                                            {selectedEmployee && isOwnerProfile(selectedEmployee) && <small className='settings-hint'>The workspace owner is always an admin.</small>}
+                                            {selectedEmployee && !isOwnerProfile(selectedEmployee) && sameEmail(selectedEmployee.emailid, companyRecord?.emailid) && <small className='settings-hint'>Another admin has to change your own access level.</small>}
+                                            {selectedEmployee && !isOwnerProfile(selectedEmployee) && !sameEmail(selectedEmployee.emailid, companyRecord?.emailid) && loginDetails.accessLevel !== (isAdminProfile(selectedEmployee) ? 'admin' : 'user') && <small className='settings-hint'>Saving signs this user out, so the new level applies when they sign in again.</small>}
+                                        </div>
+
+                                        <div className='inpcov'>
+                                            <div>Opens On</div>
+                                            <select
+                                                className='forminp'
+                                                name='defaultModule'
+                                                value={loginDetails.defaultModule || ''}
+                                                onChange={handleLoginDetailsChange}
+                                            >
+                                                <option value=''>Automatic (as before)</option>
+                                                {landingChoices.map((page) => <option key={page.key} value={page.key}>{page.label}</option>)}
+                                                {loginDetails.defaultModule && !landingChoices.some((page) => page.key === loginDetails.defaultModule) && (
+                                                    <option value={loginDetails.defaultModule}>{loginDetails.defaultModule} (no longer permitted, ignored)</option>
+                                                )}
+                                            </select>
+                                            <small className='settings-hint'>The page this user sees first after signing in. Only modules they are allowed to open are listed.</small>
+                                        </div>
                                     </div>
 
 
