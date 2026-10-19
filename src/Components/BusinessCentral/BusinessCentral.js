@@ -104,10 +104,14 @@ const BusinessCentral = () => {
         }
     }, [api])
 
-    const loadSync = useCallback(async () => {
+    // The status (last sync, a sync running, what changed) is for everyone who
+    // can open the module, so their figures follow each scheduled sync.
+    // History belongs to the Data Sync tab and is asked for only by those who
+    // have it: a refused request here used to set off the sign-out.
+    const seesHistory = useRef(false)
+    const loadSync = useCallback(async (withHistory = seesHistory.current) => {
         try {
-            // History is for the Data Sync tab; without it the status still shows.
-            const [current, past] = await Promise.all([api.getSyncStatus(), api.getSyncHistory().catch(() => ({ runs: [] }))])
+            const [current, past] = await Promise.all([api.getSyncStatus(), withHistory ? api.getSyncHistory().catch(() => ({ runs: [] })) : { runs: [] }])
             setStatus(current)
             setHistory(past.runs)
         } catch (failure) {
@@ -139,6 +143,7 @@ const BusinessCentral = () => {
         // Sync status only exists for a stored copy. Live reading has none.
         const stored = response.storageMode === 'stored'
         if (!stored) { setStatus(null); setHistory([]) }
+        seesHistory.current = !response.access || response.access.admin || (response.access.tabs || []).includes('data')
         await Promise.all([stored ? loadSync() : null, response.connection.discoveredAt ? loadLookups() : null])
     }, [loadInfo, loadSync, loadLookups])
 
