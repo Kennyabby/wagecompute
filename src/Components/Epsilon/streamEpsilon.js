@@ -4,7 +4,7 @@
 // can't be reused here, this mirrors its own auth (httpOnly cookie +
 // same-tab Authorization header) and its one-shot 401-refresh-and-retry, in
 // miniature, rather than duplicating the whole helper.
-import { getInMemoryAccessToken, setInMemoryAccessToken } from '../../Resources/ClientServerAPIConn/fetchServer'
+import { getInMemoryAccessToken, refreshAccessToken } from '../../Resources/ClientServerAPIConn/fetchServer'
 
 const buildRequest = (body, signal) => ({
     method: 'POST',
@@ -35,12 +35,10 @@ const streamEpsilonMessage = async ({ server, body, onEvent, signal }) => {
 
     if (resp.status === 401 || resp.status === 403) {
         try {
-            const tokenResp = await fetch(`${server}/token`, { method: 'POST', credentials: 'include' })
-            if (tokenResp.ok) {
-                const tokenData = await tokenResp.json().catch(() => ({}))
-                if (tokenData?.accessToken) setInMemoryAccessToken(tokenData.accessToken)
-                resp = await fetch(`${server}/ai/epsilon/message/stream`, buildRequest(body, signal))
-            }
+            // The shared refresh, so a turn sent while another request is
+            // refreshing cannot replay the refresh token that one replaced.
+            await refreshAccessToken(server)
+            resp = await fetch(`${server}/ai/epsilon/message/stream`, buildRequest(body, signal))
         } catch (e) {
             if (e.name === 'AbortError') return
             // fall through, resp still holds the original 401/403 response

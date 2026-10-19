@@ -17,6 +17,29 @@ export const clearInMemoryAccessToken = () => { inMemoryAccessToken = null; };
 // but still wants the same same-tab Authorization header everything else gets.
 export const getInMemoryAccessToken = () => inMemoryAccessToken;
 
+// One token refresh at a time, shared by every request that needs it. Each
+// refresh replaces the refresh token, so when a page sent several requests
+// that were all refused together (a user without access to part of a
+// module), each one refreshing for itself presented the token the first had
+// just replaced, was turned down, and signed the user out.
+let refreshInFlight = null;
+export const refreshAccessToken = (server) => {
+    if (!refreshInFlight) {
+        refreshInFlight = (async () => {
+            const resp = await fetch(server + '/token', { method: 'POST', credentials: 'include' });
+            if (!resp.ok) throw new Error('Token refresh failed');
+            const tokenResponse = await resp.json();
+            if (tokenResponse?.accessToken) setInMemoryAccessToken(tokenResponse.accessToken);
+            return tokenResponse?.accessToken || null;
+        })().finally(() => {
+            // Kept briefly, so requests refused a moment after it finished
+            // use this result instead of starting another refresh.
+            setTimeout(() => { refreshInFlight = null; }, 2000);
+        });
+    }
+    return refreshInFlight;
+};
+
 // Electron desktop build only, set once TenantSetup.js's workspace picker
 // resolves a local tenant, read on every request afterward so
 // wageserver/InitializingModule/InitializeApp.js's tenant-resolution
@@ -237,23 +260,11 @@ const fetchServer = async (method, rawBody, endpoint, server, signal) => {
         if ((resp.status === 403 || resp.status === 401) && !isAuthEndpoint) {
             // Token expired, try refreshing
             try {
-                const tokenData = {
-                    method: 'POST',
-                    credentials: 'include'
-                };
-
-                resp = await fetch(server + '/token', tokenData);
-                
-                if (!resp.ok) {
-                    throw new Error('Token refresh failed');
-                }
-
-                const tokenResponse = await resp.json();
-                if (tokenResponse?.accessToken) {
-                    setInMemoryAccessToken(tokenResponse.accessToken);
+                const accessToken = await refreshAccessToken(server);
+                if (accessToken) {
                     data.headers = {
                         ...(data.headers || {}),
-                        'Authorization': `Bearer ${tokenResponse.accessToken}`
+                        'Authorization': `Bearer ${accessToken}`
                     };
                 }
 
