@@ -59,6 +59,7 @@ test('a user with nothing saved starts from what they have now, and is narrowed 
         tabs: ['dashboard', 'reports'],
         actions: ['recon.import', 'recon.configure'],
         reports: { all: false, custom: true, domains: ['inventory'], keys: ['trialBalance'] },
+        limits: { filters: {}, period: 'any', backlog: true },
     }])
     expect(notify).toHaveBeenCalledWith('success', expect.stringMatching(/next click/))
 })
@@ -85,6 +86,34 @@ test('admins and users without the module are explained, not edited', async () =
     fireEvent.click(await screen.findByRole('button', { name: /Boss/ }))
     expect(screen.getByText(/Admins of the workspace can do everything/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save access' })).not.toBeInTheDocument()
+})
+
+test('a user is kept to some locations and to this month, without earlier dates', async () => {
+    const api = makeApi()
+    const limited = {
+        ...catalogue,
+        reports: [{ key: 'stock', title: 'Stock Report', domain: 'inventory', filters: ['locations', 'items'] }, { key: 'trialBalance', title: 'Trial Balance', domain: 'finance', filters: ['branches'] }],
+        limitFilters: [{ key: 'locations', label: 'Locations', lookup: 'locations' }, { key: 'customers', label: 'Customers', lookup: 'customers' }],
+        limitPeriods: [{ key: 'any', label: 'Any dates' }, { key: 'day', label: 'Today (daily)' }, { key: 'month', label: 'This month (monthly)' }],
+    }
+    api.getAccessCatalogue = jest.fn(() => Promise.resolve({ ok: true, ...limited }))
+    const lookups = { locations: [{ value: 'FACTORY', label: 'FACTORY - Factory' }, { value: 'DEPOT', label: 'DEPOT - Depot' }], customers: [] }
+    render(<BCAccessUsers api={api} lookups={lookups} />)
+    fireEvent.click(await screen.findByRole('button', { name: /Ada/ }))
+    // A list the company has nothing in is not offered.
+    expect(screen.queryByText('Customers')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'DEPOT - Depot' }))
+    fireEvent.change(screen.getByLabelText('Period'), { target: { value: 'month' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /Allow earlier dates/ }))
+    expect(screen.getByText(/this month only, and earlier dates are refused/)).toBeInTheDocument()
+    // The trial balance has no location filter, so it would show everything.
+    expect(screen.getByText(/will not open for this user: Trial Balance/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save access' }))
+    await waitFor(() => expect(api.saveAccess).toHaveBeenCalled())
+    expect(api.saveAccess.mock.calls[0][1].limits).toEqual({ filters: { locations: ['DEPOT'] }, period: 'month', backlog: false })
 })
 
 test('combinations that would not work are pointed out', () => {

@@ -104,6 +104,8 @@
     background: var(--brand-card); border: 1px solid var(--brand-border); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5);
 }
 .bc-filter-bar-plain { border: 0; padding: 0; background: none; }
+.bc-filter-limits { flex-basis: 100%; margin: 0; font-size: var(--font-sm); }
+.bc-access-limits { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
 .bc-form-grid { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; }
 .bc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .bc-data-age { margin-top: calc(var(--space-3) * -1); }

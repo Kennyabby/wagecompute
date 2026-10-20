@@ -270,13 +270,13 @@ const ArrangePanel = ({ blocks, layout, onSave, onClose }) => {
 }
 
 const BCDashboard = ({ api, lookups, lastSyncedAt, syncedAt, live, canManage, onOpenReport, onLoaded, onDiscovered }) => {
-    const { can } = useBCAccess()
+    const { can, limits } = useBCAccess()
     const filters = [
         { key: 'dateRange', type: 'dateRange', label: 'Period' },
         { key: 'locations', type: 'multi', label: 'Location', lookup: 'locations' },
         ...(lookups?.hasBranch ? [{ key: 'branches', type: 'multi', label: 'Branch', lookup: 'branches' }] : []),
     ]
-    const [values, setValues] = useState(() => initialFilterValues(filters))
+    const [values, setValues] = useState(() => initialFilterValues(filters, limits))
     const [dashboard, setDashboard] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')

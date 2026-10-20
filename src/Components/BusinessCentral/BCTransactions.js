@@ -45,7 +45,8 @@ const cardsFrom = (summary) => [
  * items and locations behind them, and the list of transactions.
  */
 const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
-    const canExport = useBCAccess().can('reports.export')
+    const { can, limits } = useBCAccess()
+    const canExport = can('reports.export')
     const context = useContext(ContextProvider)
     const { setAlert, setAlertState, setAlertTimeout } = context
     const [definition, setDefinition] = useState(null)
@@ -70,10 +71,10 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
             if (!found.available) { setUnavailable(found.reason); return }
             setUnavailable('')
             setDefinition(found)
-            setValues((current) => current || initialFilterValues(found.filters))
+            setValues((current) => current || initialFilterValues(found.filters, limits))
         }).catch((failure) => { if (active) setError(failure.message) })
         return () => { active = false }
-    }, [api])
+    }, [api, limits])
 
     const run = useCallback(async (params) => {
         setLoading(true)
@@ -99,7 +100,7 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
     }, [run, ready, lastSyncedAt])
 
     const reset = () => {
-        const cleared = initialFilterValues(definition.filters)
+        const cleared = initialFilterValues(definition.filters, limits)
         setValues(cleared)
         setDuplicatesOnly(false)
         run(cleared)
