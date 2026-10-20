@@ -498,7 +498,7 @@ const BusinessCentral = () => {
                 {activeTab === 'connection' && canManage && connectionPage}
                 {activeTab === 'connection' && canManage && !notDiscovered && <BCDocClasses api={api} notify={notify} />}
                 {activeTab === 'connection' && access.admin && <BCTransfer api={api} connection={connection} connections={connections} onChanged={refreshAll} notify={notify} />}
-                {activeTab === 'access' && access.admin && <BCAccessUsers api={api} notify={notify} />}
+                {activeTab === 'access' && access.admin && <BCAccessUsers api={api} notify={notify} lookups={lookups} />}
                 {!tabs.length && <div className='bc-banner bc-banner-info'>Your access to Business Central does not include any of its pages yet. An admin can give it on the Access tab.</div>}
             </div>
         </PageShell>

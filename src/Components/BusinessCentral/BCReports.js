@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import BCCustomise from './BCCustomise'
-import { useBCAccess } from './bcAccess'
+import { keepToLimits, useBCAccess } from './bcAccess'
 import { useUrlState } from './bcUrl'
 import ContextProvider from '../../Resources/ContextProvider'
 import StatCard from '../Shared/ui/StatCard'
@@ -44,7 +44,7 @@ const describeRow = (columns, row) => columns
     .join(', ')
 
 const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset, onChanged, notify }) => {
-    const { can } = useBCAccess()
+    const { can, limits } = useBCAccess()
     // Editing a report covers its look and its reconciliation, each a permission.
     const mayEdit = can('reports.edit') || can('recon.configure')
     const context = useContext(ContextProvider)
@@ -54,13 +54,15 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
     // such as the dashboard's period. Only values this report has a filter
     // for are taken.
     const [values, setValues] = useState(() => {
-        const initial = initialFilterValues(definition.filters)
+        const initial = initialFilterValues(definition.filters, limits)
         // Starting values this workspace saved for the report, then whatever
         // the report was opened with.
         Object.entries({ ...(definition.savedDefaults || {}), ...(preset || {}) }).forEach(([key, value]) => {
             if (key in initial && value !== undefined && value !== null) initial[key] = value
         })
-        return initial
+        // Saved starting values and carried-over ones still stay inside the
+        // user's limits.
+        return keepToLimits(initial, definition.filters, limits)
     })
     const [report, setReport] = useState(null)
     const [loading, setLoading] = useState(false)

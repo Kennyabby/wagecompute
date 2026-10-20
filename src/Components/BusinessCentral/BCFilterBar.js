@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DATE_PRESETS, defaultRange, todayString } from './bcFormat'
+import { keepToLimits, startAtLimits, useBCAccess } from './bcAccess'
 
 const VISIBLE_OPTIONS = 200
 
 // Dropdown with search and tick boxes. Item lists run to thousands of
 // entries, so only the first matches are rendered and the search narrows them.
-export const MultiSelect = ({ label, options, value, onChange }) => {
+export const MultiSelect = ({ label, options, value, onChange, limited = false }) => {
     const [open, setOpen] = useState(false)
     const [search, setSearch] = useState('')
     const ref = useRef(null)
@@ -26,7 +27,10 @@ export const MultiSelect = ({ label, options, value, onChange }) => {
         onChange(value.includes(optionValue) ? value.filter((entry) => entry !== optionValue) : [...value, optionValue])
     }
 
-    const summary = value.length === 0 ? 'All' : value.length === 1 ? (options.find((option) => option.value === value[0])?.label || value[0]) : `${value.length} selected`
+    // For a limited filter every choice is one of the user's own values, so
+    // having them all ticked reads as all of theirs.
+    const all = limited ? options.length > 0 && value.length >= options.length : value.length === 0
+    const summary = all ? (limited ? 'All of yours' : 'All') : value.length === 0 ? 'All' : value.length === 1 ? (options.find((option) => option.value === value[0])?.label || value[0]) : `${value.length} selected`
 
     return (
         <div className='bc-field bc-multi' ref={ref}>
@@ -57,8 +61,9 @@ export const MultiSelect = ({ label, options, value, onChange }) => {
     )
 }
 
-// Starting values for a set of filter definitions.
-export const initialFilterValues = (filters) => {
+// Starting values for a set of filter definitions. With `limits`, the
+// period and values the user is kept to are where they start.
+export const initialFilterValues = (filters, limits) => {
     const values = {}
     filters.forEach((filter) => {
         if (filter.type === 'dateRange') Object.assign(values, defaultRange())
@@ -68,7 +73,24 @@ export const initialFilterValues = (filters) => {
         else if (filter.type === 'text') values[filter.key] = ''
         else values[filter.key] = filter.default
     })
-    return values
+    return limits ? startAtLimits(values, filters, limits, todayString()) : values
+}
+
+const LIMIT_LABELS = { locations: 'Locations', branches: 'Branches', categories: 'Item categories', items: 'Items', customers: 'Customers', vendors: 'Vendors', salespeople: 'Salespeople', purchasers: 'Purchasers', accounts: 'G/L accounts', banks: 'Bank accounts', docClasses: 'Document classes' }
+
+/** One line saying what the user is kept to, shown under their filters. */
+export const describeLimits = (limits, lookups) => {
+    if (!limits) return ''
+    const parts = Object.entries(limits.filters || {}).map(([key, values]) => {
+        const options = lookups?.[key] || []
+        const names = values.slice(0, 4).map((value) => options.find((option) => option.value === value)?.label || value)
+        return `${LIMIT_LABELS[key] || key}: ${names.join(', ')}${values.length > 4 ? ` and ${values.length - 4} more` : ''}`
+    })
+    if (limits.window) {
+        const when = limits.period === 'day' ? 'today' : 'this month'
+        parts.push(limits.locked ? `Dates: ${when} only` : `Dates: opens on ${when}, earlier dates allowed`)
+    }
+    return parts.length ? `Your access is limited. ${parts.join('. ')}.` : ''
 }
 
 /**
@@ -77,7 +99,12 @@ export const initialFilterValues = (filters) => {
  * that point at one (items, locations, branches and so on).
  */
 const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel = 'Run report', busy, children }) => {
-    const set = (patch) => onChange({ ...values, ...patch })
+    const { limits } = useBCAccess()
+    // Every change is kept to the user's limits, so the filters on screen are
+    // the ones the report is run with.
+    const set = (patch) => onChange(keepToLimits({ ...values, ...patch }, filters, limits))
+    const window = limits?.locked ? limits.window : null
+    const note = describeLimits(limits, lookups)
 
     return (
         <form className='bc-filter-bar' onSubmit={(event) => { event.preventDefault(); onSubmit() }}>
@@ -87,9 +114,9 @@ const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel
                         <div key={filter.key} className='bc-field bc-field-range'>
                             <span className='bc-field-label'>{filter.label}</span>
                             <div className='bc-range'>
-                                <input type='date' className='bc-input' value={values.from || ''} max={values.to || undefined} onChange={(event) => set({ from: event.target.value })} aria-label='From date' />
+                                <input type='date' className='bc-input' value={values.from || ''} min={window?.start} max={values.to || window?.end || undefined} onChange={(event) => set({ from: event.target.value })} aria-label='From date' />
                                 <span className='bc-muted'>to</span>
-                                <input type='date' className='bc-input' value={values.to || ''} min={values.from || undefined} onChange={(event) => set({ to: event.target.value })} aria-label='To date' />
+                                <input type='date' className='bc-input' value={values.to || ''} min={values.from || window?.start || undefined} max={window?.end} onChange={(event) => set({ to: event.target.value })} aria-label='To date' />
                                 <select className='bc-input bc-preset' value='' onChange={(event) => { const preset = DATE_PRESETS.find((entry) => entry.key === event.target.value); if (preset) set(preset.resolve()) }} aria-label='Quick period'>
                                     <option value=''>Quick period</option>
                                     {DATE_PRESETS.map((preset) => <option key={preset.key} value={preset.key}>{preset.label}</option>)}
@@ -102,7 +129,7 @@ const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel
                     return (
                         <label key={filter.key} className='bc-field'>
                             <span className='bc-field-label'>{filter.label}</span>
-                            <input type='date' className='bc-input' value={values[filter.key] || ''} onChange={(event) => set({ [filter.key]: event.target.value })} />
+                            <input type='date' className='bc-input' value={values[filter.key] || ''} min={window?.start} max={window?.end} onChange={(event) => set({ [filter.key]: event.target.value })} />
                         </label>
                     )
                 }
@@ -112,7 +139,7 @@ const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel
                     // company that does not use them) would only ever be an
                     // empty list, so it is left off.
                     if (filter.optional && lookups && options.length === 0) return null
-                    return <MultiSelect key={filter.key} label={filter.label} options={options} value={values[filter.key] || []} onChange={(next) => set({ [filter.key]: next })} />
+                    return <MultiSelect key={filter.key} label={filter.label} options={options} limited={!!limits?.filters?.[filter.key]?.length} value={values[filter.key] || []} onChange={(next) => set({ [filter.key]: next })} />
                 }
                 if (filter.type === 'select') {
                     return (
@@ -152,6 +179,7 @@ const BCFilterBar = ({ filters, values, onChange, lookups, onSubmit, submitLabel
             })}
             <button type='submit' className='bc-button bc-button-primary' disabled={busy}>{busy ? 'Working...' : submitLabel}</button>
             {children}
+            {note && <p className='bc-muted bc-filter-limits'>{note}</p>}
         </form>
     )
 }
