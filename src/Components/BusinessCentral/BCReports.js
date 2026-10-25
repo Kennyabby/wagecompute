@@ -43,7 +43,7 @@ const describeRow = (columns, row) => columns
     .map((column) => row[column.key])
     .join(', ')
 
-const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset, onChanged, notify }) => {
+const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded, preset, onChanged, notify, onOpenReport }) => {
     const { can, limits } = useBCAccess()
     // Editing a report covers its look and its reconciliation, each a permission.
     const mayEdit = can('reports.edit') || can('recon.configure')
@@ -182,6 +182,15 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                         </div>
                     )}
                     {report.meta?.note && <div className='bc-banner bc-banner-info'>{report.meta.note}</div>}
+                    {/* Another report that takes this one further, such as the
+                        check behind a balance sheet that does not balance. */}
+                    {onOpenReport && report.meta?.links?.length > 0 && (
+                        <div className='bc-actions'>
+                            {report.meta.links.map((link) => (
+                                <button key={link.report} type='button' className='bc-button bc-button-primary' onClick={() => onOpenReport(link.report, link.params)}>{link.label}</button>
+                            ))}
+                        </div>
+                    )}
                     <section className='bc-card'>
                         {report.columns.some((column) => column.drill) && report.rows.length > 0 && (
                             <p className='bc-muted'>Click any underlined figure to see the entries that make it up.</p>
@@ -245,7 +254,7 @@ export const DeleteReportDialog = ({ report, busy, onConfirm, onCancel }) => {
     )
 }
 
-const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onGoTo, onLoaded, notify = () => {} }) => {
+const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey, onOpenReport, onGoTo, onLoaded, notify = () => {} }) => {
     const { can } = useBCAccess()
     const [catalogue, setCatalogue] = useState(null)
     const [error, setError] = useState('')
@@ -328,7 +337,7 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
     }
 
     if (selected) {
-        return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} notify={notify} onChanged={() => setVersion((current) => current + 1)} />
+        return <ReportViewer key={`${selected.key}:${openPreset?.stamp || ''}`} api={api} definition={selected} lookups={lookups} lastSyncedAt={lastSyncedAt} onBack={() => onOpenKey(null)} onLoaded={onLoaded} preset={openPreset?.values} notify={notify} onOpenReport={onOpenReport} onChanged={() => setVersion((current) => current + 1)} />
     }
 
     const needle = search.trim().toLowerCase()

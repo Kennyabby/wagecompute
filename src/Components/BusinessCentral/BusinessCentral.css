@@ -215,6 +215,16 @@
 .bc-pinned-report { display: flex; flex-direction: column; gap: var(--space-4); }
 .bc-pinned-report .bc-chart { border: 0; padding: 0; box-shadow: none; }
 
+/* The reports a person opens most, as a row of cards at the top of the dashboard. */
+.bc-frequent { display: flex; flex-direction: column; gap: var(--space-3); }
+.bc-frequent h3 { margin: 0; }
+.bc-frequent-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
+.bc-frequent-card {
+    display: flex; flex-direction: column; gap: var(--space-1); text-align: left; cursor: pointer;
+    font: inherit; color: inherit;
+}
+.bc-frequent-card:hover { border-color: var(--brand-secondary); }
+
 /* ---- Bank statements: the check of the file ---- */
 .bc-verdict { font-weight: 700; margin: 0; }
 .bc-verdict-ok { color: #12805a; }
@@ -255,6 +265,12 @@ button.bc-th-card:hover { box-shadow: 0 4px 14px rgba(23, 56, 41, 0.12); transfo
 
 /* Headings and totals of a statement, and cells that carry a sentence. */
 .bc-table .bc-row-strong td { font-weight: 700; }
+/* Opens or closes a group of a statement. Sits before the line's name. */
+.bc-tree-toggle {
+    border: 0; background: none; padding: 0 var(--space-2) 0 0; margin: 0; font: inherit; cursor: pointer;
+    color: var(--gray-600); width: 1.4em; text-align: left;
+}
+.bc-tree-toggle:hover { color: var(--brand-secondary); }
 .bc-data-table td.bc-wrap { white-space: normal; min-width: 280px; max-width: 520px; overflow: visible; text-overflow: clip; line-height: 1.4; }
 .bc-missing td, .bc-missing th { white-space: normal; }
 .bc-missing code { font-family: inherit; font-weight: 600; }

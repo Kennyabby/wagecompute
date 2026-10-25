@@ -83,3 +83,45 @@ test('a table that is not filterable has no filter row and keeps its totals', ()
     expect(screen.queryByLabelText('Filter by Type')).toBeNull()
     expect(footer()).toEqual(['Total', '', '', '-3,000', '450,000.00'])
 })
+
+// A statement: sections with headings, groups inside them, and totals.
+const statementColumns = [
+    { key: 'name', label: 'Account', type: 'text', indent: true },
+    { key: 'amount', label: 'Amount', type: 'money' },
+]
+const statement = [
+    { _level: 0, _heading: true, _emphasis: true, name: 'Cost of sales', amount: '' },
+    { _level: 1, _heading: true, _emphasis: true, name: 'Materials', amount: '' },
+    { _level: 2, name: 'Caps', amount: 10 },
+    { _level: 2, name: 'Labels', amount: 20 },
+    { _level: 1, _emphasis: true, name: 'Total materials', amount: 30 },
+    { _level: 1, name: 'Freight', amount: 5 },
+    { _level: 0, _emphasis: true, name: 'Total cost of sales', amount: 35 },
+    { _level: 0, _heading: true, _emphasis: true, _expanded: true, name: 'Summary', amount: '' },
+    { _level: 1, _emphasis: true, name: 'Net', amount: 35 },
+]
+const shownNames = () => group(1).getAllByRole('row').map((row) => row.cells[0].textContent.replace(/[▸▾]/g, ''))
+
+test('a statement opens with its groups closed to their totals, and each opens on a click', () => {
+    render(<BCDataTable columns={statementColumns} rows={statement} />)
+    // Closed: a section shows as its total. A summary marked to start open stays open.
+    expect(shownNames()).toEqual(['Total cost of sales', 'Summary', 'Net'])
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Cost of sales' }))
+    // Open: its heading, its groups closed to their totals, and its own total.
+    expect(shownNames()).toEqual(['Cost of sales', 'Total materials', 'Freight', 'Total cost of sales', 'Summary', 'Net'])
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Materials' }))
+    expect(shownNames()).toEqual(['Cost of sales', 'Materials', 'Caps', 'Labels', 'Total materials', 'Freight', 'Total cost of sales', 'Summary', 'Net'])
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Cost of sales' }))
+    expect(shownNames()).toEqual(['Total cost of sales', 'Summary', 'Net'])
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
+    expect(shownNames()).toHaveLength(statement.length)
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all' }))
+    expect(shownNames()).toEqual(['Total cost of sales', 'Summary'])
+})
+
+test('sorted or searched, a statement lists every row flat', () => {
+    render(<BCDataTable columns={statementColumns} rows={statement} />)
+    fireEvent.change(screen.getByLabelText('Search rows'), { target: { value: 'a' } })
+    expect(shownNames()).toContain('Caps')
+    expect(screen.queryByRole('button', { name: /^Expand / })).toBeNull()
+})

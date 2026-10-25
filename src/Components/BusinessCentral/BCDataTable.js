@@ -14,6 +14,49 @@ const BLANK = '\u0000blank'
 const round2 = (value) => Math.round(value * 100) / 100
 
 /**
+ * The groups of a financial statement. A heading row (`_heading`) opens one,
+ * and it runs until the next row back at the heading's level or above. When
+ * that row is a total (emphasised, not a heading, at the same level), it is
+ * the group's total and stays in sight while the group is closed.
+ */
+export const groupsOf = (rows) => {
+    if (!rows.some((row) => row._heading)) return []
+    const groups = []
+    rows.forEach((row, index) => {
+        if (!row._heading) return
+        const level = row._level || 0
+        let end = index + 1
+        while (end < rows.length && (rows[end]._level || 0) > level) end += 1
+        if (end === index + 1) return
+        const closing = rows[end]
+        const close = closing && !closing._heading && closing._emphasis && (closing._level || 0) === level ? end : -1
+        groups.push({ start: index, end, close })
+    })
+    return groups
+}
+
+/**
+ * Which rows show, given the groups that are open, and where each group's
+ * toggle sits: on its total while it is closed, on its heading while open.
+ */
+export const visibleRows = (rows, groups, open) => {
+    const hidden = new Set()
+    const toggles = new Map()
+    groups.forEach((group) => {
+        if (open.has(group.start)) { toggles.set(group.start, { group, open: true }); return }
+        for (let at = group.start + 1; at < group.end; at += 1) hidden.add(at)
+        if (group.close >= 0) {
+            hidden.add(group.start)
+            toggles.set(group.close, { group, open: false })
+        } else toggles.set(group.start, { group, open: false })
+    })
+    return rows.map((row, index) => ({ row, index, toggle: toggles.get(index) })).filter((entry) => !hidden.has(entry.index))
+}
+
+// Groups a report asks to start open (`_expanded`), by their heading's row.
+const startOpen = (rows) => new Set(rows.map((row, index) => (row._heading && row._expanded ? index : -1)).filter((index) => index >= 0))
+
+/**
  * Turns what was typed into a column filter into a test for one cell.
  * Understands >, >=, <, <=, = and "from..to", on numbers and on dates.
  * Anything else is a plain "contains" match on the text shown in the cell.
@@ -76,7 +119,12 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
     const [search, setSearch] = useState('')
     const [columnFilters, setColumnFilters] = useState({})
 
-    useEffect(() => { setPage(0); setSort(null); setSearch(''); setColumnFilters({}) }, [rows])
+    // Statement groups start closed, so the totals read first and a group is
+    // opened to see the accounts behind it.
+    const groups = useMemo(() => groupsOf(rows), [rows])
+    const [open, setOpen] = useState(() => startOpen(rows))
+
+    useEffect(() => { setPage(0); setSort(null); setSearch(''); setColumnFilters({}); setOpen(startOpen(rows)) }, [rows])
 
     // Text columns with few different values are filtered from a pick list.
     const pickLists = useMemo(() => {
@@ -152,8 +200,20 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
         onView({ rows: sorted, totals: shownTotals, filters: described, filtered: sorted.length !== rows.length, columns: shown })
     }, [onView, sorted, shownTotals, activeFilters, search, rows, shown])
 
-    const pageCount = Math.max(Math.ceil(sorted.length / pageSize), 1)
-    const visible = sorted.slice(page * pageSize, (page + 1) * pageSize)
+    // Groups apply while the rows are in their own order. Sorted, searched or
+    // filtered, every row is listed flat.
+    const grouped = groups.length > 0 && !sort && !anyFilter
+    const listed = useMemo(() => (grouped ? visibleRows(rows, groups, open) : sorted.map((row) => ({ row }))), [grouped, rows, groups, open, sorted])
+    const toggleGroup = (start) => setOpen((current) => {
+        const next = new Set(current)
+        if (next.has(start)) next.delete(start); else next.add(start)
+        return next
+    })
+
+    const pageCount = Math.max(Math.ceil(listed.length / pageSize), 1)
+    const visible = listed.slice(page * pageSize, (page + 1) * pageSize)
+    // The toggle goes in the indented column, or the first one when none is.
+    const toggleKey = (shown.find((column) => column.indent) || shown[0])?.key
     const hasTotals = shown.some((column) => column.total)
     const toggleColumn = (key) => setHidden((current) => (current.includes(key) ? current.filter((entry) => entry !== key) : (current.length < columns.length - 1 ? [...current, key] : current)))
 
@@ -172,6 +232,12 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
                 <span className='bc-table-count bc-muted'>
                     {filtered.length === rows.length ? `${rows.length.toLocaleString()} rows` : `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} rows`}
                     {filterable && anyFilter && <button type='button' className='bc-link-button' onClick={clearFilters}>Clear filters</button>}
+                    {grouped && (
+                        <>
+                            <button type='button' className='bc-link-button' onClick={() => { setOpen(new Set(groups.map((group) => group.start))); setPage(0) }}>Expand all</button>
+                            <button type='button' className='bc-link-button' onClick={() => { setOpen(new Set()); setPage(0) }}>Collapse all</button>
+                        </>
+                    )}
                     {manageColumns && (
                         <button type='button' className='bc-link-button' aria-expanded={choosing} onClick={() => setChoosing((open) => !open)}>
                             {choosing ? 'Done choosing columns' : `Columns${hidden.length ? ` (${hidden.length} hidden)` : ''}`}
@@ -228,9 +294,10 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
                         )}
                     </thead>
                     <tbody>
-                        {visible.map((row, index) => (
+                        {visible.map(({ row, toggle }, index) => (
                             <tr key={page * pageSize + index} className={row._emphasis ? 'bc-row-strong' : ''}>
                                 {shown.map((column) => {
+                                    const toggleHere = toggle && column.key === toggleKey
                                     const numeric = isNumericColumn(column)
                                     const text = formatValue(row[column.key], column.type)
                                     // A zero has nothing behind it worth opening.
@@ -240,6 +307,17 @@ const BCDataTable = ({ columns, rows, totals = {}, onDrill, filterable = false, 
                                     const indent = column.indent && row._level ? { paddingLeft: `calc(var(--space-3) + ${Math.min(row._level, 8) * 18}px)` } : undefined
                                     return (
                                         <td key={column.key} className={numeric ? `bc-num${column.signed && Number(row[column.key]) ? (Number(row[column.key]) > 0 ? ' bc-pos' : ' bc-neg') : ''}` : (column.wrap ? 'bc-wrap' : '')} style={indent} title={numeric || column.wrap ? undefined : String(row[column.key] ?? '')}>
+                                            {toggleHere && (
+                                                <button
+                                                    type='button'
+                                                    className='bc-tree-toggle'
+                                                    aria-expanded={toggle.open}
+                                                    aria-label={`${toggle.open ? 'Collapse' : 'Expand'} ${String(rows[toggle.group.start]?.[column.key] || 'group').trim()}`}
+                                                    onClick={() => toggleGroup(toggle.group.start)}
+                                                >
+                                                    {toggle.open ? '▾' : '▸'}
+                                                </button>
+                                            )}
                                             {drillable
                                                 ? <button type='button' className='bc-drill' title={column.pick ? 'Show only this, or leave it out' : `See what makes up this ${column.label.toLowerCase()}`} onClick={() => onDrill(row, column)}>{text}</button>
                                                 : text}

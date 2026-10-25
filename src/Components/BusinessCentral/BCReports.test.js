@@ -49,6 +49,23 @@ test('a built report is only deleted after its name has been typed', async () =>
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 })
 
+test('a balance sheet that does not balance offers the check that finds out why', async () => {
+    const api = {
+        getReports: jest.fn().mockResolvedValue({
+            connected: true,
+            domains: [{ key: 'finance', label: 'Finance' }],
+            reports: [{ key: 'balanceSheet', title: 'Balance Sheet', domain: 'finance', description: 'What the company owns and owes.', available: true, filters: [] }],
+        }),
+        runReport: jest.fn().mockResolvedValue({ report: { kpis: [], charts: [], columns: [], rows: [], totals: {}, meta: { links: [{ report: 'balanceCheck', label: 'Find out why it does not balance', params: { asOf: '2026-10-25', branches: ['GARRISON'] } }] } } }),
+    }
+    const onOpenReport = jest.fn()
+    const context = { setAlert: () => {}, setAlertState: () => {}, setAlertTimeout: () => {} }
+    render(<ContextProvider.Provider value={context}><BCReports api={api} lookups={{}} openKey='balanceSheet' onOpenKey={() => {}} onOpenReport={onOpenReport} onGoTo={() => {}} /></ContextProvider.Provider>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Find out why it does not balance' }))
+    expect(onOpenReport).toHaveBeenCalledWith('balanceCheck', { asOf: '2026-10-25', branches: ['GARRISON'] })
+})
+
 test('inbound and outbound lot filters search selectable lot numbers independently', async () => {
     const lots = Array.from({ length: 12 }, (_, index) => {
         const value = `LOT-${String(index + 1).padStart(2, '0')}`

@@ -65,6 +65,8 @@ test('the summary cards show the stock position and open what is behind them', a
     expect(sales).toHaveTextContent('Cost of goods sold: 180,000.00')
     expect(screen.getByRole('button', { name: /^Transfers/ })).toHaveTextContent('+6,000 / -6,000')
     expect(screen.getByRole('button', { name: /^Closing stock/ })).toHaveTextContent('Average cost: 10.39')
+    // The net adjustment as the income statement shows it: stock found is a gain there.
+    expect(screen.getByRole('button', { name: /^Adjustments/ })).toHaveTextContent('In the income statement: 200.00 gain')
 
     fireEvent.click(sales)
     await waitFor(() => expect(api.drillReport).toHaveBeenCalledWith('transactionHistory', report.params, { column: 'sales', row: {} }))

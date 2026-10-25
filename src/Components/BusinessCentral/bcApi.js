@@ -66,7 +66,9 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         reconcileTemplate: (kind, params, report) => call('POST', 'reconcile/template', { kind, params, report }),
         reconcileRun: (kind, params, sheets, report) => call('POST', 'reconcile/run', { kind, params, sheets, report }),
         // The columns a reconciliation reads, for mapping a file of the person's own.
-        reconcileColumns: (kind, params, report) => call('POST', 'reconcile/columns', { kind, params, report }),
+        // `all` asks for every column with what is in the template and what is
+        // compared, for the report editor. Without it, the template's columns.
+        reconcileColumns: (kind, params, report, all = false) => call('POST', 'reconcile/columns', { kind, params, report, all }),
         // Remembered column mappings, by report and file layout.
         reconcileMappings: (kind, report) => call('POST', 'reconcile/mappings', { kind, report }),
         saveReconcileMapping: (mapping) => call('POST', 'reconcile/mappings/save', mapping),
@@ -80,6 +82,7 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         getFieldValues: (source) => call('POST', 'builder/values', source),
         deleteReport: (id) => call('POST', 'builder/delete', { id }),
         getReports: () => call('GET', 'reports'),
+        getFrequentReports: () => call('GET', 'reports/frequent'),
         runReport: (key, params) => call('POST', 'reports/run', { key, params }),
         drillReport: (key, params, target) => call('POST', 'reports/drill', { key, params, target }),
 

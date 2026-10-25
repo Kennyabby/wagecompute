@@ -473,7 +473,7 @@ const BusinessCentral = () => {
                         {activeTab === 'dashboard' && <BCDashboard api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} syncedAt={connection?.lastSyncFinishedAt || 0} live={!stored} canManage={canManage} onOpenReport={openReport} onLoaded={onDataLoaded} onDiscovered={refreshAll} />}
                         {activeTab === 'transactions' && <BCTransactions api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} onLoaded={onDataLoaded} onGoTo={setTab} />}
                         {activeTab === 'bank' && <BCBankStatement api={api} lookups={lookups} />}
-                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} />}
+                        {activeTab === 'reports' && <BCReports api={api} lookups={lookups} lastSyncedAt={lastSyncedAt} openKey={reportKey} openPreset={reportPreset} onOpenKey={pickReport} onOpenReport={openReport} onGoTo={setTab} onLoaded={onDataLoaded} notify={notify} />}
                     </>
                 )}
                 {/* Works from its own staging records, so it does not wait for the live reading the reports need. */}

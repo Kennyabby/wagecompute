@@ -29,6 +29,9 @@ const cardsFrom = (summary) => [
     {
         key: 'adjustments', label: 'Adjustments', value: `${signed(summary.positiveAdjustments)} / ${quantity(summary.negativeAdjustments)}`, figure: summary.positiveAdjustments + summary.negativeAdjustments,
         lines: [`Positive: ${money(summary.positiveAdjustmentsCost)}`, `Negative: ${money(summary.negativeAdjustmentsCost)}`, `Net: ${money(summary.netAdjustmentCost)}`,
+            // The income statement shows the same net amount the other way
+            // round: stock lost is a cost there, stock found a gain.
+            `In the income statement: ${money(Math.abs(summary.netAdjustmentCost))} ${summary.netAdjustmentCost > 0 ? 'gain' : 'cost'}`,
             // By document class, when classes are named: damages, consumption...
             ...(summary.adjustmentClasses || []).map((entry) => `${entry.label}: ${money(entry.cost)}`)],
     },
