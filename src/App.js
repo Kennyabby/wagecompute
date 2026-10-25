@@ -70,7 +70,6 @@ import {
   loadPendingChanges,
   loadAllOrders,
   loadAllTables,
-  loadAllSessionsLocal,
   putOrder,
   putTable,
   putSession,
@@ -231,6 +230,41 @@ const applySseCollectionChange = (existing = [], payload = {}) => {
   }
 
   return current;
+};
+
+// The documents a live event carries: a created or updated document, a list
+// of them, or none for a removal.
+const sseDocs = (payload = {}) => {
+  if (payload?.op === 'remove') return [];
+  const data = payload?.data;
+  if (Array.isArray(data)) return data.filter((d) => d && typeof d === 'object');
+  return data && typeof data === 'object' ? [data] : [];
+};
+
+// Like applySseCollectionChange, keyed by a field the caller names. Sessions
+// and Session Manager runs are matched by start and orders by order number:
+// one made on a till before it reached the server has no _id, so matching on
+// _id kept the till's stale copy next to the server's.
+const upsertByKey = (prev, payload, keyOf) => {
+  const current = Array.isArray(prev) ? prev : [];
+  if (payload?.op === 'remove') {
+    const filter = payload?.data?.filter || payload?.data || {};
+    return current.filter((item) => !matchesSseFilter(item, filter));
+  }
+  const data = payload?.data;
+  if ((payload?.op === 'update' || payload?.op === 'updateMany') && Array.isArray(data) && data.length === 2 && data[0] && keyOf(data[0]) == null && !data[0]._id) {
+    const [filter, patch] = data;
+    return current.map((item) => (matchesSseFilter(item, filter) ? { ...item, ...patch } : item));
+  }
+  const incoming = sseDocs(payload).filter((doc) => keyOf(doc) != null);
+  if (!incoming.length) return current;
+  const keyless = current.filter((item) => keyOf(item) == null);
+  const map = new Map(current.filter((item) => keyOf(item) != null).map((item) => [String(keyOf(item)), item]));
+  incoming.forEach((doc) => {
+    const key = String(keyOf(doc));
+    map.set(key, { ...(map.get(key) || {}), ...doc });
+  });
+  return [...map.values(), ...keyless];
 };
 
 const ACCOUNTING_UI_CACHE_VERSION = 6;
@@ -405,6 +439,11 @@ function App() {
   // closes over whatever `products` was at subscribe time. A ref sidesteps
   // that stale closure without changing the effect's dependency array.
   const productsRef = useRef(products)
+  // What the live connection calls into. Reassigned on every render (below
+  // the session and order functions), so an event always reaches the
+  // current versions without reconnecting.
+  const liveRef = useRef({ applyOrders: () => {}, applySessions: () => {}, resync: () => {} })
+  const lastResyncRef = useRef(0)
   useEffect(() => { productsRef.current = products }, [products])
   const [accommodations, setAccommodations] = useState([])
   const [purchase, setPurchase] = useState([])
@@ -437,65 +476,31 @@ function App() {
   const Navigate = useNavigate()
   
   const intervalPeriod = 3600000; // 60 minutes
-  // Guarded fetchServer: when SSE is connected and initial sync done,
-  // serve getDocsDetails requests from in-memory state/cache to avoid redundant network calls.
+  // The fetch handed to every screen. A read of a whole collection the live
+  // connection keeps current is answered from memory while that connection
+  // is up. Anything filtered goes to the server: this used to answer every
+  // read from memory or from a cache found by name, whatever its filter, so
+  // a till re-reading orders or sessions to check them got the old list back.
   const guardedFetchServer = async (method, body, endpoint, serverParam, signal) => {
-    // Only intercept read calls when SSE is active and initial sync completed
     try {
-      if (endpoint === 'getDocsDetails' && isSSEConnected && isInitialSyncDone) {
-        const collRaw = body && (body.collection || body.collectionName || '')
-        const coll = String(collRaw || '').trim();
-
-        // mapping from server collection name -> { cacheKey, getter }
-        const collectionMap = {
-          // 'Orders': { cacheKey: 'posOrders', getter: () => posOrders },
-          // 'POSSessions': { cacheKey: 'allSessions', getter: () => allSessions },
-          'Products': { cacheKey: 'products', getter: () => products },
-          'Sales': { cacheKey: 'sales', getter: () => sales },
-          'Purchase': { cacheKey: 'purchase', getter: () => purchase },
-          'Expenses': { cacheKey: 'expenses', getter: () => expenses },
-          'Accommodations': { cacheKey: 'accommodations', getter: () => accommodations },
-          'Tables': { cacheKey: 'tables', getter: () => tables },
-        };
-
-        // find mapping case-insensitively
-        const mapKey = Object.keys(collectionMap).find(k => k.toLowerCase() === (coll || '').toLowerCase());
-        if (mapKey) {
-          try {
-            const rec = collectionMap[mapKey].getter() || [];
-            // if in-memory empty, try app cache
-            if ((!rec || (Array.isArray(rec) && rec.length === 0)) && collectionMap[mapKey].cacheKey) {
-              const cached = await getCached(company, collectionMap[mapKey].cacheKey, companyRecord?.emailid).catch(() => null);
-              if (cached) return { err: false, record: cached };
-            }
-            return { err: false, record: rec };
-          } catch (e) {/* fallthrough to cache/fetch */ }
-        }
-
-        // If no direct mapping, try several cache key variants (collection name variants)
-        const candidates = [];
-        if (coll) candidates.push(coll);
-        const lower = coll.toLowerCase();
-        if (lower && !candidates.includes(lower)) candidates.push(lower);
-        const lcFirst = coll.charAt(0).toLowerCase() + coll.slice(1);
-        if (lcFirst && !candidates.includes(lcFirst)) candidates.push(lcFirst);
-        // common custom mappings
-        if (coll.toLowerCase() === 'orders' && !candidates.includes('posOrders')) candidates.push('posOrders');
-
-        for (const key of candidates) {
-          try {
-            const cached = await getCached(company, key, companyRecord?.emailid).catch(() => null);
-            if (cached) return { err: false, record: cached };
-          } catch (e) { }
-        }
-        // As a last-ditch, attempt to return an empty array rather than hitting the network for huge queries
-        // return { err: false, record: [] };
-        return await fetchServer(method, body, endpoint, serverParam, signal)
+      const filter = body?.prop
+      const unfiltered = filter === undefined || filter === null || (typeof filter === 'object' && !Array.isArray(filter) && Object.keys(filter).length === 0)
+      if (endpoint === 'getDocsDetails' && unfiltered && isSSEConnected && isInitialSyncDone) {
+        const coll = String(body?.collection || body?.collectionName || '').trim().toLowerCase()
+        const inMemory = {
+          products: () => products,
+          sales: () => sales,
+          purchase: () => purchase,
+          expenses: () => expenses,
+          accommodations: () => accommodations,
+          tables: () => tables,
+        }[coll]
+        const rec = inMemory ? inMemory() : null
+        if (Array.isArray(rec) && rec.length) return { err: false, record: rec }
       }
     } catch (e) {
       console.warn('guardedFetchServer error', e)
     }
-    // default: call original fetchServer
     return await fetchServer(method, body, endpoint, serverParam, signal)
   }
 
@@ -612,161 +617,21 @@ function App() {
         try {
           switch (coll) {
             case 'Orders':
-              // apply server-sent orders into IndexedDB with conflict-aware logic
-              if (Array.isArray(payload.data)) {
-                import('./Resources/offlineDb').then(async ({ putOrder, loadPendingChanges, markPendingChangeSynced }) => {
-                  try {
-                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(() => []);
-                    for (const o of payload.data) {
-                      try {
-                        const match = pending.find(p => p.entityType === 'order' && ((p.clientId && p.clientId === o.orderNumber) || (p.payload && p.payload.orderNumber === o.orderNumber)));
-                        if (match) {
-                          // If this was a local create that was synced, apply and remove pending
-                          if (match.op === 'create') {
-                            await putOrder(company, companyRecord?.emailid, o).catch(() => { });
-                            // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
-                          } else {
-                            // skip applying server update when there is a pending local change
-                            console.debug('SSE: skipping server order update due to pending local change', o.orderNumber)
-                          }
-                        } else {
-                          await putOrder(company, companyRecord?.emailid, o).catch(() => { });
-                        }
-                      } catch (e) { console.warn('SSE: failed applying order', e) }
-                    }
-
-                    // update in-memory cache/state without doing a full server refresh
-                    try {
-                      const existing = Array.isArray(posOrders) ? [...posOrders] : [];
-                      const map = {};
-                      existing.forEach(co => { if (co && co.orderNumber) map[co.orderNumber] = co });
-                      payload.data.forEach(o => { if (o && o.orderNumber) map[o.orderNumber] = o });
-                      const merged = Object.values(map);
-                      // setPosOrders(merged);
-                      // setAllPosOrders(merged)
-                      setCached(company, 'posOrders', merged, companyRecord?.emailid);
-                    } catch (e) {/* ignore cache update failures */ }
-                  } catch (e) {
-                    console.error('SSE Orders apply error', e)
-                  }
-                })
-              } else if (payload.data && typeof payload.data === 'object') {
-                import('./Resources/offlineDb').then(async ({ putOrder, loadPendingChanges, markPendingChangeSynced }) => {
-                  try {
-                    const o = payload.data;
-                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(() => []);
-                    const match = pending.find(p => p.entityType === 'order' && ((p.clientId && p.clientId === o.orderNumber) || (p.payload && p.payload.orderNumber === o.orderNumber)));
-                    if (match) {
-                      if (match.op === 'create') {
-                        await putOrder(company, companyRecord?.emailid, o).catch(() => { });
-                        // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
-                      } else {
-                        console.debug('SSE: skipping server order update due to pending local change', o.orderNumber)
-                      }
-                    } else {
-                      await putOrder(company, companyRecord?.emailid, o).catch(() => { });
-                    }
-
-                    // update state/cache
-                    try {
-                      const existing = Array.isArray(posOrders) ? [...posOrders] : [];
-                      const map = {};
-                      existing.forEach(co => { if (co && co.orderNumber) map[co.orderNumber] = co });
-                      if (o && o.orderNumber) map[o.orderNumber] = o;
-                      const merged = Object.values(map);
-                      // setPosOrders(merged);
-                      // setAllPosOrders(merged)
-                      setCached(company, 'posOrders', merged, companyRecord?.emailid);
-                    } catch (e) { }
-                  } catch (e) { console.error('SSE Orders apply error', e) }
-                })
-              }
+              // Straight into what the screens show, keyed by order number,
+              // with this device's own unsent change on top. It used to go
+              // only to the cache, so an order paid or cancelled on another
+              // till was not seen here until a reload.
+              liveRef.current.applyOrders(payload)
               break;
             case 'POSSessions':
-              // apply server-sent POS sessions into IndexedDB with conflict-aware logic
-              if (Array.isArray(payload.data)) {
-                import('./Resources/offlineDb').then(async ({ putSession, loadPendingChanges, markPendingChangeSynced }) => {
-                  try {
-                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(() => []);
-                    for (const s of payload.data) {
-                      try {
-                        const match = pending.find(p => p.entityType === 'session' && ((p.clientId && p.clientId === s.start) || (p.payload && p.payload.start === s.start)));
-                        if (match) {
-                          if (match.op === 'create') {
-                            await putSession(company, companyRecord?.emailid, s).catch(() => { });
-                            // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
-                          } else {
-                            console.debug('SSE: skipping server session update due to pending local change', s.start)
-                          }
-                        } else {
-                          await putSession(company, companyRecord?.emailid, s).catch(() => { });
-                        }
-                      } catch (e) { console.warn('SSE: failed applying session', e) }
-                    }
-
-                    // merge into in-memory session caches (allSessions and sales/delivery subsets)
-                    try {
-                      const existing = Array.isArray(allSessions) ? [...allSessions] : [];
-                      const map = {};
-                      existing.forEach(ss => { if (ss && ss.start != null) map[ss.start] = ss });
-                      payload.data.forEach(ss => { if (ss && ss.start != null) map[ss.start] = ss });
-                      const merged = Object.values(map);
-                      // setAllSessions(merged);
-                      setCached(company, 'allSessions', merged, companyRecord?.emailid);
-
-                      // derive sales/delivery session lists
-                      const salesList = merged.filter(m => m.type === 'sales');
-                      const deliveryList = merged.filter(m => m.type === 'delivery');
-                      // setAllSalesSessions(salesList);
-                      setSalesSessions(salesList.filter(s => s.employee_id === companyRecord?.emailid));
-                      setDeliverySessions(deliveryList);
-                    } catch (e) { }
-                  } catch (e) {
-                    console.error('SSE POSSessions apply error', e)
-                  }
-                })
-              } else if (payload.data && typeof payload.data === 'object') {
-                import('./Resources/offlineDb').then(async ({ putSession, loadPendingChanges, markPendingChangeSynced }) => {
-                  try {
-                    const s = payload.data;
-                    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(() => []);
-                    const match = pending.find(p => p.entityType === 'session' && ((p.clientId && p.clientId === s.start) || (p.payload && p.payload.start === s.start)));
-                    if (match) {
-                      if (match.op === 'create') {
-                        await putSession(company, companyRecord?.emailid, s).catch(() => { });
-                        // await markPendingChangeSynced(company, companyRecord?.emailid, match.id).catch(()=>{});
-                      } else {
-                        console.debug('SSE: skipping server session update due to pending local change', s.start)
-                      }
-                    } else {
-                      await putSession(company, companyRecord?.emailid, s).catch(() => { });
-                    }
-
-                    try {
-                      const existing = Array.isArray(allSessions) ? [...allSessions] : [];
-                      const map = {};
-                      existing.forEach(ss => { if (ss && ss.start != null) map[ss.start] = ss });
-                      if (s && s.start != null) map[s.start] = s;
-                      const merged = Object.values(map);
-                      // setAllSessions(merged);
-                      setCached(company, 'allSessions', merged, companyRecord?.emailid);
-                    } catch (e) { }
-                  } catch (e) { console.error('SSE POSSessions apply error', e) }
-                })
-              }
+              // Every list a screen reads sessions from, keyed by the
+              // session's start (a session made offline has no _id until the
+              // server has it). A session started or ended on another device
+              // used to reach none of them.
+              liveRef.current.applySessions(payload)
               break;
             case 'SessionManagers':
-              // Session Manager start/stop (the POS "All Sessions" board's
-              // day-level gate) previously only refreshed on mount/login.
-              // Other open tabs/terminals wouldn't see a Start/Stop until
-              // reload. Merging the broadcast doc here feeds PointOfSales'
-              // existing [sessionManagers]-keyed effect that derives
-              // currSessionManager, so it now updates live like POSSessions.
-              try {
-                setSessionManagers((prev) => applySseCollectionChange(prev, payload));
-              } catch (e) {
-                console.error('SSE SessionManagers apply error', e);
-              }
+              setSessionManagers((prev) => upsertByKey(prev, payload, (item) => item?.start))
               break;
             case 'Products':
               try {
@@ -1100,16 +965,19 @@ function App() {
         }
       }, (err) => {
         console.warn('SSE error', err)
-        setIsSSEConnected(false)
+      }, {
+        onStatus: (connected) => setIsSSEConnected(connected),
+        onResync: (detail) => liveRef.current.resync(detail),
       })
-      if (es) {
-        es.onopen = () => { setIsSSEConnected(true) }
-      }
     } catch (e) {
       console.warn('Could not create SSE', e)
     }
     return () => { if (es) { try { es.close() } catch (e) { } setIsSSEConnected(false) } }
-  }, [company, companyRecord])
+    // Only who is signed in, where. companyRecord is replaced with a new
+    // object on every profile refresh; reconnecting each time dropped the
+    // events sent in between.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company, companyRecord?.emailid])
 
   useEffect(() => {    
     getViewAccess()
@@ -2227,7 +2095,9 @@ function App() {
       const sessionDays = 30 * 24 * 60 * 60 * 1000
       const allowedFromDays = Date.now() - sessionDays
 
-      const { resp, resp1, sessionsResponse } = await Promise.all([
+      // An array, not an object: destructured as one, all three were
+      // undefined and every session this fetched was thrown away.
+      const [resp, resp1, sessionsResponse] = await Promise.all([
         await fetchServer("POST", {
           database: company,
           collection: "POSSessions",
@@ -2753,60 +2623,112 @@ function App() {
     }
   };
 
+  // Merges sessions the server sent into what the screens show, keyed by
+  // start, with this device's unsent changes on top. It used to rebuild the
+  // lists from this device's own stored copy plus whatever was passed in, so
+  // a call with a few sessions brought back old, stale copies of all the
+  // others (a session ended on another device showed as live again).
+  // Returns the sessions passed in, as merged.
   const mergeAndPersistSessions = async (sessions) => {
-    if (!company || !companyRecord?.emailid) return
+    const server = (Array.isArray(sessions) ? sessions : []).filter((session) => session && session.start != null)
+    if (!company || !companyRecord?.emailid) return server
+    const byStart = (a, b) => (Number(b?.start) || 0) - (Number(a?.start) || 0) || String(a?._id || '').localeCompare(String(b?._id || ''))
     try {
-      const pending = await loadPendingChanges(company, companyRecord.emailid);
-      const pendingSessions = pending.filter(c => c.entityType === 'session').map(c => c.payload).filter(Boolean);
-      const pendingSessionNums = new Set(pendingSessions.map(o => o.orderNumber));
-
-      const localSessions = await loadAllSessionsLocal(company, companyRecord.emailid).catch(() => []);
-      const localMap = {};
-      for (const l of localSessions) if (l && l.start) localMap[l.start] = l;
-
-      const serverSessions = sessions || [];
-      const map = {};
-      // start with server
-      for (const s of serverSessions) if (s && s.start) map[s.start] = s;
-      // override with local stored orders (but not pending creates which are authoritative)
-      for (const [k, v] of Object.entries(localMap)) {
-        if (!pendingSessionNums.has(k)) map[k] = map[k] || v;
+      const overlaid = await overlayPending('session', 'start', server)
+      // Sessions started on this device that the server has not received.
+      const pending = await loadPendingChanges(company, companyRecord.emailid).catch(() => [])
+      const known = new Set(overlaid.map((session) => String(session.start)))
+      const unsent = pending
+        .filter((change) => change.entityType === 'session' && change.payload?.start != null && !known.has(String(change.payload.start)))
+        .map((change) => change.payload)
+      const docs = [...overlaid, ...unsent]
+      const into = (keep) => (list) => upsertByKey(list || [], { op: 'update', data: docs.filter(keep) }, (item) => item?.start).sort(byStart)
+      setAllSessions(into(() => true))
+      setAllSalesSessions(into((session) => session.type === 'sales'))
+      setAllDeliverySessions(into((session) => session.type === 'delivery'))
+      for (const session of server) {
+        // eslint-disable-next-line no-await-in-loop
+        await putSession(company, companyRecord.emailid, session).catch(() => { })
       }
-      // finally apply pending orders (create/update) to override server
-      for (const p of pendingSessions) if (p && p.start) map[p.start] = p;
-
-      // Same non-deterministic-order issue as mergeAndPersistOrders above.
-      // Sort once, right after the merge, so session cards stop swapping
-      // position on every periodic refresh.
-      const merged = Object.values(map).sort((a, b) => {
-        const diff = (Number(b?.start) || 0) - (Number(a?.start) || 0);
-        return diff !== 0 ? diff : String(a?._id || '').localeCompare(String(b?._id || ''));
-      });
-      setAllSessions(merged);
-      setAllSalesSessions(merged.filter(sess => sess.type === 'sales'))
-      setAllDeliverySessions(merged.filter(sess => sess.type === 'delivery'))
-      // persist server orders to IndexedDB except those that are pending locally
-      for (const o of serverSessions) {
-        if (o && o.start != null && !pendingSessionNums.has(o.start)) {
-          await putSession(company, companyRecord.emailid, o);
-        }
-      }
-      // Returned so callers that also keep their own separate "last active
-      // sessions" snapshot (getLastActiveSessions below) can set it from
-      // this same reconciled result instead of the raw, unmerged server
-      // response, see that function's own comment for the stale-read bug
-      // this was closing.
-      return merged;
+      return [...docs].sort(byStart)
     } catch (e) {
       console.warn('POS Sessions: mergeAndPersist failed', e);
-      if (sessions.length) {
-        setAllSessions(sessions);
-        setAllSalesSessions(sessions.filter(sess => sess.type === 'sales'))
-        setAllDeliverySessions(sessions.filter(sess => sess.type === 'delivery'))
-      }
-      return sessions;
+      return server
     }
   };
+
+  // This device's unsent changes, laid over what the server sent, so a live
+  // event never shows a till its own change undone while that change is
+  // still on its way.
+  const overlayPending = async (entityType, keyField, docs) => {
+    if (!docs.length) return docs
+    const pending = await loadPendingChanges(company, companyRecord?.emailid).catch(() => [])
+    const byKey = new Map()
+    pending.filter((c) => c.entityType === entityType).forEach((c) => {
+      const key = c.payload?.[keyField] ?? c.clientId
+      if (key != null) byKey.set(String(key), { ...(byKey.get(String(key)) || {}), ...c.payload })
+    })
+    return docs.map((doc) => (byKey.has(String(doc[keyField])) ? { ...doc, ...byKey.get(String(doc[keyField])) } : doc))
+  }
+
+  const applyLiveSessions = async (payload) => {
+    const me = companyRecord?.emailid
+    if (payload?.op === 'remove') {
+      const drop = (list) => (Array.isArray(list) ? upsertByKey(list, payload, (item) => item?.start) : list)
+      setAllSessions(drop); setAllSalesSessions(drop); setAllDeliverySessions(drop)
+      setLastActiveSessions(drop); setSalesSessions(drop); setDeliverySessions(drop)
+      return
+    }
+    const docs = await overlayPending('session', 'start', sseDocs(payload).filter((doc) => doc.start != null))
+    if (!docs.length) return
+    const weekAgo = Date.now() - 8 * 24 * 60 * 60 * 1000
+    // Lists still null have not loaded yet; their first load brings these.
+    const into = (keep) => (list) => (list === null ? list : upsertByKey(list, { op: 'update', data: docs.filter(keep) }, (item) => item?.start))
+    setAllSessions(into(() => true))
+    setAllSalesSessions(into((doc) => doc.type === 'sales'))
+    setAllDeliverySessions(into((doc) => doc.type === 'delivery'))
+    setLastActiveSessions(into((doc) => Number(doc.start) >= weekAgo))
+    setSalesSessions(into((doc) => doc.type === 'sales' && doc.employee_id === me))
+    setDeliverySessions(into((doc) => doc.type === 'delivery' && doc.employee_id === me))
+    if (company && me) docs.forEach((doc) => putSession(company, me, doc).catch(() => { }))
+  }
+
+  const applyLiveOrders = async (payload) => {
+    const me = companyRecord?.emailid
+    if (payload?.op === 'remove') {
+      const drop = (list) => upsertByKey(list, payload, (item) => item?.orderNumber)
+      setPosOrders(drop); setAllPosOrders(drop)
+      return
+    }
+    const docs = await overlayPending('order', 'orderNumber', sseDocs(payload).filter((doc) => doc.orderNumber))
+    if (!docs.length) return
+    const into = (list) => upsertByKey(list, { op: 'update', data: docs }, (item) => item?.orderNumber)
+      .sort((a, b) => (Number(b?.createdAt) || 0) - (Number(a?.createdAt) || 0) || String(a?.orderNumber || '').localeCompare(String(b?.orderNumber || '')))
+    setPosOrders(into)
+    setAllPosOrders(into)
+    if (company && me) docs.forEach((doc) => putOrder(company, me, doc).catch(() => { }))
+  }
+
+  // After events may have been missed (the connection was down too long, or
+  // the server restarted), everything the POS and its boards show is fetched
+  // again. At most once every 5 seconds, however many screens ask.
+  const resyncLiveData = (detail = {}) => {
+    if (!company || !companyRecord?.emailid) return
+    if (Date.now() - lastResyncRef.current < 5000) return
+    lastResyncRef.current = Date.now()
+    getLastActiveSessions(company, companyRecord)
+    fetchAllSessions({ company, companyRecord })
+    fetchSessions(company, 'sales', companyRecord)
+    fetchSessions(company, 'delivery', companyRecord)
+    fetchSessionManagers(company, companyRecord)
+    fetchTables(company)
+    getPosOrders({ company, companyRecord })
+    getApprovals(company)
+    getSettings(company, companyRecord)
+    try { window.dispatchEvent(new CustomEvent('wc:live-resync', { detail })) } catch (e) { /* no window */ }
+  }
+
+  liveRef.current = { applyOrders: applyLiveOrders, applySessions: applyLiveSessions, resync: resyncLiveData }
 
   const getAllSessions = async (company) => {
     if (!company || !companyRecord?.emailid) return [];
@@ -2840,7 +2762,8 @@ function App() {
         }, "getDocsDetails", SERVER)
           .then(async (resp) => {
             if (resp.record && Array.isArray(resp.record)) {
-              results.push(resp.record)
+              results.push(...resp.record)
+              // A flat list of sessions; a list of lists matched none of them.
               mergeAndPersistSessions(results)
               return (
                 resp.record

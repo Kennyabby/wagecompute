@@ -18,7 +18,7 @@ jest.mock('./offlineDb', () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { syncPendingChanges, submitChange, setSyncTransport, checkReadyToClose, describeNotReady } from './offlineSync';
+import { syncPendingChanges, submitChange, setSyncTransport, checkReadyToClose, describeNotReady, getChangeResult } from './offlineSync';
 
 // A server that applies everything unless told otherwise per opId.
 const makeServer = (answers = {}) => {
@@ -121,6 +121,14 @@ describe('POS queue', () => {
     expect(mockQueue).toHaveLength(1);
     expect(mockQueue[0].id).toBe(id);
     expect(calls.filter((c) => c.endpoint === 'pos/ops/apply')[0].body.ops[0].opId).toBe(id);
+  });
+
+  test('a screen that waited for a change can read what the server said', async () => {
+    const { fetchServer } = makeServer({ 'o-cancel': 'applied', 'o-cancel:message': '1 stock line(s) returned.' });
+    setSyncTransport(fetchServer, 'srv');
+    const id = await submitChange('co', 'u', { id: 'o-cancel', entityType: 'order', op: 'update', action: 'cancel', payload: { orderNumber: 'K' } }, { immediate: true });
+    expect(getChangeResult(id)).toEqual(expect.objectContaining({ status: 'applied', message: '1 stock line(s) returned.' }));
+    expect(mockQueue).toHaveLength(0);
   });
 
   test('a session cannot close while this device or another holds its sales', async () => {

@@ -70,6 +70,13 @@ const toOp = (change) => ({
   clientCreatedAt: change.createdAt || null,
 });
 
+// The server's last answer for each change sent from this page, so a screen
+// that waited for one (submitChange with immediate) can say what happened.
+const answers = new Map();
+export function getChangeResult(id) {
+  return answers.get(id) || null;
+}
+
 const lastReport = new Map();
 async function reportOutbox(company, userId, remaining, fetchServer, server, { force = false } = {}) {
   const key = `${company}|${userId}`;
@@ -129,6 +136,7 @@ async function drain(company, userId, fetchServer, server) {
     const byId = new Map(resp.results.map((r) => [r.opId, r]));
     for (const change of batch) {
       const answer = byId.get(change.id) || { status: 'retry', message: 'No answer for this change' };
+      answers.set(change.id, answer);
       if (DONE.has(answer.status)) {
         // eslint-disable-next-line no-await-in-loop
         await markPendingChangeSynced(company, userId, change.id);

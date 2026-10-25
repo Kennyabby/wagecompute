@@ -23,7 +23,7 @@ import {
 // offlineSync.js). Order changes carry an action and the till's full copy of
 // the order (snapshot), so the server can apply a payment, cancellation or
 // delivery by its own rules and rebuild an order that never reached it.
-import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClose, describeNotReady } from '../../Resources/offlineSync';
+import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClose, describeNotReady, getChangeResult } from '../../Resources/offlineSync';
 import { orderBusinessFields, deliveryBusinessFields, businessDayOf } from '../../Resources/businessDay';
 import { getTerminalId } from '../../Resources/clientTxnId';
 
@@ -362,7 +362,7 @@ const PointOfSales = () => {
         if (company && companyRecord) {
             const isPosAgent = companyRecord?.status === 'admin' || companyRecord?.permissions.includes('make_pos_agent') || false
             setHasPosAgentPermissions(isPosAgent)
-            if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){                    
+            if (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.permissions?.includes('manage_session_manager')){                    
                 fetchSessionManagers(company, companyRecord)
                 getLastActiveSessions(company, companyRecord)
             }
@@ -1241,7 +1241,7 @@ const PointOfSales = () => {
         UpdateSessionState(sessions, loadSession)
     }, [loadSession, sessions, companyRecord])
     useEffect(() =>{
-        if (companyRecord?.status === 'admin' || companyRecord?.permissions.includes('access_pos_sessions')){
+        if (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.permissions?.includes('manage_session_manager')){
             UpdateSessionManagerState(sessionManagers)
         }
     }, [sessionManagers])
@@ -4739,6 +4739,9 @@ const OrdersModal = ({
         setAlertTimeout,
         server,
         company,
+        getProducts,
+        getPosOrders,
+        fetchTables,
     } = useContext(ContextProvider);
 
     const [cancelling, setCancelling] = useState(false);
@@ -4758,128 +4761,81 @@ const OrdersModal = ({
             setAlertTimeout(120000);
 
             try {
-                // 1) Build cancelled order object
+                // The server does the whole cancellation in one step: the
+                // order, its table, the stock it shipped (whichever till
+                // delivered it) and its revenue (wageserver
+                // UserModule/POS/posOps.js, cancelOrder). This till only
+                // sends the one change, so stock is never returned twice and
+                // the cancellation counts the same on every device.
+                const cancelledAt = Date.now();
                 const cancelledOrder = {
                     ...order,
                     status: 'cancelled',
                     cancelledBy: companyRecord.emailid,
-                    cancelledAt: new Date().getTime(),
+                    cancelledAt,
                 };
 
-                // 2) Update order locally (IndexedDB + React state)
+                // This device's own copy, so the till shows it at once.
                 if (company && companyRecord?.emailid) {
                     await putOrder(company, companyRecord.emailid, cancelledOrder);
+                    const prevTable = tables.find((table) => table['wrh'] === wrh);
+                    if (prevTable) {
+                        await putTable(company, companyRecord.emailid, {
+                            ...prevTable,
+                            activeTables: (prevTable.activeTables || []).filter((tableOrder) => tableOrder.orderNumber !== order.orderNumber),
+                        });
+                    }
                 }
-
                 setCurrentOrder((curr) =>
                     curr && curr.orderNumber === order.orderNumber
                         ? cancelledOrder
                         : curr
                 );
-                // update tables’ order list in parent
-                // (tableOrders in parent is passed down, but we can safely update
-                //  via a setter in parent; here we only have local view, so we
-                //  just close modal and rely on parent refresh)
 
-                // 3) Update table.activeTables locally
-                const prevTable = tables.find(
-                    (table) => table['wrh'] === wrh
-                );
-                if (prevTable) {
-                    const updatedTable = {
-                        ...prevTable,
-                        activeTables: (prevTable.activeTables || []).filter(
-                            (tableOrder) =>
-                                !(
-                                    tableOrder.tableId === order.tableId &&
-                                    tableOrder.sessionId === order.sessionId &&
-                                    tableOrder.orderNumber === order.orderNumber
-                                )
-                        ),
-                    };
-
-                    if (company && companyRecord?.emailid) {
-                        await putTable(
-                            company,
-                            companyRecord.emailid,
-                            updatedTable
-                        );
-                    }
-
-                    // We don’t have setTables here; parent POS already updates
-                    // tables via other flows. It is okay to rely on refresh or
-                    // on parent’s state changes. We still queue table change.
-
-                    if (company && companyRecord?.emailid) {
-                        const change = {
-                            entityType: 'table',
-                            op: 'update',
-                            clientId: updatedTable.i_d,
-                            payload: updatedTable,
-                        }
-                        if (curPosSettings?.type === 'restaurant'){
-                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
-                        }else{
-                            try {
-                                await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
-                            }catch (e){
-                                console.log(e)
-                            }
-                        }
-                    }
-                }
-
-                // 4) Queue order cancellation
+                let outcome = null;
                 if (company && companyRecord?.emailid) {
-                    const change = {
+                    const changeId = await queuePendingChange(company, companyRecord.emailid, {
                         entityType: 'order',
                         op: 'update',
                         action: 'cancel',
                         clientId: order.orderNumber,
                         payload: {
                             orderNumber: order.orderNumber,
-                            status: 'cancelled',
                             cancelledBy: companyRecord.emailid,
-                            cancelledAt: Date.now(),
+                            cancelledAt,
+                            cancellingSession: curSession?.i_d ?? null,
                         },
-                        snapshot: cancelledOrder,
-                    }
-
-                    if (curPosSettings?.type === 'restaurant'){
-                        await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
-                    }else{
-                        await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
-                    }
-                    
-                    // Immediate sync attempt, failures are fine, queue remains
-                    try {
-                        setAlert('Order cancelled successfully');
-                        setAlertState('success');
-                        setAlertTimeout(1000);
-                    } catch (e) {
-                        // Still queued; the background sync retries it every 30 seconds
-                    }
+                        snapshot: order,
+                    }, { immediate: true });
+                    outcome = getChangeResult(changeId);
                 }
-                
-                // 5) Local success
-                setAlertState('success');
-                setAlert('Order cancelled successfully');
-                setAlertTimeout(1000);
-                
-                handleCancelDelivery(order)
-                // if (curPosSettings?.type === 'shop' || order.status === 'completed'){
-                    // }
-                    
+
+                if (outcome?.status === 'applied') {
+                    setAlertState('success');
+                    setAlert(`Order #${order.orderNumber} cancelled${outcome.message ? `. ${outcome.message}` : ''}`);
+                    setAlertTimeout(3000);
+                    getProducts(company);
+                    getPosOrders({ company, companyRecord });
+                    fetchTables(company);
+                } else if (outcome?.status === 'conflict') {
+                    setAlertState('error');
+                    setAlert(outcome.message || `The server kept the cancellation of #${order.orderNumber} for review.`);
+                    setAlertTimeout(8000);
+                } else {
+                    setAlertState('info');
+                    setAlert(`Cancellation of #${order.orderNumber} is saved on this device. The server returns its stock and reverses the sale as soon as it receives it.`);
+                    setAlertTimeout(8000);
+                }
+
                 if (currentOrder?.orderNumber === order.orderNumber) {
                     createNewOrder({
                         i_d: currentOrder.tableId,
                         name: currentOrder.tableName,
                     });
                 }
-                
+
                 setCancelling(false);
                 setShowOrdersModal(false);
-                await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 return;
             } catch (e) {
                 setAlertState('error');
