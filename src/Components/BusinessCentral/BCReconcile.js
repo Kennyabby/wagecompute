@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import StatCard from '../Shared/ui/StatCard'
 import StatCardGrid from '../Shared/ui/StatCardGrid'
 import BCDataTable from './BCDataTable'
@@ -6,6 +6,7 @@ import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import { downloadReconExcel, downloadReconPdf, verdictOf } from './bcReconExport'
 import { formatValue } from './bcFormat'
 import BCReconcileMapper from './BCReconcileMapper'
+import { useBCAccess } from './bcAccess'
 import { applySavedMapping, checkMapping, looksLikeTemplate, toSavedPart, toTemplateSheet } from './bcReconMap'
 
 // Reconciling a report against the person's own records. The server makes
@@ -184,6 +185,54 @@ const EntryList = ({ title, rows, measure }) => (rows?.length ? (
     </details>
 ) : null)
 
+// The uploaded file is kept with the run unless it is unusually large.
+const ORIGINAL_LIMIT = 20 * 1024 * 1024
+
+const READ_AS = { template: 'The template, filled in', savedMapping: 'A saved column mapping', mapped: 'Columns mapped by hand' }
+
+const runOutcome = (summary) => {
+    if (!summary) return ''
+    if (summary.outcome === 'problems') return `${summary.problemCount} ${summary.problemCount === 1 ? 'cell' : 'cells'} to fix, not compared`
+    if (summary.outcome === 'agrees') return 'Everything agrees'
+    return `${summary.differ} ${summary.differ === 1 ? 'line differs' : 'lines differ'}, ${summary.findings} to act on${summary.lastResort ? `, ${summary.lastResort} last resort` : ''}`
+}
+
+/** Writes sheets of cells, as kept with a run, to a workbook file. */
+const downloadSheets = async (sheets, fileName) => {
+    const XLSX = await loadSpreadsheets()
+    const workbook = XLSX.utils.book_new()
+    Object.entries(sheets).forEach(([name, rows]) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(Array.isArray(rows) ? rows : []), String(name).slice(0, 31)))
+    XLSX.writeFile(workbook, fileName)
+}
+
+/** What a run read from the file, sheet by sheet, with both files to download. */
+export const ImportedData = ({ input, original, file, onError }) => {
+    const names = Object.keys(input || {}).filter((name) => Array.isArray(input[name]) && input[name].length)
+    const [shown, setShown] = useState(names.find((name) => name !== 'About') || names[0] || '')
+    const rows = input?.[shown] || []
+    const header = rows[0] || []
+    const width = rows.reduce((most, row) => Math.max(most, Array.isArray(row) ? row.length : 0), 0)
+    const columns = Array.from({ length: width }, (_, index) => ({ key: `c${index}`, label: String(header[index] ?? '').trim() || `Column ${index + 1}`, type: 'text' }))
+    const tableRows = rows.slice(1).map((row) => Object.fromEntries(columns.map((column, index) => [column.key, Array.isArray(row) ? row[index] ?? '' : ''])))
+    const base = String(file?.name || 'reconciliation').replace(/\.[^.]+$/, '')
+    const save = (sheets, suffix) => downloadSheets(sheets, `${base}${suffix}.xlsx`).catch((failure) => onError(failure.message))
+    return (
+        <div className='bc-recon-imported'>
+            <div className='bc-actions'>
+                {original && <button type='button' className='bc-button' onClick={() => save(original, '')}>Download the file as uploaded</button>}
+                {names.length > 0 && <button type='button' className='bc-button' onClick={() => save(input, ' (as read)')}>Download what was read</button>}
+            </div>
+            {!original && file?.originalLeftOut && <p className='bc-muted'>{file.originalLeftOut}</p>}
+            {names.length > 1 && (
+                <nav className='bc-tabs bc-tabs-inner' aria-label='Sheets read'>
+                    {names.map((name) => <button key={name} type='button' className={shown === name ? 'active' : ''} aria-current={shown === name ? 'page' : undefined} onClick={() => setShown(name)}>{name}</button>)}
+                </nav>
+            )}
+            {shown ? <BCDataTable key={shown} columns={columns} rows={tableRows} totals={{}} filterable /> : <p className='bc-empty'>Nothing was read from the file.</p>}
+        </div>
+    )
+}
+
 const Finding = ({ finding, measure }) => {
     const action = ACTION_BY_KEY.get(finding.resolution?.action) || ACTIONS[0]
     const pair = [finding.sheetTransaction, finding.erpTransaction]
@@ -233,6 +282,29 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
     const [usedMapping, setUsedMapping] = useState(null)
     const [mappingNote, setMappingNote] = useState('')
     const { preparing, updating, awaitData } = usePreparingRetry()
+    // What the result on screen was made from, and, when it is a past run
+    // opened from the list, that run.
+    const [imported, setImported] = useState(null)
+    const [viewing, setViewing] = useState(null)
+    const [history, setHistory] = useState(null)
+    // Whether the list is everyone's runs (an admin) or the user's own.
+    const [everyone, setEveryone] = useState(false)
+    // The id the run on screen was saved under, to delete it.
+    const [savedRunId, setSavedRunId] = useState('')
+    // Past runs, and deleting runs, are each given on the Access tab.
+    const { can } = useBCAccess()
+    const seesHistory = can('recon.history')
+    const mayDelete = can('recon.deleteRuns')
+    const period = periodOf(report.params)
+
+    // The runs for the period the report is filtered to.
+    const loadHistory = useCallback(() => {
+        if (!seesHistory || !api.reconcileHistory) return
+        api.reconcileHistory(definition.key, { from: period.from, to: period.to })
+            .then((response) => { setHistory(response.runs || []); setEveryone(!!response.everyone) })
+            .catch(() => setHistory([]))
+    }, [api, definition.key, seesHistory, period.from, period.to])
+    useEffect(() => { loadHistory() }, [loadHistory])
 
     const downloadTemplate = async () => {
         setBusy('template')
@@ -255,17 +327,72 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
         }
     }
 
-    // Sends sheets laid out like the template and shows the answer.
-    const compareSheets = async (sheets, name) => {
-        const response = await awaitData(() => api.reconcileRun(reconcile.kind, report.params, sheets, definition.key), (fresh) => setResult(fresh.result))
+    // Sends sheets laid out like the template and shows the answer. The run
+    // is kept with the file's name, how it was read and, unless it is very
+    // large, every sheet of the file as uploaded.
+    const compareSheets = async (sheets, name, how = {}) => {
+        const original = how.original ? Object.fromEntries(Object.entries(how.original).map(([sheetName, rows]) => [sheetName, cellsForServer(rows || [])])) : null
+        const tooLarge = !!original && JSON.stringify(original).length > ORIGINAL_LIMIT
+        const file = {
+            name,
+            size: how.size ?? null,
+            read: how.read || 'template',
+            mappingName: how.mappingName || '',
+            ...(tooLarge ? { originalLeftOut: 'The uploaded file was too large to keep in full. What was read from it is kept.' } : {}),
+        }
+        const kept = { file, original: tooLarge ? null : original }
+        const response = await awaitData(() => api.reconcileRun(reconcile.kind, report.params, sheets, definition.key, kept), (fresh) => setResult(fresh.result))
+        setViewing(null)
+        setSavedRunId(response.savedRun || '')
+        setImported({ input: sheets, original: kept.original, file })
         setFileName(name)
         setComparedAt(new Date())
         setResult(response.result)
         setTab('lines')
         setActionFilter('')
         setOpenLine('')
+        if (response.savedRun) loadHistory()
         return response.result
     }
+
+    // A past run, opened from the list: shown as it was, with what was imported.
+    const openRun = async (id) => {
+        setBusy('history')
+        setError('')
+        try {
+            const { run } = await api.reconcileHistoryItem(id)
+            setMapper(null)
+            setUsedMapping(null)
+            setMappingNote('')
+            setViewing(run)
+            setSavedRunId(run.id)
+            setImported({ input: run.input || {}, original: run.original, file: run.file })
+            setFileName(run.file?.name || '')
+            setComparedAt(new Date(run.createdAt))
+            setResult(run.result)
+            setTab(run.result?.problems ? 'imported' : 'lines')
+            setActionFilter('')
+            setOpenLine('')
+        } catch (failure) {
+            setError(failure.message)
+        } finally {
+            setBusy('')
+        }
+    }
+
+    // A past run from the list, or the one on screen.
+    const removeRun = async (run) => {
+        if (!window.confirm(`Delete the reconciliation of ${run.file?.name || 'this file'}${run.createdAt ? ` from ${new Date(run.createdAt).toLocaleString()}` : ''}? Its file and result go for good.`)) return
+        try {
+            await api.deleteReconcileRun(run.id)
+            if (savedRunId === run.id) closeRun()
+            loadHistory()
+        } catch (failure) {
+            setError(failure.message)
+        }
+    }
+
+    const closeRun = () => { setViewing(null); setResult(null); setImported(null); setFileName(''); setSavedRunId('') }
 
     // A mapping that passed and was compared is remembered for the report,
     // so the next file with the same headings goes straight through.
@@ -286,6 +413,8 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
         setBusy('import')
         setError('')
         setResult(null)
+        setViewing(null)
+        setImported(null)
         setMapper(null)
         setUsedMapping(null)
         setMappingNote('')
@@ -305,7 +434,7 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
             const columns = columnsAnswer.columns
             // 1. The template, filled in: it goes as it is.
             if (looksLikeTemplate(templateSheets, columns)) {
-                await compareSheets(templateSheets, chosen.name)
+                await compareSheets(templateSheets, chosen.name, { read: 'template', size: chosen.size, original: raw })
                 return
             }
             // 2. A layout mapped before: used again, if every cell still passes.
@@ -315,17 +444,17 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
                 const passes = Object.entries(plan).every(([part, entry]) => !checkMapping({ rows: entry.rows, headerAt: entry.headerAt, mapping: entry.mapping, columns: columns[part] || [] }).errors.length)
                 const sheets = Object.fromEntries(Object.entries(plan).map(([part, entry]) => [part === 'figures' ? 'Your figures' : 'Your transactions', toTemplateSheet({ rows: entry.rows, headerAt: entry.headerAt, mapping: entry.mapping, columns: columns[part] || [] })]))
                 if (!passes) {
-                    setMapper({ fileName: chosen.name, sheets: raw, columns, initial: plan })
+                    setMapper({ fileName: chosen.name, size: chosen.size, sheets: raw, columns, initial: plan })
                     setMappingNote('This file has the headings of a saved mapping, but some of its cells do not pass the checks. They are listed below.')
                     return
                 }
                 setUsedMapping({ id: saved.id, savedAt: saved.usedAt, name: saved.name, plan, columns, sheets: raw, fileName: chosen.name })
-                const answer = await compareSheets(sheets, chosen.name)
+                const answer = await compareSheets(sheets, chosen.name, { read: 'savedMapping', mappingName: saved.name, size: chosen.size, original: raw })
                 if (!answer?.problems) remember(Object.fromEntries(Object.entries(plan).map(([part, entry]) => [part, entry])), chosen.name)
                 return
             }
             // 3. Anything else: the person matches the columns.
-            setMapper({ fileName: chosen.name, sheets: raw, columns, initial: null })
+            setMapper({ fileName: chosen.name, size: chosen.size, sheets: raw, columns, initial: null })
         } catch (failure) {
             setError(failure.message || 'The file could not be read.')
         } finally {
@@ -338,7 +467,7 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
         setError('')
         setMappingNote('')
         try {
-            const answer = await compareSheets(sheets, mapper.fileName)
+            const answer = await compareSheets(sheets, mapper.fileName, { read: 'mapped', size: mapper.size, original: mapper.sheets })
             // Only a mapping whose file passed the server's checks too is kept.
             if (!answer?.problems) {
                 await remember(parts, mapper.fileName)
@@ -420,6 +549,14 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
             <BCPreparing progress={preparing} />
             <BCUpdating since={updating} />
 
+            {viewing && (
+                <div className='bc-banner bc-banner-info' role='status'>
+                    Looking at a past reconciliation: {viewing.file?.name || 'a file'}, run by {viewing.user || 'someone'} on {new Date(viewing.createdAt).toLocaleString()}, for {viewing.params?.from} to {viewing.params?.to}.
+                    {' '}Read as: {READ_AS[viewing.file?.read] || READ_AS.template}{viewing.file?.mappingName ? ` (${viewing.file.mappingName})` : ''}.
+                    {' '}<button type='button' className='bc-link-button' onClick={closeRun}>Close it</button>
+                </div>
+            )}
+
             {result && (
                 <div className='bc-recon-export'>
                     <p><strong>{verdictOf(result)}</strong></p>
@@ -427,6 +564,7 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
                     <div className='bc-actions'>
                         <button type='button' className='bc-button' disabled={!!busy} onClick={() => exportAll('excel')}>{busy === 'excel' ? 'Preparing...' : 'Download the reconciliation (Excel)'}</button>
                         <button type='button' className='bc-button' disabled={!!busy} onClick={() => exportAll('pdf')}>{busy === 'pdf' ? 'Preparing...' : 'Download the reconciliation (PDF)'}</button>
+                        {mayDelete && savedRunId && <button type='button' className='bc-button bc-button-danger' disabled={!!busy} onClick={() => removeRun({ id: savedRunId, file: imported?.file, createdAt: viewing?.createdAt })}>Delete this run</button>}
                     </div>
                     <p className='bc-muted'>Every line, difference, transaction, Business Central entry and step to settle it, to review before posting anything.</p>
                 </div>
@@ -442,6 +580,12 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
                         </table>
                     </div>
                 </div>
+            )}
+            {result?.problems && imported && (
+                <details className='bc-recon-entries' open={!!viewing}>
+                    <summary>What was imported</summary>
+                    <ImportedData input={imported.input} original={imported.original} file={imported.file} onError={setError} />
+                </details>
             )}
 
             {result && !result.problems && (
@@ -471,7 +615,7 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
 
                     <div className='bc-report-head'>
                         <nav className='bc-tabs bc-tabs-inner' aria-label='Reconciliation results'>
-                            {[['lines', `By line (${lines.length})`], ['findings', `What to do (${findings.length})`], ['transactions', `Transactions (${transactions.length})`]].map(([key, label]) => (
+                            {[['lines', `By line (${lines.length})`], ['findings', `What to do (${findings.length})`], ['transactions', `Transactions (${transactions.length})`], ...(imported ? [['imported', 'What was imported']] : [])].map(([key, label]) => (
                                 <button key={key} type='button' className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}>{label}</button>
                             ))}
                         </nav>
@@ -555,7 +699,43 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
                     {tab === 'transactions' && (transactions.length
                         ? <BCDataTable columns={TRANSACTION_COLUMNS} rows={transactions} totals={{}} filterable manageColumns />
                         : <p className='bc-empty'>No transactions were listed on your sheet, so none were paired. Fill in the Your transactions sheet to pin each difference to a document.</p>)}
+
+                    {tab === 'imported' && imported && <ImportedData input={imported.input} original={imported.original} file={imported.file} onError={setError} />}
                 </>
+            )}
+
+            {/* Every run is kept, with its file and result, to look at again. */}
+            {seesHistory && history !== null && (
+                <section className='bc-recon-history' aria-label='Past reconciliations of this report'>
+                    <h4>Past reconciliations of this report</h4>
+                    <p className='bc-muted'>
+                        {everyone ? 'Everyone\'s runs' : 'The runs you made'} for {period.from} to {period.to}: those whose period overlaps the report&apos;s date filter. Change the dates above to see others.
+                        {everyone ? '' : ' An admin can see everyone\'s.'}
+                    </p>
+                    {history.length === 0 ? <p className='bc-muted'>None for this period. Each file imported here is kept, with what was read from it and the result, so it can be opened again.</p> : (
+                        <div className='bc-table-scroll'>
+                            <table className='bc-table'>
+                                <thead><tr><th>Run on</th><th>By</th><th>File</th><th>Period</th><th>Read as</th><th>Result</th><th /></tr></thead>
+                                <tbody>
+                                    {history.map((run) => (
+                                        <tr key={run.id} className={viewing?.id === run.id ? 'bc-row-open' : ''}>
+                                            <td>{new Date(run.createdAt).toLocaleString()}</td>
+                                            <td>{run.user}</td>
+                                            <td>{run.file?.name}</td>
+                                            <td>{run.params?.from} to {run.params?.to}</td>
+                                            <td>{READ_AS[run.file?.read] || READ_AS.template}{run.file?.mappingName ? ` (${run.file.mappingName})` : ''}</td>
+                                            <td>{runOutcome(run.summary)}</td>
+                                            <td className='bc-recon-history-actions'>
+                                                <button type='button' className='bc-link-button' disabled={!!busy} onClick={() => openRun(run.id)} aria-label={`Open the reconciliation of ${run.file?.name || 'a file'} from ${new Date(run.createdAt).toLocaleString()}`}>Open</button>
+                                                {mayDelete && <button type='button' className='bc-link-button' disabled={!!busy} onClick={() => removeRun(run)} aria-label={`Delete the reconciliation of ${run.file?.name || 'a file'} from ${new Date(run.createdAt).toLocaleString()}`}>Delete</button>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
             )}
         </section>
     )
