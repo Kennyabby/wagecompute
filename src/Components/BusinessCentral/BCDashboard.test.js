@@ -29,6 +29,31 @@ test('a dashboard tile opens the report behind it with the dashboard filters', a
     expect(screen.getByText('No report behind this')).toBeInTheDocument()
 })
 
+test('the reports a person opens most are offered at the top and open on the dashboard period', async () => {
+    const onOpenReport = jest.fn()
+    const api = {
+        getDashboard: jest.fn().mockResolvedValue({ dashboard: { ...dashboard, params: { from: '2026-10-01', to: '2026-10-25' } } }),
+        getFrequentReports: jest.fn().mockResolvedValue({ reports: [{ key: 'incomeStatement', title: 'Income Statement', count: 12, lastAt: Date.now() }, { key: 'stock', title: 'Stock Report', count: 1, lastAt: Date.now() }] }),
+    }
+    render(<BCDashboard api={api} lookups={{ hasBranch: false, locations: [] }} live onOpenReport={onOpenReport} />)
+    const section = await screen.findByRole('region', { name: 'Your most opened reports' })
+    expect(section).toHaveTextContent('Opened 12 times')
+    expect(section).toHaveTextContent('Opened 1 time,')
+    fireEvent.click(screen.getByRole('button', { name: /Income Statement/ }))
+    expect(onOpenReport).toHaveBeenCalledWith('incomeStatement', { from: '2026-10-01', to: '2026-10-25' })
+})
+
+test('without the Reports tab the list of most opened reports is not asked for', async () => {
+    const api = { getDashboard: jest.fn().mockResolvedValue({ dashboard }), getFrequentReports: jest.fn() }
+    render(
+        <BCAccessProvider value={makeAccess({ admin: false, tabs: ['dashboard'], actions: [], reports: { all: false, custom: false, domains: [], keys: [] } })}>
+            <BCDashboard api={api} lookups={{ hasBranch: false, locations: [] }} live onOpenReport={() => {}} />
+        </BCAccessProvider>,
+    )
+    await screen.findByText('Sales')
+    expect(api.getFrequentReports).not.toHaveBeenCalled()
+})
+
 test('a filter with nothing to choose from is left off, once the lists have loaded', () => {
     const filters = [
         { key: 'customers', type: 'multi', label: 'Customer', lookup: 'customers' },
@@ -204,7 +229,8 @@ test('an admin arranges the dashboard: a tile hidden, sections reordered, and sa
     fireEvent.click(screen.getByRole('button', { name: 'Arrange dashboard' }))
     // Untick the first tile, and move the lists to the top of the sections.
     fireEvent.click(screen.getByRole('checkbox', { name: firstTile.label }))
-    for (let step = 0; step < 6; step += 1) fireEvent.click(screen.getByRole('button', { name: 'Move Reorder and idle stock lists up' }))
+    // Up past every other section to the top.
+    for (let step = 0; step < 7; step += 1) fireEvent.click(screen.getByRole('button', { name: 'Move Reorder and idle stock lists up' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save the layout' }))
     await waitFor(() => expect(saved).not.toBeNull())
     expect(saved.hidden).toEqual([`tile:${firstTile.key}`])

@@ -60,16 +60,27 @@ test('a report with its own reconciliation can be switched off, tuned, and given
     }
     open({ ...base, reconcileBuiltIn: { kind: 'stock', title: 'Stock count and movements' } }, api)
     fireEvent.click(screen.getByRole('button', { name: 'Reconciliation' }))
-    await screen.findByText('Opening qty')
+    await screen.findByRole('checkbox', { name: 'Opening qty must be filled (Your figures)' })
+    // The editor asks for every column, to choose from.
+    expect(api.reconcileColumns.mock.calls[0][3]).toBe(true)
     // A column the reconciliation needs anyway is shown ticked and fixed.
-    expect(screen.getByRole('checkbox', { name: /Date/ })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Date/ })).toBeDisabled()
-    fireEvent.click(screen.getByRole('checkbox', { name: /Opening qty/ }))
+    expect(screen.getByRole('checkbox', { name: 'Date must be filled (Your transactions)' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Date must be filled (Your transactions)' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Date in the template (Your transactions)' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Opening qty must be filled (Your figures)' }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Offer an adjustment/ }))
     fireEvent.change(screen.getByPlaceholderText('7'), { target: { value: '3' } })
+    // A column left out of the template, and a figure kept for reading only.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Lot No. in the template (Your transactions)' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Compare Closing qty (counted)' }))
+    // A required figure is always compared.
+    expect(screen.getByRole('checkbox', { name: 'Compare Opening qty' })).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(api.customiseReport).toHaveBeenCalled())
-    expect(api.customiseReport.mock.calls[0][1].reconcile).toMatchObject({ enabled: true, allowAdjustments: false, matchDays: '3', required: ['openingQty'] })
+    expect(api.customiseReport.mock.calls[0][1].reconcile).toMatchObject({
+        enabled: true, allowAdjustments: false, matchDays: '3', required: ['openingQty'],
+        templateColumns: null, transactionColumns: ['date'], comparedColumns: ['openingQty'],
+    })
 })
 
 test('a report with no reconciliation gets one by choosing the columns that name a line and the figures', async () => {

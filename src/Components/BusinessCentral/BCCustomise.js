@@ -69,6 +69,10 @@ const BCCustomise = ({ api, definition, report, values, onSaved, onClose, notify
             required: kept.required || [],
             keyColumns: kept.keyColumns || [],
             compareColumns: kept.compareColumns || [],
+            // null: every column, as the module comes.
+            templateColumns: kept.templateColumns ?? null,
+            transactionColumns: kept.transactionColumns ?? null,
+            comparedColumns: kept.comparedColumns ?? null,
         }
     })
     const [reconColumns, setReconColumns] = useState(null)
@@ -78,7 +82,7 @@ const BCCustomise = ({ api, definition, report, values, onSaved, onClose, notify
     useEffect(() => {
         if (!builtIn || tab !== 'reconcile' || reconColumns) return undefined
         let active = true
-        api.reconcileColumns(builtIn.kind, report?.params || {}, definition.key)
+        api.reconcileColumns(builtIn.kind, report?.params || {}, definition.key, true)
             .then((answer) => { if (active) setReconColumns(answer.columns) })
             .catch((failure) => { if (active) notify('error', failure.message) })
         return () => { active = false }
@@ -130,6 +134,9 @@ const BCCustomise = ({ api, definition, report, values, onSaved, onClose, notify
                     required: recon.required,
                     keyColumns: builtIn ? [] : recon.keyColumns,
                     compareColumns: builtIn ? [] : recon.compareColumns,
+                    templateColumns: builtIn ? recon.templateColumns : null,
+                    transactionColumns: builtIn ? recon.transactionColumns : null,
+                    comparedColumns: builtIn ? recon.comparedColumns : null,
                 },
             })
             notify('success', 'Saved. Everyone who opens this report sees it this way.')
@@ -147,6 +154,20 @@ const BCCustomise = ({ api, definition, report, values, onSaved, onClose, notify
     }
 
     const optionalReconColumns = reconColumns ? [...reconColumns.figures.map((column) => ({ ...column, part: 'Your figures' })), ...reconColumns.transactions.map((column) => ({ ...column, part: 'Your transactions' }))].filter((column) => !column.info && !(column.required && column.type === 'text')) : []
+
+    // Choosing the template's columns and the figures compared. A list that
+    // was never touched stands for every column; the first change starts it
+    // from every column there is.
+    const fixedColumn = (column) => column.required || recon.required.includes(column.key)
+    const chosenIn = (list, column) => fixedColumn(column) || list === null || list.includes(column.key)
+    const choose = (field, columns, column, on) => {
+        const start = recon[field] === null ? columns.map((entry) => entry.key) : recon[field]
+        setRecon({ ...recon, [field]: on ? [...new Set([...start, column.key])] : start.filter((key) => key !== column.key) })
+    }
+    const figureChoices = reconColumns ? reconColumns.figures.filter((column) => !(column.required && column.type === 'text')) : []
+    const transactionChoices = reconColumns ? reconColumns.transactions : []
+    const comparable = reconColumns ? reconColumns.figures.filter((column) => column.type === 'number' && chosenIn(recon.templateColumns, column)) : []
+    const nothingCompared = reconColumns && comparable.length > 0 && !comparable.some((column) => chosenIn(recon.comparedColumns, column))
 
     return (
         <section className='bc-card'>
@@ -260,11 +281,42 @@ const BCCustomise = ({ api, definition, report, values, onSaved, onClose, notify
                                 <div className='bc-recon-edit-checks'>
                                     {optionalReconColumns.map((column) => (
                                         <label key={`${column.part}-${column.key}`} className='bc-einv-switch'>
-                                            <input type='checkbox' checked={column.required || recon.required.includes(column.key)} disabled={column.required && !recon.required.includes(column.key)} onChange={(event) => setRecon({ ...recon, required: event.target.checked ? [...new Set([...recon.required, column.key])] : recon.required.filter((key) => key !== column.key) })} />
+                                            <input type='checkbox' aria-label={`${column.label} must be filled (${column.part})`} checked={column.required || recon.required.includes(column.key)} disabled={column.required && !recon.required.includes(column.key)} onChange={(event) => setRecon({ ...recon, required: event.target.checked ? [...new Set([...recon.required, column.key])] : recon.required.filter((key) => key !== column.key) })} />
                                             <span>{column.label}<span className='bc-muted'> ({column.part})</span></span>
                                         </label>
                                     ))}
                                 </div>
+                            )}
+                            {reconColumns && (
+                                <>
+                                    <h4>Columns in the template</h4>
+                                    <p className='bc-muted'>Untick what readers do not need. The columns that name a line, and any that must be filled, are always included. An import reads the same columns.</p>
+                                    <div className='bc-recon-edit-checks'>
+                                        {figureChoices.map((column) => (
+                                            <label key={`figure-${column.key}`} className='bc-einv-switch'>
+                                                <input type='checkbox' aria-label={`${column.label} in the template (Your figures)`} checked={chosenIn(recon.templateColumns, column)} disabled={fixedColumn(column)} onChange={(event) => choose('templateColumns', figureChoices, column, event.target.checked)} />
+                                                <span>{column.label}<span className='bc-muted'> (Your figures)</span></span>
+                                            </label>
+                                        ))}
+                                        {transactionChoices.map((column) => (
+                                            <label key={`transaction-${column.key}`} className='bc-einv-switch'>
+                                                <input type='checkbox' aria-label={`${column.label} in the template (Your transactions)`} checked={chosenIn(recon.transactionColumns, column)} disabled={fixedColumn(column)} onChange={(event) => choose('transactionColumns', transactionChoices, column, event.target.checked)} />
+                                                <span>{column.label}<span className='bc-muted'> (Your transactions)</span></span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <h4>Figures compared</h4>
+                                    <p className='bc-muted'>A figure in the template but not ticked here is there for the reader's own use and is not compared.</p>
+                                    <div className='bc-recon-edit-checks'>
+                                        {comparable.map((column) => (
+                                            <label key={`compared-${column.key}`} className='bc-einv-switch'>
+                                                <input type='checkbox' aria-label={`Compare ${column.label}`} checked={chosenIn(recon.comparedColumns, column)} disabled={fixedColumn(column)} onChange={(event) => choose('comparedColumns', comparable, column, event.target.checked)} />
+                                                <span>{column.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {nothingCompared && <p className='bc-banner bc-banner-warn'>Nothing is compared, so an import would find no differences. Tick at least one figure.</p>}
+                                </>
                             )}
                         </>
                     )}

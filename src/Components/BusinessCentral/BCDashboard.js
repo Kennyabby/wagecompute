@@ -202,6 +202,7 @@ const MonthlyPerformance = ({ api, monthly, branches }) => {
 
 const BLOCK_LABELS = {
     'section:profit': 'Profit for the period',
+    'section:frequent': 'Your most opened reports',
     'section:tiles': 'Tiles',
     'section:mainChart': 'Main chart',
     'section:monthly': 'Monthly performance',
@@ -270,7 +271,7 @@ const ArrangePanel = ({ blocks, layout, onSave, onClose }) => {
 }
 
 const BCDashboard = ({ api, lookups, lastSyncedAt, syncedAt, live, canManage, onOpenReport, onLoaded, onDiscovered }) => {
-    const { can, limits } = useBCAccess()
+    const { can, canTab, limits } = useBCAccess()
     const filters = [
         { key: 'dateRange', type: 'dateRange', label: 'Period' },
         { key: 'locations', type: 'multi', label: 'Location', lookup: 'locations' },
@@ -307,6 +308,15 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, syncedAt, live, canManage, on
     const orderBlocks = (blocks) => blocks.map((block, index) => ({ ...block, index })).filter((block) => !hidden.has(block.id) && block.node)
         .sort((a, b) => rank(a.id, a.index) - rank(b.id, b.index)).map((block) => <Fragment key={block.id}>{block.node}</Fragment>)
     const [discoverNote, setDiscoverNote] = useState('')
+    // The reports this person opens most, offered first so they are a click away.
+    const [frequent, setFrequent] = useState([])
+    const seesReports = canTab('reports')
+    useEffect(() => {
+        if (!seesReports || !api.getFrequentReports) return undefined
+        let active = true
+        api.getFrequentReports().then((response) => { if (active) setFrequent(response.reports || []) }).catch(() => {})
+        return () => { active = false }
+    }, [api, seesReports])
 
     const load = useCallback(async (params) => {
         setLoading(true)
@@ -407,6 +417,19 @@ const BCDashboard = ({ api, lookups, lastSyncedAt, syncedAt, live, canManage, on
             {arranging && dashboard && <ArrangePanel blocks={allBlocks(dashboard)} layout={layout} onSave={saveLayout} onClose={() => setArranging(false)} />}
 
             {dashboard && orderBlocks([
+                { id: 'section:frequent', node: frequent.length > 0 && (
+                    <section className='bc-frequent' aria-label='Your most opened reports'>
+                        <h3>Your most opened reports</h3>
+                        <div className='bc-frequent-list'>
+                            {frequent.map((report) => (
+                                <button key={report.key} type='button' className='bc-card bc-frequent-card' title={report.description} onClick={() => onOpenReport(report.key, dashboard.params ? { from: dashboard.params.from, to: dashboard.params.to } : undefined)}>
+                                    <strong>{report.title}</strong>
+                                    <span className='bc-muted'>Opened {report.count} {report.count === 1 ? 'time' : 'times'}, last {formatAgo(report.lastAt)}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                ) },
                 { id: 'section:profit', node: dashboard.financial ? (
                 <FinancialSummary financial={dashboard.financial} comparedWith={dashboard.comparedWith} onOpen={() => onOpenReport(dashboard.financial.link.report, dashboard.financial.link.params)} onOpenReport={onOpenReport} />
                 ) : null },
