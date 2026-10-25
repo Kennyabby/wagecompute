@@ -217,11 +217,16 @@ const Attendance = () => {
         }, "createDoc", server)
 
         if (resps.err) {
+            // An identical post for the same month is refused by the server
+            // (409), with which earlier post it matches.
             setAlertState('error')
             setAlert(resps.mess)
-            setAlertTimeout(3000)
+            setAlertTimeout(resps.code === 'DUPLICATE_ATTENDANCE' ? 8000 : 3000)
             console.log(resps.mess)
         } else {
+            // The server numbers posts now; the count on this screen could
+            // repeat a number when two posts were made close together.
+            if (resps.no) curNo = resps.no
             removeApproval(company, 'attendance', 'postattendance', {
                 createdAt: approvalData.createdAt,
                 postingDate: approvalData.postingDate
