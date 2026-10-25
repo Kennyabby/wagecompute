@@ -18,9 +18,13 @@ import {
     putSessionManager,
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
-// queuePendingChange here is submitChange: queued in the browser, posted at
-// once on the desktop app (see offlineSync.js).
-import { syncPendingChanges, processChange, submitChange as queuePendingChange } from '../../Resources/offlineSync';
+// queuePendingChange here is submitChange: written to this device's queue,
+// then sent at once; { immediate: true } waits for the server's answer (see
+// offlineSync.js). Order changes carry an action and the till's full copy of
+// the order (snapshot), so the server can apply a payment, cancellation or
+// delivery by its own rules and rebuild an order that never reached it.
+import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClose, describeNotReady } from '../../Resources/offlineSync';
+import { orderBusinessFields, deliveryBusinessFields, businessDayOf } from '../../Resources/businessDay';
 import { getTerminalId } from '../../Resources/clientTxnId';
 
 const PointOfSales = () => {
@@ -126,6 +130,20 @@ const PointOfSales = () => {
     const [tableFetchCount, setTableFetchCount] = useState(0)
     const [hasPosAgentPermissions, setHasPosAgentPermissions] = useState(false)
     const [curPosHandler, setCurPosHandler] = useState('')
+    // A change the server would not apply as sent (a second payment on a
+    // paid order, a payment on a cancelled one) is kept there for review.
+    // The cashier is told, since the till already printed its receipt.
+    useEffect(() => {
+        const onConflict = (event) => {
+            setAlertState('error')
+            setAlert(event.detail?.message || 'A change from this till was kept on the server for review.')
+            setAlertTimeout(10000)
+        }
+        window.addEventListener('wc:pos-sync-conflict', onConflict)
+        return () => window.removeEventListener('wc:pos-sync-conflict', onConflict)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
     useEffect(() => {
         storePath('pos')
         document.title = 'Point of Sales | Enterprise Compute Central'
@@ -777,11 +795,11 @@ const PointOfSales = () => {
                     clientId: newSessionManager.start,
                     payload: newSessionManager,
                 }
-                // await processChange(change, company, fetchServer, server);
+                // await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
                 
                 // Immediate sync attempt, failures are fine, queue remains
@@ -798,7 +816,7 @@ const PointOfSales = () => {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
             return;
@@ -812,6 +830,8 @@ const PointOfSales = () => {
     };
 
     const stopSessionManager = async (activeSessions)=>{
+        const dayStart = getSessionStart(currSessionManager?.start || Date.now())
+        if (!(await confirmEverythingSynced({ from: dayStart, to: getSessionEnd(dayStart) }, 'business day'))) return
 
         setAlertState('info');
         setAlert('Stopping Session Manager...');
@@ -878,9 +898,9 @@ const PointOfSales = () => {
                 }
 
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
 
                 try{
@@ -973,9 +993,9 @@ const PointOfSales = () => {
                     payload: newSession,
                 }
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
                 
                 // Immediate sync attempt, failures are fine, queue remains
@@ -1005,7 +1025,7 @@ const PointOfSales = () => {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchAllSessions({ company, companyRecord })
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
             return;
@@ -1017,7 +1037,33 @@ const PointOfSales = () => {
         }
     };
 
+    // Sends what this device holds, then asks the server whether any device
+    // still holds changes for this session (or day), or whether any it sent
+    // were refused. Closing before then left those sales out of the
+    // session's totals and out of every report run elsewhere. An admin may
+    // go ahead after seeing the list, for a device that is gone for good.
+    const confirmEverythingSynced = async (scope, what) => {
+        if (!company || !companyRecord?.emailid) return true
+        setAlertState('info')
+        setAlert(`Checking that every sale for this ${what} has reached the server...`)
+        setAlertTimeout(60000)
+        const check = await checkReadyToClose(company, companyRecord.emailid, scope)
+        if (check.ready) return true
+        const message = describeNotReady(check)
+        if (companyRecord?.status === 'admin' && window.confirm(`${message}\n\nEnd the ${what} anyway? Anything still on those devices will not be in its totals.`)) {
+            return true
+        }
+        setAlertState('error')
+        setAlert(message)
+        setAlertTimeout(12000)
+        return false
+    }
+
     const stopSession = async (session, sessionOrders) => {
+        if (!(await confirmEverythingSynced({ sessionId: session.i_d ?? session.start, handlerId: session.employee_id }, 'session'))) {
+            setLoading(false)
+            return
+        }
         const {
             allSales,
             totalPendingSales,
@@ -1093,9 +1139,9 @@ const PointOfSales = () => {
                     payload: closedSession,
                 }
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
                 // Immediate sync attempt, failures are fine, queue remains
                 try {
@@ -1114,7 +1160,7 @@ const PointOfSales = () => {
                     setLoading(false)
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 
@@ -1697,6 +1743,10 @@ const PointOfSales = () => {
         // Defaults on. When off, admins have explicitly chosen to post
         // Shipment/Return transactions on whatever date they're processed.
         const useOrderDateForPosting = curPosSettings?.useOrderDateForPosting !== false;
+        const processedDay = businessDayOf(createdAt, getSessionStart);
+        const orderDay = currentOrder.businessDate
+            ? { businessDate: currentOrder.businessDate, effectiveAt: Number(currentOrder.postingStamp) || businessDayOf(currentOrder.createdAt || createdAt, getSessionStart).effectiveAt }
+            : businessDayOf(currentOrder.createdAt || createdAt, getSessionStart);
         const transactions = [];
 
         if (!items.length){
@@ -1773,12 +1823,11 @@ const PointOfSales = () => {
                 // posted its Shipment/Return to the day it was PROCESSED
                 // instead of the day it was SOLD, gated by the POS Settings
                 // toggle so an admin can opt back into the old behavior.
-                postingDate: useOrderDateForPosting
-                    ? (currentOrder.postingDate || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)).toISOString().slice(0, 10) : new Date(Date.now()).toISOString().slice(0, 10)))
-                    : new Date(Date.now()).toISOString().slice(0, 10),
-                postingStamp: useOrderDateForPosting
-                    ? (currentOrder.postingStamp || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)) : new Date(Date.now())))
-                    : new Date(Date.now()),
+                // Both dates are business days (Resources/businessDay.js): on
+                // an 8am-to-8am session, stock that moves at 01:30 belongs to
+                // the day before and is stamped 23:59:59 of it.
+                postingDate: useOrderDateForPosting ? orderDay.businessDate : processedDay.businessDate,
+                postingStamp: new Date(useOrderDateForPosting ? orderDay.effectiveAt : processedDay.effectiveAt),
                 createdAt: createdAt,
             };
 
@@ -1798,9 +1847,9 @@ const PointOfSales = () => {
                     payload: { transactions },
                 }
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
                 setAlertState('success');
                 setAlert((count || 0) + 1, 'Order(s) Inventory updated successfully');
@@ -1861,7 +1910,7 @@ const PointOfSales = () => {
                     // fetchTables(company)
                     // loadInitialData()
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 
@@ -1895,9 +1944,11 @@ const PointOfSales = () => {
             paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0);
         });
 
+        const deliveredAt = new Date().getTime();
         const deliveryDataUpdate = {
-            lastDeliveredAt: new Date().getTime(),
+            lastDeliveredAt: deliveredAt,
             lastDeliveredBy: companyRecord.emailid,
+            ...deliveryBusinessFields(deliveredAt, getSessionStart),
         };
 
         // Track Delivery Sessions
@@ -2180,10 +2231,10 @@ const PointOfSales = () => {
                             payload: updatedTable,
                         }
                         if (curPosSettings?.type === 'restaurant'){
-                            queuePendingChange(company, companyRecord.emailid, change);
+                            await queuePendingChange(company, companyRecord.emailid, change);
                         }else{
                             try{
-                                await processChange(change, company, fetchServer, server);
+                                await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                             }catch (e) {
                                 console.log(e)
                             }
@@ -2233,16 +2284,18 @@ const PointOfSales = () => {
                         const change = {
                             entityType: 'order',
                             op: 'update',
+                            action: 'deliver',
                             clientId: currentOrder.orderNumber,
                             payload: {
                                 orderNumber: currentOrder.orderNumber,
                                 ...deliveryDataUpdate,
                             },
+                            snapshot: updatedOrder,
                         }
                         if (curPosSettings?.type === 'restaurant'){
-                            queuePendingChange(company, companyRecord.emailid, change);
+                            await queuePendingChange(company, companyRecord.emailid, change);
                         }else{
-                            await processChange(change, company, fetchServer, server);
+                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }
                         // Immediate sync attempt, failures are fine, queue remains
                         try {
@@ -2253,7 +2306,7 @@ const PointOfSales = () => {
                             handleTableSelect(currentTable, 'auto')
                             await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                         } catch (e) {
-                            // Leave pending changes in queue; 5‑minute auto-sync will retry
+                            // Still queued; the background sync retries it every 30 seconds
                         }
                     }
                     fetchTables(company)
@@ -2357,7 +2410,7 @@ const PointOfSales = () => {
                             await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }else{
                             try{                                
-                                await processChange(change, company, fetchServer, server);
+                                await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                             }catch (e) {
                                 console.log(e)
                             }
@@ -2414,17 +2467,19 @@ const PointOfSales = () => {
                 const change = {
                     entityType: 'order',
                     op: 'update',
+                    action: 'reverseDelivery',
                     clientId: order.orderNumber,
                     payload: {
                         orderNumber: order.orderNumber,
                         ...deliveryUpdate,
                     },
+                    snapshot: updatedOrder,
                 }
                 if (curPosSettings?.type === 'restaurant'){
                     // Part of a cancellation: posted at once in every mode, and waited for.
                             await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
                 // Immediate sync attempt, failures are fine, queue remains
                 try {
@@ -2433,7 +2488,7 @@ const PointOfSales = () => {
                     setAlertState('success');
                     setAlertTimeout(1000);
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 
@@ -2478,6 +2533,7 @@ const PointOfSales = () => {
         // Save the current order to database (locally, offline-first)
         const placedOrder = {
             ...currentOrder,
+            ...orderBusinessFields(currentOrder.createdAt, getSessionStart),
             status: 'pending',
             placedAt: new Date().getTime(),
             delivery: 'pending',
@@ -2541,10 +2597,10 @@ const PointOfSales = () => {
                         payload: updatedTable,
                     }
                     if (curPosSettings?.type === 'restaurant'){
-                        queuePendingChange(company, companyRecord.emailid, change);
+                        await queuePendingChange(company, companyRecord.emailid, change);
                     }else{
                         try {
-                            await processChange(change, company, fetchServer, server);
+                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }catch (e) {
                             console.log(e)
                         }
@@ -2561,9 +2617,9 @@ const PointOfSales = () => {
                     payload: placedOrder,
                 }
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
                 // Immediate sync attempt, failures are fine, queue remains
                 setAlertTimeout(20);
@@ -2605,7 +2661,7 @@ const PointOfSales = () => {
                     // fetchTables(company);
                     // getProducts(company);
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 
@@ -2699,10 +2755,10 @@ const PointOfSales = () => {
                         payload: updatedTable,
                     }
                     if (curPosSettings?.type === 'restaurant'){
-                        queuePendingChange(company, companyRecord.emailid, change);
+                        await queuePendingChange(company, companyRecord.emailid, change);
                     }else{
                         try {
-                            await processChange(change, company, fetchServer, server);
+                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }catch (e){
                             console.log(e)
                         }
@@ -2715,13 +2771,15 @@ const PointOfSales = () => {
                 const change = {
                     entityType: 'order',
                     op: 'update',
+                    action: 'edit',
                     clientId: placedOrder.orderNumber,
                     payload: placedOrder,
+                    snapshot: placedOrder,
                 }
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
                 // Immediate sync attempt, failures are fine, queue remains
                 setAlertTimeout(20);
@@ -2765,7 +2823,7 @@ const PointOfSales = () => {
                     // fetchTables(company);
                     // getProducts(company);
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 
@@ -3029,10 +3087,10 @@ const PointOfSales = () => {
                         payload: updatedTable,
                     }
                     if (curPosSettings?.type === 'restaurant'){
-                        queuePendingChange(company, companyRecord.emailid, change);
+                        await queuePendingChange(company, companyRecord.emailid, change);
                     }else{
                         try{
-                            await processChange(change, company, fetchServer, server);
+                            await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }catch(e){
                             console.log(e)
                         }
@@ -3044,16 +3102,18 @@ const PointOfSales = () => {
                 const change = {
                     entityType: 'order',
                     op: 'update',
+                    action: 'pay',
                     clientId: currentOrder.orderNumber,
                     payload: {
                         orderNumber: currentOrder.orderNumber,
                         ...paymentDataUpdate,
                     },
+                    snapshot: newOrder,
                 }
                 if (curPosSettings?.type === 'restaurant'){
-                    queuePendingChange(company, companyRecord.emailid, change);
+                    await queuePendingChange(company, companyRecord.emailid, change);
                 }else{
-                    await processChange(change, company, fetchServer, server);
+                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
 
                 // Immediate sync attempt, failures are fine, queue remains
@@ -3094,7 +3154,7 @@ const PointOfSales = () => {
                     }
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
             // 4) Local success feedback            
@@ -4761,7 +4821,7 @@ const OrdersModal = ({
                             await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                         }else{
                             try {
-                                await processChange(change, company, fetchServer, server);
+                                await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                             }catch (e){
                                 console.log(e)
                             }
@@ -4774,6 +4834,7 @@ const OrdersModal = ({
                     const change = {
                         entityType: 'order',
                         op: 'update',
+                        action: 'cancel',
                         clientId: order.orderNumber,
                         payload: {
                             orderNumber: order.orderNumber,
@@ -4781,12 +4842,13 @@ const OrdersModal = ({
                             cancelledBy: companyRecord.emailid,
                             cancelledAt: Date.now(),
                         },
+                        snapshot: cancelledOrder,
                     }
 
                     if (curPosSettings?.type === 'restaurant'){
                         await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                     }else{
-                        await processChange(change, company, fetchServer, server);
+                        await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                     }
                     
                     // Immediate sync attempt, failures are fine, queue remains
@@ -4795,7 +4857,7 @@ const OrdersModal = ({
                         setAlertState('success');
                         setAlertTimeout(1000);
                     } catch (e) {
-                        // Leave pending changes in queue; 5‑minute auto-sync will retry
+                        // Still queued; the background sync retries it every 30 seconds
                     }
                 }
                 
@@ -4962,7 +5024,44 @@ const POSDashboard = ({
     fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
     setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories, glDeepLink
 }) => {
-    const { fetchServer, server, company, wrhs, formatDateToDefault, settings, sessionManagerRequired, getSessionStart } = useContext(ContextProvider);
+    const { fetchServer, server, company, wrhs, formatDateToDefault, settings, sessionManagerRequired, sessionManagerStopRequired, getSessionStart } = useContext(ContextProvider);
+
+    const canRunSessionManager = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')
+    const [savingStopRule, setSavingStopRule] = useState(false)
+    const saveStopRule = async (stopManagerBeforeEnd) => {
+        setSavingStopRule(true)
+        const resp = await fetchServer("POST", { stopManagerBeforeEnd }, "pos/sessionRules", server).catch(() => null)
+        setSavingStopRule(false)
+        if (!resp || resp.err || !resp.ok) {
+            setAlertState('error')
+            setAlert(resp?.mess || 'Could not save the Session Manager rule.')
+            setAlertTimeout(4000)
+            return
+        }
+        setAlertState('success')
+        setAlert(stopManagerBeforeEnd
+            ? 'Sessions can now only be ended after the Session Manager is stopped.'
+            : 'Sessions can now be ended and started while the Session Manager is running.')
+        setAlertTimeout(4000)
+    }
+
+    // Devices still holding POS changes the server has not received, and
+    // changes it refused. Shown to admins and session runners so a missing
+    // sale can be traced to the till that has it.
+    const [unsynced, setUnsynced] = useState({ tills: [], refused: [] })
+    const seesAllTills = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('access_pos_sessions') || canRunSessionManager
+    useEffect(() => {
+        if (!seesAllTills || !server) return
+        let alive = true
+        const load = async () => {
+            const resp = await fetchServer("POST", {}, "pos/outbox/status", server).catch(() => null)
+            if (alive && resp?.ok) setUnsynced({ tills: resp.tills || [], refused: resp.refused || [] })
+        }
+        load()
+        const timer = setInterval(load, 30000)
+        return () => { alive = false; clearInterval(timer) }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [server, company, seesAllTills])
 
     // Configured in Settings > General Config > POS Reconciliation, instead of
     // a fixed list, so admins control which locations gate session-end without
@@ -5288,6 +5387,21 @@ const POSDashboard = ({
                         >
                             {((currSessionManager === null || currSessionManager?.end)) ? 'Start' : 'Stop'}
                         </div>}
+                        {sessionManagerRequired && canRunSessionManager && <label className='pos-stop-rule'>
+                            <input
+                                type='checkbox'
+                                aria-label='Stop the Session Manager before sessions end'
+                                checked={sessionManagerStopRequired}
+                                disabled={savingStopRule}
+                                onChange={(e) => saveStopRule(e.target.checked)}
+                            />
+                            <span>
+                                Stop the Session Manager before sessions end
+                                <small>{sessionManagerStopRequired
+                                    ? 'Users\' sessions can be ended once the Session Manager is stopped.'
+                                    : 'Users with permission can end and start sessions while the Session Manager runs.'}</small>
+                            </span>
+                        </label>}
                         {/* Only once there's an actual stopped Session Manager to clear
                             for, clearing sweeps that manager's own day (still its
                             `start` date even after stopping), so there's nothing
@@ -5318,6 +5432,23 @@ const POSDashboard = ({
                         >
                             {`Clear ₦${Math.round(earlierUncleared.reduce((sum, row) => sum + Number(row.amount || 0), 0)).toLocaleString()} left from earlier days`}
                         </button>}
+                    </div>}
+                    {seesAllTills && (unsynced.tills.length > 0 || unsynced.refused.length > 0) && <div className='pos-unsynced' role='status'>
+                        <strong>Sales not yet on the server</strong>
+                        {unsynced.tills.map((till) => (
+                            <p key={`${till.user}-${till.terminalId}`}>
+                                {`${till.count} change(s) on ${till.user || 'a device'}'s device ${till.terminalId}`}
+                                {till.orderNumbers?.length ? `, orders ${till.orderNumbers.slice(0, 6).join(', ')}${till.orderNumbers.length > 6 ? ', ...' : ''}` : ''}
+                                {till.lastSeenAt ? `. Last seen ${new Date(till.lastSeenAt).toLocaleString()}` : ''}
+                                {till.errors?.length ? `. Last error: ${till.errors[0]}` : ''}
+                            </p>
+                        ))}
+                        {unsynced.refused.slice(0, 10).map((row) => (
+                            <p key={row.opId} className='pos-unsynced-refused'>
+                                {`Refused: ${row.entityType} ${row.key || ''} from ${row.user || 'a device'}: ${row.message || 'no reason given'}`}
+                            </p>
+                        ))}
+                        <small>Sessions holding these cannot be ended until they arrive. Ask the user to open the POS on that device while online.</small>
                     </div>}
                     {showClearingModal && (
                         <div className='closingsession' onClick={() => { if (!clearingLoading) setShowClearingModal(false) }}>
@@ -5470,7 +5601,7 @@ const POSDashboard = ({
                                                                         }
                                                                     }
                                                                 } else {
-                                                                    if (sessionManagerRequired && currSessionManager && currSessionManager?.active) {
+                                                                    if (sessionManagerStopRequired && currSessionManager && currSessionManager?.active) {
                                                                         viewModal = false
                                                                         setAlertState('error')
                                                                         setAlert('Session Manager is currently active. Stop Session Manager to Continue!')

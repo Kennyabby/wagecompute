@@ -1042,6 +1042,14 @@ const TransactionReports = ({
                                                     <div className="order-info">
                                                         <div className="order-number">{order.orderNumber}</div>
                                                         <div className="order-time">{formatDate(order.createdAt)}</div>
+                                                        {/* Placed or delivered after midnight on a session that runs
+                                                            past it: counted for the business day, real times kept. */}
+                                                        {(order.overnight || order.deliveredOvernight) && (
+                                                            <div className="order-time" title={order.lastDeliveredAt ? `Delivered ${formatDate(order.lastDeliveredAt)}` : undefined}>
+                                                                {`Counted for ${order.businessDate || order.deliveryBusinessDate} at 23:59`}
+                                                                {order.deliveredOvernight && order.lastDeliveredAt ? `, delivered ${formatDate(order.lastDeliveredAt)}` : ''}
+                                                            </div>
+                                                        )}
                                                         {type === 'sales' && (
                                                             <div className="order-table">
                                                                 <FaChair /> {order.tableName || `Table ${order.tableId || 'N/A'}`}

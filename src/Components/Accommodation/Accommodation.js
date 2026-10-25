@@ -443,6 +443,14 @@ const Accommodation = () => {
         return () => clearInterval(intervalId);
     }, [window.localStorage.getItem('sessn-cmp')])
 
+    // An approval the server posted the moment it was finally approved
+    // (Settings > Approval Rules) shows up on its booking straight away.
+    useEffect(() => {
+        const refresh = (event) => { if (event.detail?.module === 'accommodation' && company) getAccommodations(company, companyRecord) }
+        window.addEventListener('wc:approval-auto-posted', refresh)
+        return () => window.removeEventListener('wc:approval-auto-posted', refresh)
+    }, [company])
+
     useEffect(() => {
         setAccommodationApprovals(approvals.filter((appr) => {
             return (

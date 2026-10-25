@@ -1,7 +1,20 @@
 // offlineSync.js
-// STRICT offline → online sync with server acknowledgment
+//
+// Every change the POS and Delivery screens make goes into this device's
+// queue first and is then sent to the server's /pos/ops/apply, oldest first.
+//
+// The queue entry's id is the change's id for good. The server keeps every
+// id it has applied, so a change sent twice (a timeout after the server had
+// already saved it, two flushes at once, the till reopened the next day) is
+// applied once. An entry leaves the queue only when the server says it is
+// done, or that it kept it for review.
+//
+// The device also tells the server what it still holds, so a session is not
+// ended while its sales are still on their way here, and admins can see
+// which device is holding what.
 
-import { loadPendingChanges, markPendingChangeSynced, queuePendingChange } from './offlineDb';
+import { loadPendingChanges, markPendingChangeSynced, queuePendingChange, updatePendingChange } from './offlineDb';
+import { generateClientTxnId, getTerminalId } from './clientTxnId';
 
 // How to reach the server, handed over once by App.js. Kept here so a screen
 // can submit a change without passing these along every time.
@@ -12,356 +25,283 @@ export function setSyncTransport(fetchServer, server) {
 
 const onDesktop = () => typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
 
-// Changes posted straight away go one after another, in the order they were
-// made, so an order is never updated before the request that created it.
-let line = Promise.resolve();
+const BATCH = 25;
+// The server's answers that let a change leave the queue. "conflict" means
+// it was kept on the server for someone to review.
+const DONE = new Set(['applied', 'conflict']);
+// While anything is waiting, the queue is retried this often, and the
+// server is told what is still here at least this often.
+export const RETRY_MS = 30 * 1000;
+const REPORT_MS = 60 * 1000;
 
-/**
- * Submits one change (an order, a table, a session, stock) made on the POS
- * or Delivery screens.
- *
- * In the browser a change is put in the local queue and sent by the next
- * sync, which is what lets those screens keep working while the internet is
- * down. The desktop app has no such problem: its server is on the same
- * machine. Queueing there only made every sale, delivery and payment wait
- * for a sync, so on the desktop the change is posted at once.
- *
- * `immediate` asks for the same in the browser, for an action whose result
- * has to be seen at once, such as cancelling an order.
- *
- * A change that cannot be posted (the connection dropped, the server
- * refused it) goes into the queue instead, so it is retried by the next sync
- * and never lost. Resolves once the change is posted or queued.
- */
-export function submitChange(company, userId, change, { immediate = false } = {}) {
-  if (!transport.fetchServer || !(immediate || onDesktop())) return queuePendingChange(company, userId, change);
-  const run = line.then(async () => {
-    try {
-      return await processChange(change, company, transport.fetchServer, transport.server);
-    } catch (error) {
-      console.warn(`[OfflineSync] ${change.entityType}:${change.op} could not be posted at once, queued instead`, error?.message || error);
-      return queuePendingChange(company, userId, change);
+const emit = (name, detail) => {
+  try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch (e) { /* no window in tests */ }
+};
+
+// What a change is about, for the server's list of what each device holds
+// and for the session close check.
+export function describeChange(change) {
+  const payload = change?.payload || {};
+  switch (change?.entityType) {
+    case 'order':
+      return { key: payload.orderNumber || change.clientId || null, sessionId: payload.sessionId ?? change.snapshot?.sessionId ?? null, handlerId: payload.handlerId || change.snapshot?.handlerId || null };
+    case 'session':
+    case 'sessionManagers':
+      return { key: payload.start ?? change.clientId ?? null, sessionId: payload.start ?? null, handlerId: payload.employee_id || null };
+    case 'table':
+      return { key: payload.i_d ?? change.clientId ?? null, sessionId: null, handlerId: null };
+    case 'inventory': {
+      const first = Array.isArray(payload.transactions) ? payload.transactions[0] : null;
+      return { key: first?.orderNumber || null, sessionId: first?.sessionId ?? null, handlerId: first?.handlerId || null };
     }
-  });
-  line = run.catch(() => {});
-  return run;
+    default:
+      return { key: null, sessionId: null, handlerId: null };
+  }
 }
 
-/**
- * Sync all pendingChanges for a given company + user.
- */
-export async function syncPendingChanges(
-  company,
-  userId,
-  fetchServer,
-  server,
-  retries = 3
-) {
+const toOp = (change) => ({
+  opId: change.id,
+  entityType: change.entityType,
+  op: change.op,
+  action: change.action || null,
+  clientId: change.clientId ?? null,
+  payload: change.payload,
+  snapshot: change.snapshot || null,
+  clientCreatedAt: change.createdAt || null,
+});
+
+const lastReport = new Map();
+async function reportOutbox(company, userId, remaining, fetchServer, server, { force = false } = {}) {
+  const key = `${company}|${userId}`;
+  const previous = lastReport.get(key);
+  const signature = remaining.map((c) => `${c.id}:${c.attempts || 0}`).join(',');
+  if (!force && previous && previous.signature === signature && Date.now() - previous.at < REPORT_MS) return;
+  // A device with nothing queued that never reported has nothing to clear.
+  if (!remaining.length && !previous && !force) return;
+  const pending = remaining.map((change) => ({
+    opId: change.id,
+    entityType: change.entityType,
+    op: change.op,
+    action: change.action || null,
+    ...describeChange(change),
+    createdAt: change.createdAt || null,
+    attempts: change.attempts || 0,
+    lastError: change.lastError || null,
+    status: change.lastStatus || null,
+  }));
+  const resp = await fetchServer('POST', { terminalId: getTerminalId(), pending }, 'pos/outbox/report', server).catch(() => null);
+  if (resp && !resp.err) lastReport.set(key, { signature, at: Date.now() });
+}
+
+async function drain(company, userId, fetchServer, server) {
   const changes = await loadPendingChanges(company, userId);
   const results = [];
+  const left = [];
+  let stopped = false;
 
-  for (const change of changes) {
-    let attempt = 0;
-    let synced = false;
-    let lastError = null;
+  for (let index = 0; index < changes.length; index += BATCH) {
+    const batch = changes.slice(index, index + BATCH);
+    if (stopped) {
+      left.push(...batch);
+      continue;
+    }
+    // eslint-disable-next-line no-await-in-loop
+    const resp = await fetchServer('POST', {
+      terminalId: getTerminalId(),
+      tzOffset: new Date().getTimezoneOffset(),
+      ops: batch.map(toOp),
+    }, 'pos/ops/apply', server);
 
-    while (attempt < retries && !synced) {
-      try {
-        const resp = await processChange(change, company, fetchServer, server);
-
-        if (resp?.isDuplicate) {
-          console.warn(`[OfflineSync] Duplicate detected for ${change.entityType}:${change.op}. Removing from queue.`, change.id);
-        }
-
-        // ✅ mark ONLY after server confirms success (or duplicate resolution)
-        await markPendingChangeSynced(company, userId, change.id);
-
-        results.push({ id: change.id, status: resp?.isDuplicate ? 'duplicate_resolved' : 'ok' });
-        synced = true;
-      } catch (err) {
-        attempt++;
-        lastError = err;
-
-        console.warn(
-          `[OfflineSync] ${change.entityType}:${change.op} failed (attempt ${attempt})`,
-          err.message || err
-        );
-
-        if (attempt < retries) {
-          await delay(500 * Math.pow(2, attempt)); // exponential backoff
-        }
+    if (!resp || resp.err || !Array.isArray(resp.results)) {
+      // The connection or the server failed. Everything stays queued, in
+      // order, and the next flush starts from the same place.
+      stopped = true;
+      const error = resp?.mess || 'Could not reach the server';
+      for (const change of batch) {
+        // eslint-disable-next-line no-await-in-loop
+        await updatePendingChange(company, userId, change.id, { attempts: (change.attempts || 0) + 1, lastError: error, lastTriedAt: Date.now() });
+        left.push({ ...change, attempts: (change.attempts || 0) + 1, lastError: error });
+        results.push({ id: change.id, status: 'error', error });
       }
+      continue;
     }
 
-    if (!synced) {
-      results.push({
-        id: change.id,
-        status: 'error',
-        error: lastError?.message || String(lastError)
-      });
+    const byId = new Map(resp.results.map((r) => [r.opId, r]));
+    for (const change of batch) {
+      const answer = byId.get(change.id) || { status: 'retry', message: 'No answer for this change' };
+      if (DONE.has(answer.status)) {
+        // eslint-disable-next-line no-await-in-loop
+        await markPendingChangeSynced(company, userId, change.id);
+        if (answer.status === 'conflict') emit('wc:pos-sync-conflict', { change, message: answer.message });
+        results.push({ id: change.id, status: answer.status === 'conflict' ? 'conflict' : (answer.duplicate ? 'duplicate_resolved' : 'ok'), warning: answer.warning || null, message: answer.message || null });
+      } else {
+        const patch = { attempts: (change.attempts || 0) + 1, lastError: answer.message || answer.status, lastStatus: answer.status, lastTriedAt: Date.now() };
+        // eslint-disable-next-line no-await-in-loop
+        await updatePendingChange(company, userId, change.id, patch);
+        left.push({ ...change, ...patch });
+        results.push({ id: change.id, status: 'error', error: patch.lastError, serverStatus: answer.status });
+      }
     }
   }
 
+  await reportOutbox(company, userId, left, fetchServer, server).catch(() => {});
+  emit('wc:pos-sync-state', { company, userId, pending: left.length, stuck: left.filter((c) => c.lastStatus === 'rejected').length });
   return results;
 }
 
-// =====================================================
-// Utilities
-// =====================================================
+// One flush at a time per queue. A flush asked for while one is running
+// runs again straight after it, so a change queued mid-flush is never left
+// for the next timer.
+const flights = new Map();
 
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function stripId(payload) {
-  if (!payload) return payload;
-  const { _id, ...rest } = payload;
-  return rest;
-}
-
-function assertCreate(resp) {
-  if (!resp || resp.isDelivered !== true) {
-    throw new Error('Create not acknowledged by server');
+/**
+ * Sends everything queued for this company and user. Resolves with one
+ * result per change attempted: status 'ok', 'duplicate_resolved',
+ * 'conflict' (kept on the server for review) or 'error' (still queued).
+ */
+export function syncPendingChanges(company, userId, fetchServer = transport.fetchServer, server = transport.server) {
+  if (!company || !userId || !fetchServer) return Promise.resolve([]);
+  const key = `${company}|${userId}`;
+  const flight = flights.get(key);
+  if (flight) {
+    flight.again = true;
+    return flight.promise;
   }
+  const entry = { again: false, promise: null };
+  entry.promise = (async () => {
+    let results = [];
+    do {
+      entry.again = false;
+      // eslint-disable-next-line no-await-in-loop
+      results = results.concat(await drain(company, userId, fetchServer, server));
+    } while (entry.again);
+    return results;
+  })().finally(() => flights.delete(key));
+  flights.set(key, entry);
+  return entry.promise;
 }
 
-function assertUpdate(resp) {
-  if (!resp || resp.updated !== true) {
-    throw new Error('Update not applied on server');
+/**
+ * Submits one change (an order, a table, a session, stock) made on the POS
+ * or Delivery screens. It is written to this device's queue first, so it
+ * survives a dropped connection, a closed tab or a crash, and then sent at
+ * once.
+ *
+ * `immediate` waits until the queue has been sent (or the attempt failed),
+ * for an action whose result has to be on the server before the screen
+ * moves on, such as cancelling an order. The desktop app always waits: its
+ * server is on the same machine.
+ *
+ * Never throws: a change that could not be sent stays queued and is retried.
+ * Resolves with the change's id.
+ */
+export async function submitChange(company, userId, change, { immediate = false } = {}) {
+  const queued = { ...change, id: change.id || generateClientTxnId(), createdAt: change.createdAt || Date.now() };
+  const id = await queuePendingChange(company, userId, queued);
+  if (!id) {
+    // No local storage on this device (private window, storage blocked).
+    // Sent straight to the server; if that fails there is nowhere to keep
+    // it, so the caller is told.
+    if (!transport.fetchServer) throw new Error('This change could not be saved on this device');
+    await processChange(queued, company, transport.fetchServer, transport.server);
+    return queued.id;
   }
+  const flushing = syncPendingChanges(company, userId).catch(() => []);
+  if (immediate || onDesktop()) await flushing;
+  return id;
 }
 
-function assertDelete(resp) {
-  if (!resp || resp.isRemoved !== true) {
-    throw new Error('Delete not applied on server');
-  }
-}
-
-// =====================================================
-// Dispatcher
-// =====================================================
-
+/**
+ * Sends one change straight to the server and throws unless the server
+ * applied it (or kept it for review). Kept for callers that need the answer
+ * in hand; the id it carries makes a later resend of the same change
+ * harmless.
+ */
 export async function processChange(change, company, fetchServer, server) {
-  switch (change.entityType) {
-    case 'order':
-      return syncOrder(change, company, fetchServer, server);
-    case 'session':
-      return syncSession(change, company, fetchServer, server);
-    case 'sessionManagers':
-      return syncSessionManager(change, company, fetchServer, server);
-    case 'inventory':
-      return syncInventory(change, company, fetchServer, server);
-    case 'table':
-      return syncTable(change, company, fetchServer, server);
-    default:
-      throw new Error(`Unknown entityType: ${change.entityType}`);
+  const withId = change.id ? change : { ...change, id: generateClientTxnId(), createdAt: change.createdAt || Date.now() };
+  const resp = await fetchServer('POST', {
+    terminalId: getTerminalId(),
+    tzOffset: new Date().getTimezoneOffset(),
+    ops: [toOp(withId)],
+  }, 'pos/ops/apply', server);
+  const answer = Array.isArray(resp?.results) ? resp.results[0] : null;
+  if (!answer || !DONE.has(answer.status)) {
+    throw new Error(answer?.message || resp?.mess || `${change.entityType}:${change.op} was not applied on the server`);
   }
+  return { ...answer, isDuplicate: answer.duplicate === true };
 }
 
-// =====================================================
-// ORDER
-// =====================================================
+/**
+ * Keeps the queue moving in the background: every RETRY_MS while anything
+ * is queued, and as soon as the connection comes back. Returns a stop
+ * function.
+ */
+export function startBackgroundSync(company, userId) {
+  if (!company || !userId || typeof window === 'undefined') return () => {};
+  const tick = async () => {
+    const pending = await loadPendingChanges(company, userId);
+    if (pending.length) await syncPendingChanges(company, userId).catch(() => {});
+    else await reportOutbox(company, userId, [], transport.fetchServer, transport.server).catch(() => {});
+  };
+  const timer = setInterval(tick, RETRY_MS);
+  const onOnline = () => { tick(); };
+  window.addEventListener('online', onOnline);
+  tick();
+  return () => {
+    clearInterval(timer);
+    window.removeEventListener('online', onOnline);
+  };
+}
 
-async function syncOrder(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload) throw new Error('Missing order payload');
+/** How many changes this device still holds, and how many the server refused. */
+export async function getQueueSummary(company, userId) {
+  const pending = await loadPendingChanges(company, userId);
+  return {
+    pending: pending.length,
+    refused: pending.filter((c) => c.lastStatus === 'rejected').length,
+    oldestAt: pending.reduce((min, c) => (c.createdAt && (!min || c.createdAt < min) ? c.createdAt : min), null),
+    changes: pending,
+  };
+}
 
-  if (op === 'create') {
-    const resp = await fetchServer(
-      'POST',
-      { database: company, collection: 'Orders', update: payload },
-      'createDoc',
-      server
-    );
-    assertCreate(resp);
-  }
-
-  if (op === 'update') {
-    if (!payload.orderNumber) {
-      throw new Error('Missing orderNumber for order update');
+/**
+ * Before a session (or the business day) is closed: sends what this device
+ * holds, then asks the server whether anything for it is still missing on
+ * any device. `scope` is { sessionId, handlerId } for one session, or
+ * { from, to } for a whole day.
+ */
+export async function checkReadyToClose(company, userId, scope, fetchServer = transport.fetchServer, server = transport.server) {
+  await syncPendingChanges(company, userId, fetchServer, server).catch(() => []);
+  const local = await getQueueSummary(company, userId);
+  const belongs = (change) => {
+    const { sessionId, handlerId } = describeChange(change);
+    if (scope?.sessionId !== undefined && scope?.sessionId !== null) return String(sessionId) === String(scope.sessionId);
+    if (scope?.from !== undefined && scope?.to !== undefined) {
+      if (scope.handlerId && handlerId !== scope.handlerId) return false;
+      const stamp = Number(sessionId ?? change.createdAt);
+      return Number.isFinite(stamp) && stamp >= scope.from && stamp < scope.to;
     }
-
-    const resp = await fetchServer(
-      'POST',
-      {
-        database: company,
-        collection: 'Orders',
-        prop: [{ orderNumber: payload.orderNumber }, stripId(payload)]
-      },
-      'updateOneDoc',
-      server
-    );
-    assertUpdate(resp);
+    return false;
+  };
+  const localLeft = local.changes.filter(belongs);
+  const resp = await fetchServer('POST', scope || {}, 'pos/sessions/closeCheck', server);
+  if (!resp || resp.err) {
+    return { ready: false, offline: true, localLeft, tills: [], stuck: [], message: resp?.mess || 'Could not reach the server to check that everything has synced.' };
   }
+  return { ready: !localLeft.length && resp.ready === true, localLeft, tills: resp.tills || [], stuck: resp.stuck || [] };
 }
 
-// =====================================================
-// POS SESSION
-// =====================================================
-
-async function syncSessionManager(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload) throw new Error('Missing session manager payload');
-
-  if (op === 'create') {
-    const resp = await fetchServer(
-      'POST',
-      { database: company, collection: 'SessionManagers', update: payload },
-      'createDoc',
-      server
-    );
-    assertCreate(resp);
-  }
-
-  if (op === 'update') {
-    if (!payload.start) {
-      throw new Error('Missing start for session manager update');
-    }
-
-    const resp = await fetchServer(
-      'POST',
-      {
-        database: company,
-        collection: 'SessionManagers',
-        prop: [{ start: payload.start }, stripId(payload)]
-      },
-      'updateOneDoc',
-      server
-    );
-    assertUpdate(resp);
-  }
-
-  if (op === 'delete') {
-    const resp = await fetchServer(
-      'POST',
-      {
-        database: company,
-        collection: 'SessionManagers',
-        update: { start: payload.start }
-      },
-      'removeDoc',
-      server
-    );
-    assertDelete(resp);
-  }
-}
-
-async function syncSession(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload) throw new Error('Missing session payload');
-
-  if (op === 'create') {
-    const resp = await fetchServer(
-      'POST',
-      { database: company, collection: 'POSSessions', update: payload },
-      'createDoc',
-      server
-    );
-    assertCreate(resp);
-  }
-
-  if (op === 'update') {
-    if (!payload.start) {
-      throw new Error('Missing start for session update');
-    }
-
-    const resp = await fetchServer(
-      'POST',
-      {
-        database: company,
-        collection: 'POSSessions',
-        prop: [{ start: payload.start }, stripId(payload)]
-      },
-      'updateOneDoc',
-      server
-    );
-    assertUpdate(resp);
-  }
-
-  if (op === 'delete') {
-    const resp = await fetchServer(
-      'POST',
-      {
-        database: company,
-        collection: 'POSSessions',
-        update: { start: payload.start }
-      },
-      'removeDoc',
-      server
-    );
-    assertDelete(resp);
-  }
-}
-
-// =====================================================
-// INVENTORY (BATCH SAFE)
-// =====================================================
-
-async function syncInventory(change, company, fetchServer, server) {
-  const { payload } = change;
-  if (!payload?.transactions?.length) return;
-
-  const docs = payload.transactions.map(stripId);
-
-  const resp = await fetchServer(
-    'POST',
-    {
-      database: company,
-      collection: 'InventoryTransactions',
-      update: docs
-    },
-    'createManyDocs',
-    server
-  );
-
-  if (!resp || resp.isDelivered !== true) {
-    throw new Error('Inventory batch not fully delivered');
-  }
-}
-
-// =====================================================
-// TABLE
-// =====================================================
-
-async function syncTable(change, company, fetchServer, server) {
-  const { op, payload } = change;
-  if (!payload?.i_d) throw new Error('Missing table i_d');
-
-  if (op === 'create') {
-    const resp = await fetchServer(
-      'POST',
-      { database: company, collection: 'Tables', update: payload },
-      'createDoc',
-      server
-    );
-    assertCreate(resp);
-  }
-
-  if (op === 'update') {
-    const resp = await fetchServer(
-      'POST',
-      {
-        database: company,
-        collection: 'Tables',
-        prop: [{ i_d: payload.i_d }, stripId(payload)]
-      },
-      'updateOneDoc',
-      server
-    );
-    assertUpdate(resp);
-  }
-
-  if (op === 'delete') {
-    const resp = await fetchServer(
-      'POST',
-      {
-        database: company,
-        collection: 'Tables',
-        update: { i_d: payload.i_d }
-      },
-      'removeDoc',
-      server
-    );
-    assertDelete(resp);
-  }
+/** One line for the screen: why a session cannot close yet. */
+export function describeNotReady(check) {
+  if (!check || check.ready) return '';
+  if (check.offline) return `${check.message} Connect to the internet and try again.`;
+  const parts = [];
+  if (check.localLeft?.length) parts.push(`${check.localLeft.length} change(s) on this device have not reached the server yet`);
+  (check.tills || []).forEach((till) => {
+    const orders = till.orderNumbers?.length ? ` (orders ${till.orderNumbers.slice(0, 5).join(', ')}${till.orderNumbers.length > 5 ? ', ...' : ''})` : '';
+    const seen = till.lastSeenAt ? `, last seen ${new Date(till.lastSeenAt).toLocaleString()}` : '';
+    parts.push(`${till.count} change(s) still on ${till.user || 'a device'}'s device ${till.terminalId}${orders}${seen}`);
+  });
+  (check.stuck || []).slice(0, 3).forEach((row) => parts.push(`${row.entityType} ${row.key || ''} ${row.status === 'rejected' ? 'was refused' : 'is waiting'}: ${row.message || ''}`.trim()));
+  return `Not everything for this session has synced: ${parts.join('; ')}.`;
 }

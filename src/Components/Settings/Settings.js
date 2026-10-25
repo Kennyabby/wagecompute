@@ -36,6 +36,15 @@ const DEFAULT_APPROVAL_CONFIG = {
     },
 }
 
+// Modules whose approved postings the server can post on its own once the
+// final approver approves (wageserver/UserModule/Approvals/autoPost.js), and
+// what they are called in the switch's explanation.
+const AUTO_POST_MODULES = {
+    expense: 'expenses',
+    purchase: 'purchases (recorded awaiting receipt, as when posted by hand)',
+    accommodation: 'accommodation payments',
+}
+
 const Settings = () => {
     const { storePath, company, companyRecord,
         settings, getSettings, server, fetchServer,
@@ -2267,6 +2276,24 @@ const Settings = () => {
                                             <input className='forminp' type='number' value={moduleConfig.finalLevel ?? 0} onChange={(e) => updateApprovalModule(moduleName, 'finalLevel', e.target.value)} disabled={!canConfigureApprovals} />
                                         </div>
                                     </div>
+                                    {AUTO_POST_MODULES[moduleName] && (
+                                        <div className='inpcov toggle-row'>
+                                            <div>
+                                                Post automatically after final approval
+                                                <div className='settings-toggle-hint'>{`When on, ${AUTO_POST_MODULES[moduleName]} are posted the moment the final approver approves them, without waiting for the requester to post. If posting fails (for example, not enough funds on the payment method), the approval stays approved with the reason and can be posted by hand.`}</div>
+                                            </div>
+                                            <label className='toggle-switch'>
+                                                <input
+                                                    type='checkbox'
+                                                    aria-label={`Post ${moduleName} automatically after final approval`}
+                                                    checked={moduleConfig.autoPostOnFinalApproval === true}
+                                                    onChange={(e) => updateApprovalModule(moduleName, 'autoPostOnFinalApproval', e.target.checked)}
+                                                    disabled={!canConfigureApprovals}
+                                                />
+                                                <span className='slider'></span>
+                                            </label>
+                                        </div>
+                                    )}
                                     <div className='settings-accounting-list'>
                                         {Object.entries(moduleConfig.approverIds || {}).map(([approverId, approver]) => (
                                             <div className='settings-accounting-list-row' key={approverId}>
@@ -2619,6 +2646,18 @@ const Settings = () => {
                                                     <span className='slider'></span>
                                                 </label>
                                             </div>
+
+                                            {curPropSet.requireSessionManager === true && <div className='inpcov toggle-row'>
+                                                <div>
+                                                    Stop the Session Manager before sessions end
+                                                    <div className='settings-toggle-hint'>When on, a user's session can only be ended once the Session Manager has been stopped. When off, users with permission to end or start sessions can do so while the Session Manager is still running. Admins and Session Manager holders can also switch this on the All Sessions page.</div>
+                                                </div>
+                                                <label className='toggle-switch'>
+                                                    {/* On unless switched off, which is how it always behaved. */}
+                                                    <input type='checkbox' name='stopManagerBeforeEnd' aria-label='Stop the Session Manager before sessions end' checked={curPropSet.stopManagerBeforeEnd !== false} onChange={handlePropSetChange} />
+                                                    <span className='slider'></span>
+                                                </label>
+                                            </div>}
 
                                             <div className="section-divider">Operation & Printing</div>
                                             <div className="toggles-grid">

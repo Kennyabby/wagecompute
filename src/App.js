@@ -58,7 +58,7 @@ import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer, { setConnectivityStatus, callDesktop } from './Resources/ClientServerAPIConn/fetchServer'
 import createSSE from './Resources/ClientServerAPIConn/sseClient'
-import { syncPendingChanges, setSyncTransport } from './Resources/offlineSync';
+import { syncPendingChanges, setSyncTransport, startBackgroundSync } from './Resources/offlineSync';
 import { useConnectionStatus } from './Resources/useConnectionStatus';
 import {
   getAppCache,
@@ -581,41 +581,14 @@ function App() {
     return null
   }
 
+  // Keeps this device's queue of POS changes moving: retried every 30
+  // seconds while anything is waiting and as soon as the connection returns,
+  // and the server is told what is still here (Resources/offlineSync.js).
+  // It used to be every 5 minutes, long enough for a till to be closed with
+  // sales the server had never seen.
   useEffect(() => {
     if (!company || !companyRecord?.emailid) return;
-
-    const id = setInterval(() => {
-      if (!(company && companyRecord?.emailid)) return;
-
-      (async () => {
-        try {
-          const pending = await loadPendingChanges(company, companyRecord.emailid);
-          if (!pending || !pending.length) {
-            // Nothing to sync; skip to avoid noisy toasts
-            return;
-          }
-
-          // const timeLabel = new Date().toLocaleTimeString();
-          // setAlertState('info');
-          // setAlert(`Offline Sync by Background sync started at ${timeLabel}`);
-          // setAlertTimeout(5000);
-
-          await syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER);
-
-          // const doneLabel = new Date().toLocaleTimeString();
-          // setAlertState('success');
-          // setAlert(`Offline Sync by Background sync completed at ${doneLabel}`);
-          // setAlertTimeout(5000);
-        } catch (e) {
-          // const failLabel = new Date().toLocaleTimeString();
-          // setAlertState('error');
-          // setAlert(`Offline Sync by Background sync failed at ${failLabel}`);
-          // setAlertTimeout(5000);
-        }
-      })();
-    }, 5 * 60 * 1000); // every 5 minutes
-
-    return () => clearInterval(id);
+    return startBackgroundSync(company, companyRecord.emailid);
   }, [company, companyRecord?.emailid]);
 
   useEffect(() => {
@@ -1450,6 +1423,15 @@ function App() {
   }, [window.localStorage.getItem('ps-vw')])
 
   const logout = async () => {
+    // A last try at sending what this device holds. Whatever is still
+    // queued stays on this device for this user, and the server keeps
+    // listing it for admins until it arrives.
+    if (company && companyRecord?.emailid) {
+      await Promise.race([
+        syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER).catch(() => []),
+        new Promise((resolve) => setTimeout(resolve, 8000)),
+      ])
+    }
     try {
       const resps = await fetchServer("POST", {
         record: companyRecord
@@ -1664,7 +1646,13 @@ function App() {
   // end. Set per POS mode (Settings, POS Settings) and read from the active
   // one. Off unless switched on. Every screen that behaves differently with
   // it reads this one value, so they cannot disagree.
-  const sessionManagerRequired = (settings || []).find((setting) => setting?.name === 'posSettings')?.posSettings?.find((mode) => mode?.active)?.requireSessionManager === true
+  const activePosMode = (settings || []).find((setting) => setting?.name === 'posSettings')?.posSettings?.find((mode) => mode?.active)
+  const sessionManagerRequired = activePosMode?.requireSessionManager === true
+  // Whether ending a user's session waits for the Session Manager to be
+  // stopped. On, as it always was, unless an admin or the person running
+  // the Session Manager switches it off (POS settings, or the All Sessions
+  // page). Only means anything where the Session Manager is in use.
+  const sessionManagerStopRequired = sessionManagerRequired && activePosMode?.stopManagerBeforeEnd !== false
 
   const getApprovalConfig = (module, section, approverId) => {
     const respConfig = {
@@ -1747,16 +1735,37 @@ function App() {
         })
         if (resp.completed) {
           getApprovals(company, companyRecord)
-          setAlertState('success')
-          setAlert('Approval Updated!')
-          setAlertTimeout(1000)
+          // Settings > Approval Rules can have the server post the record
+          // as soon as the final approver approves (wageserver
+          // UserModule/Approvals/autoPost.js). Say what it did, so nobody
+          // posts it again by hand or waits for a posting that failed.
+          const autoPost = resp.autoPost
+          if (autoPost?.status === 'posted') {
+            setAlertState('success')
+            setAlert(`Approved and posted automatically${autoPost.documentNo ? ` (${autoPost.documentNo})` : ''}.`)
+            setAlertTimeout(4000)
+          } else if (autoPost?.status === 'failed') {
+            setAlertState('error')
+            setAlert(`Approved, but it could not be posted automatically: ${autoPost.error}. It can still be posted by hand.`)
+            setAlertTimeout(8000)
+          } else {
+            setAlertState('success')
+            setAlert('Approval Updated!')
+            setAlertTimeout(1000)
+          }
           setApprovalStatus(false)
           setApprovalMessage('')
           setShowApprovalBox(false)
-          setCurApproval({
+          // A posted approval no longer exists; leaving it open would offer
+          // Post again and record it twice.
+          setCurApproval(autoPost?.status === 'posted' ? null : {
             ...curApproval,
-            ...approvalState
+            ...approvalState,
+            ...(autoPost?.status === 'failed' ? { autoPost: { status: 'failed', error: autoPost.error } } : {})
           })
+          if (autoPost?.status === 'posted') {
+            window.dispatchEvent(new CustomEvent('wc:approval-auto-posted', { detail: { module, section, ...autoPost } }))
+          }
         } else {
           setAlertState('error')
           setAlert(resp.mess)
@@ -1906,7 +1915,7 @@ function App() {
       prop: [{ module: module, section: section, createdAt: update.createdAt }, { ...update }]
     }, "updateOneDoc", SERVER)
     if (!resp.err) {
-      return { completed: resp.updated, mess: resp.mess }
+      return { completed: resp.updated, mess: resp.mess, autoPost: resp.autoPost || null }
     } else {
       return { completed: false, mess: resp.mess }
     }
@@ -4329,7 +4338,7 @@ function App() {
         settings, setSettings, getSettings,
         settingsLoadState,
         colSettings, setColSettings,
-        posSettings, setPosSettings, sessionManagerRequired,
+        posSettings, setPosSettings, sessionManagerRequired, sessionManagerStopRequired,
         paymentMethods, setPaymentMethods,
         wrhs, setWrhs,
         recoveryVal, setRecoveryVal,

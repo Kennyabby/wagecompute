@@ -441,6 +441,14 @@ const Purchase = () => {
         }
     }, [isView, curApproval, curPurchase])
 
+    // An approval the server posted the moment it was finally approved
+    // (Settings > Approval Rules) shows up in the list straight away.
+    useEffect(() => {
+        const refresh = (event) => { if (event.detail?.module === 'purchase' && company) getPurchase(company) }
+        window.addEventListener('wc:approval-auto-posted', refresh)
+        return () => window.removeEventListener('wc:approval-auto-posted', refresh)
+    }, [company])
+
     useEffect(() => {
         setPurchaseApprovals(approvals.filter((appr) => {
             return (
