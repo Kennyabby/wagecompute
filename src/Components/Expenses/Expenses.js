@@ -175,6 +175,14 @@ const Expenses = () => {
         return () => clearInterval(intervalId);
     }, [window.localStorage.getItem('sessn-cmp')])
 
+    // An approval the server posted the moment it was finally approved
+    // (Settings > Approval Rules) shows up in the list straight away.
+    useEffect(() => {
+        const refresh = (event) => { if (event.detail?.module === 'expense' && company) getExpenses(company) }
+        window.addEventListener('wc:approval-auto-posted', refresh)
+        return () => window.removeEventListener('wc:approval-auto-posted', refresh)
+    }, [company])
+
     useEffect(() => {
         setExpenseApprovals((approvals || []).filter((approval) => (
             approval.module === 'expense' &&

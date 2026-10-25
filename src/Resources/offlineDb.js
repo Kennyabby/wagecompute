@@ -1,7 +1,9 @@
 // Simple IndexedDB helper for offline POS/Delivery snapshots, generic app cache, and pending changes
 // DB is per-company and per-user.
 
-const DB_VERSION = 6;
+// 7 adds the sessionManagers store, which putSessionManager wrote to but no
+// upgrade ever created, so every write to it failed.
+const DB_VERSION = 7;
 const POS_STORE = 'posSnapshot';
 const DELIVERY_STORE = 'deliverySnapshot';
 const PENDING_STORE = 'pendingChanges';
@@ -44,6 +46,9 @@ function openUserDb(company, userId) {
       }
       if (!db.objectStoreNames.contains(SESSIONS_STORE)) {
         db.createObjectStore(SESSIONS_STORE, { keyPath: 'start' });
+      }
+      if (!db.objectStoreNames.contains(SESSIONMANAGERS_STORE)) {
+        db.createObjectStore(SESSIONMANAGERS_STORE, { keyPath: 'start' });
       }
       if (!db.objectStoreNames.contains(TABLES_STORE)) {
         db.createObjectStore(TABLES_STORE, { keyPath: 'i_d' });
@@ -472,6 +477,29 @@ export async function loadPendingChanges(company, userId) {
   } catch (e) {
     console.warn('offlineDb:loadPendingChanges failed', e);
     return [];
+  }
+}
+
+// Records what happened the last time a queued change was sent (how many
+// tries, what the server said), so the till and the server's list of what
+// each device still holds can show why it has not gone through.
+export async function updatePendingChange(company, userId, id, patch) {
+  try {
+    const db = await openUserDb(company, userId);
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(PENDING_STORE, 'readwrite');
+      const store = tx.objectStore(PENDING_STORE);
+      const req = store.get(id);
+      req.onsuccess = () => {
+        if (!req.result) { resolve(); return; }
+        const put = store.put({ ...req.result, ...patch });
+        put.onsuccess = () => resolve();
+        put.onerror = () => reject(put.error || new Error('Failed to update pending change'));
+      };
+      req.onerror = () => reject(req.error || new Error('Failed to read pending change'));
+    });
+  } catch (e) {
+    console.warn('offlineDb:updatePendingChange failed', e);
   }
 }
 

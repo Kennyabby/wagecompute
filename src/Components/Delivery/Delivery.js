@@ -18,9 +18,11 @@ import {
     putSession,
     putInventoryTransactions,
 } from '../../Resources/offlineDb';
-// queuePendingChange here is submitChange: queued in the browser, posted at
-// once on the desktop app (see offlineSync.js).
+// queuePendingChange here is submitChange: written to this device's queue,
+// then sent at once (see offlineSync.js). Order changes carry an action and
+// the full order, so the server can rebuild an order that never reached it.
 import { syncPendingChanges, submitChange as queuePendingChange } from '../../Resources/offlineSync';
+import { businessDayOf, deliveryBusinessFields } from '../../Resources/businessDay';
 import { getTerminalId, generateClientTxnId } from '../../Resources/clientTxnId';
 import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 import { exportReconciliationExcel, exportReconciliationPDF } from '../../utils/reconciliationExport';
@@ -41,7 +43,7 @@ const Delivery = () => {
         products, setProducts, getProducts, getEmployeeName,
         fetchTables, tables, setTables, setCached, setPosOrders,
         fetchSessions, fetchAllSessions, posOrders, getPosOrders,
-        getSessionEnd, allSessions, setAllSessions, getAllSessions,
+        getSessionEnd, getSessionStart, allSessions, setAllSessions, getAllSessions,
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         deliverySessions, allDeliverySessions, setAllDeliverySessions, setDeliverySessions,
         mergeAndPersistOrders, mergeAndPersistSessions,
@@ -714,7 +716,7 @@ const Delivery = () => {
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchAllSessions({ company, companyRecord })
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 
@@ -772,7 +774,7 @@ const Delivery = () => {
                 setLoadSession(false);
                 await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
             } catch (e) {
-                // Leave pending changes in queue; 5‑minute auto-sync will retry
+                // Still queued; the background sync retries it every 30 seconds
             }
 
             return;
@@ -1293,6 +1295,10 @@ const Delivery = () => {
         // Shipment/Return transactions on whatever date they're processed.
         const curPosSettings = posSettings?.posSettings?.find((setting) => setting.active)
         const useOrderDateForPosting = curPosSettings?.useOrderDateForPosting !== false;
+        const processedDay = businessDayOf(createdAt, getSessionStart);
+        const orderDay = currentOrder.businessDate
+            ? { businessDate: currentOrder.businessDate, effectiveAt: Number(currentOrder.postingStamp) || businessDayOf(currentOrder.createdAt || createdAt, getSessionStart).effectiveAt }
+            : businessDayOf(currentOrder.createdAt || createdAt, getSessionStart);
         const transactions = [];
 
         for (const item of items) {
@@ -1357,12 +1363,11 @@ const Delivery = () => {
                 // posted its Shipment/Return to the day it was PROCESSED
                 // instead of the day it was SOLD, gated by the POS Settings
                 // toggle so an admin can opt back into the old behavior.
-                postingDate: useOrderDateForPosting
-                    ? (currentOrder.postingDate || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)).toISOString().slice(0, 10) : new Date(Date.now()).toISOString().slice(0, 10)))
-                    : new Date(Date.now()).toISOString().slice(0, 10),
-                postingStamp: useOrderDateForPosting
-                    ? (currentOrder.postingStamp || (currentOrder.createdAt ? new Date(Number(currentOrder.createdAt)) : new Date(Date.now())))
-                    : new Date(Date.now()),
+                // Both dates are business days (Resources/businessDay.js): on
+                // an 8am-to-8am session, stock that moves at 01:30 belongs to
+                // the day before and is stamped 23:59:59 of it.
+                postingDate: useOrderDateForPosting ? orderDay.businessDate : processedDay.businessDate,
+                postingStamp: new Date(useOrderDateForPosting ? orderDay.effectiveAt : processedDay.effectiveAt),
                 createdAt: createdAt,
             };
 
@@ -1436,7 +1441,7 @@ const Delivery = () => {
                     // fetchTables(company)
                     // loadInitialData()
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 
@@ -1491,9 +1496,11 @@ const Delivery = () => {
             paymentData[payPoint] = Number(paymentDetails[payPoint].amount || 0);
         });
 
+        const deliveredAt = new Date().getTime();
         const deliveryDataUpdate = {
-            lastDeliveredAt: new Date().getTime(),
+            lastDeliveredAt: deliveredAt,
             lastDeliveredBy: companyRecord.emailid,
+            ...deliveryBusinessFields(deliveredAt, getSessionStart),
         };
 
         // Track Delivery Sessions
@@ -1711,14 +1718,16 @@ const Delivery = () => {
 
                 // Queue order update
                 if (company && companyRecord?.emailid) {
-                    queuePendingChange(company, companyRecord.emailid, {
+                    await queuePendingChange(company, companyRecord.emailid, {
                         entityType: 'order',
                         op: 'update',
+                        action: 'deliver',
                         clientId: currentOrder.orderNumber,
                         payload: {
                             orderNumber: currentOrder.orderNumber,
                             ...deliveryDataUpdate,
                         },
+                        snapshot: updatedOrder,
                     });
                     // Immediate sync attempt, failures are fine, queue remains
                     try {
@@ -1728,7 +1737,7 @@ const Delivery = () => {
                         }, 500);
                         await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     } catch (e) {
-                        // Leave pending changes in queue; 5‑minute auto-sync will retry
+                        // Still queued; the background sync retries it every 30 seconds
                     }
                 }
             } else {
@@ -2596,14 +2605,16 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
             // 4) Queue order update for sync
             if (company && companyRecord?.emailid) {
                 setAlertTimeout(20);
-                queuePendingChange(company, companyRecord.emailid, {
+                await queuePendingChange(company, companyRecord.emailid, {
                     entityType: 'order',
                     op: 'update',
+                    action: 'reverseDelivery',
                     clientId: order.orderNumber,
                     payload: {
                         orderNumber: order.orderNumber,
                         ...deliveryUpdate,
                     },
+                    snapshot: updatedOrder,
                 });
                 // Immediate sync attempt, failures are fine, queue remains
                 try {
@@ -2612,7 +2623,7 @@ const OrdersModal = ({ tableOrders, wrh, wrhCategories, handleOrderSelect,
                     setAlertState('success');
                     setAlertTimeout(1000);
                 } catch (e) {
-                    // Leave pending changes in queue; 5‑minute auto-sync will retry
+                    // Still queued; the background sync retries it every 30 seconds
                 }
             }
 

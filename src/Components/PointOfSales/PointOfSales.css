@@ -2746,3 +2746,54 @@ select.pos-session-board-btn {
         height: 100px;
     }
 }
+
+/* Session Manager rule switch, inside the Session Manager panel. */
+.pos-container .pos-stop-rule {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: var(--pos-ink);
+    cursor: pointer;
+}
+
+.pos-container .pos-stop-rule input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--pos-accent);
+}
+
+.pos-container .pos-stop-rule small {
+    display: block;
+    color: var(--pos-ink-soft);
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+
+/* Devices still holding sales the server has not received. */
+.pos-container .pos-unsynced {
+    margin: 12px 0;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--pos-warning);
+    background: var(--pos-surface-strong);
+    color: var(--pos-ink);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.pos-container .pos-unsynced p {
+    margin: 6px 0;
+}
+
+.pos-container .pos-unsynced .pos-unsynced-refused {
+    color: var(--pos-danger);
+}
+
+.pos-container .pos-unsynced small {
+    display: block;
+    margin-top: 8px;
+    color: var(--pos-ink-soft);
+}
