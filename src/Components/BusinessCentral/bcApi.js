@@ -64,7 +64,13 @@ export const createBcApi = (fetchServer, server, connectionId = '') => {
         // Reconciling a report against the person's own records: the template
         // for the report's period, then the filled-in file as rows of cells.
         reconcileTemplate: (kind, params, report) => call('POST', 'reconcile/template', { kind, params, report }),
-        reconcileRun: (kind, params, sheets, report) => call('POST', 'reconcile/run', { kind, params, sheets, report }),
+        // `kept` is what the run is saved with: the file's name and how it
+        // was read (`file`), and every sheet of it as uploaded (`original`).
+        reconcileRun: (kind, params, sheets, report, kept = {}) => call('POST', 'reconcile/run', { kind, params, sheets, report, ...kept }),
+        // Runs whose period overlaps `period` ({ from, to }), the report's date filter.
+        reconcileHistory: (report, period = {}) => call('POST', 'reconcile/history', { report, from: period.from || null, to: period.to || null }),
+        reconcileHistoryItem: (id) => call('POST', 'reconcile/history/item', { id }),
+        deleteReconcileRun: (id) => call('POST', 'reconcile/history/delete', { id }),
         // The columns a reconciliation reads, for mapping a file of the person's own.
         // `all` asks for every column with what is in the template and what is
         // compared, for the report editor. Without it, the template's columns.

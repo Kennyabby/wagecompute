@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import BCReconcile, { cellsForServer, findingRows, headlineFigure, transactionRows } from './BCReconcile'
+import { BCAccessProvider, makeAccess } from './bcAccess'
 
 jest.mock('../../utils/exportUtils', () => ({ generatePDF: jest.fn(), generateExcel: jest.fn() }))
 // Plain functions, not jest.fn: the test setup resets mock implementations
@@ -229,4 +230,105 @@ describe('a file of the person\'s own', () => {
         expect(api.reconcileRun.mock.calls[0][2]).toEqual({ 'Your figures': [['Item No.', 'Location code', 'Closing qty (counted)'], ['A', 'WH', 50]] })
         expect(screen.getByRole('button', { name: 'Change the mapping' })).toBeInTheDocument()
     })
+})
+
+const pastRun = {
+    id: 'r1',
+    createdAt: Date.UTC(2026, 9, 25, 9),
+    user: 'me@test',
+    file: { name: 'counts.xlsx', read: 'template', originalKept: false },
+    params: { from: '2026-09-01', to: '2026-09-30' },
+    summary: { outcome: 'differences', differ: 1, findings: 2, lastResort: 1 },
+}
+
+test('an import is kept with its file, and shows in the list of past reconciliations', async () => {
+    const api = {
+        reconcileRun: jest.fn(() => Promise.resolve({ ok: true, result, savedRun: 'r1' })),
+        reconcileTemplate: jest.fn(),
+        reconcileHistory: jest.fn().mockResolvedValueOnce({ runs: [] }).mockResolvedValue({ runs: [pastRun] }),
+    }
+    await importFile(api)
+    await screen.findByText(/Compared counts.xlsx/)
+    // The run is saved with how the file was read and every sheet of it.
+    const kept = api.reconcileRun.mock.calls[0][4]
+    expect(kept.file).toMatchObject({ name: 'counts.xlsx', read: 'template' })
+    expect(Object.keys(kept.original)).toContain('BC figures')
+    expect(await screen.findByText('1 line differs, 2 to act on, 1 last resort')).toBeInTheDocument()
+    // What was read from the file can be looked at, and downloaded as uploaded.
+    fireEvent.click(screen.getByRole('button', { name: 'What was imported' }))
+    expect(screen.getByRole('button', { name: 'Download the file as uploaded' })).toBeInTheDocument()
+    expect(screen.getAllByText('72').length).toBeGreaterThan(0)
+})
+
+test('a past reconciliation opens as it was, with what was imported, and can be deleted', async () => {
+    const api = {
+        reconcileHistory: jest.fn(() => Promise.resolve({ runs: [pastRun] })),
+        reconcileHistoryItem: jest.fn(() => Promise.resolve({ run: { ...pastRun, input: { 'Your figures': [['Item No.', 'Closing qty (counted)'], ['A', 72]] }, original: null, result } })),
+        deleteReconcileRun: jest.fn(() => Promise.resolve({ ok: true })),
+    }
+    render(<BCReconcile api={api} definition={definition} report={report} />)
+    fireEvent.click(await screen.findByRole('button', { name: /Open the reconciliation of counts.xlsx/ }))
+    expect(await screen.findByText(/Looking at a past reconciliation: counts.xlsx, run by me@test/)).toBeInTheDocument()
+    expect(api.reconcileHistoryItem).toHaveBeenCalledWith('r1')
+    expect(screen.getByText('Lines with a difference')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'What was imported' }))
+    expect(screen.getByRole('button', { name: 'Download what was read' })).toBeInTheDocument()
+    // The uploaded file was not kept, so it is not offered.
+    expect(screen.queryByRole('button', { name: 'Download the file as uploaded' })).toBeNull()
+
+    window.confirm = jest.fn(() => true)
+    fireEvent.click(screen.getByRole('button', { name: /Delete the reconciliation of counts.xlsx/ }))
+    await waitFor(() => expect(api.deleteReconcileRun).toHaveBeenCalledWith('r1'))
+    await waitFor(() => expect(screen.queryByText(/Looking at a past reconciliation/)).toBeNull())
+})
+
+test('the past runs shown are those for the report\'s period', async () => {
+    const api = { reconcileHistory: jest.fn(() => Promise.resolve({ runs: [pastRun] })) }
+    render(<BCReconcile api={api} definition={definition} report={report} />)
+    await screen.findByText(/The runs you made for 2026-09-01 to 2026-09-30: those whose period overlaps/)
+    expect(api.reconcileHistory).toHaveBeenCalledWith('stock', { from: '2026-09-01', to: '2026-09-30' })
+})
+
+test('an admin is told the list is everyone\'s runs', async () => {
+    const api = { reconcileHistory: jest.fn(() => Promise.resolve({ runs: [pastRun], everyone: true })) }
+    render(<BCReconcile api={api} definition={definition} report={report} />)
+    expect(await screen.findByText(/Everyone's runs for 2026-09-01 to 2026-09-30/)).toBeInTheDocument()
+})
+
+test('without the permissions, past runs are not listed and no run can be deleted', async () => {
+    const api = {
+        reconcileRun: jest.fn(() => Promise.resolve({ ok: true, result, savedRun: 'r9' })),
+        reconcileTemplate: jest.fn(),
+        reconcileHistory: jest.fn(),
+        reconcileColumns: jest.fn(() => Promise.resolve({ ok: true, columns: COLUMNS })),
+        reconcileMappings: jest.fn(() => Promise.resolve({ ok: true, mappings: [] })),
+    }
+    mockWorkbook = mockTemplate
+    render(
+        <BCAccessProvider value={makeAccess({ admin: false, tabs: ['reports'], actions: ['recon.import'], reports: { all: true, custom: false, domains: [], keys: [] } })}>
+            <BCReconcile api={api} definition={definition} report={report} />
+        </BCAccessProvider>,
+    )
+    const file = new File(['x'], 'counts.xlsx')
+    file.arrayBuffer = () => Promise.resolve(new ArrayBuffer(1))
+    fireEvent.change(screen.getByLabelText('Import filled template'), { target: { files: [file] } })
+    await screen.findByText(/Compared counts.xlsx/)
+    expect(api.reconcileHistory).not.toHaveBeenCalled()
+    expect(screen.queryByRole('region', { name: 'Past reconciliations of this report' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete this run' })).toBeNull()
+})
+
+test('with the permission to delete, the run just made can be deleted', async () => {
+    const api = {
+        reconcileRun: jest.fn(() => Promise.resolve({ ok: true, result, savedRun: 'r9' })),
+        reconcileTemplate: jest.fn(),
+        reconcileHistory: jest.fn(() => Promise.resolve({ runs: [] })),
+        deleteReconcileRun: jest.fn(() => Promise.resolve({ ok: true })),
+    }
+    await importFile(api)
+    await screen.findByText(/Compared counts.xlsx/)
+    window.confirm = jest.fn(() => true)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete this run' }))
+    await waitFor(() => expect(api.deleteReconcileRun).toHaveBeenCalledWith('r9'))
+    await waitFor(() => expect(screen.queryByText(/Compared counts.xlsx/)).toBeNull())
 })
