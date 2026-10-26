@@ -35,7 +35,7 @@ const poUomOptions = (line) => (Array.isArray(line.uomOptions) && line.uomOption
     ? line.uomOptions
     : [{ code: line.purchaseUom, name: line.purchaseUom, multiple: line.quantity ? (Number(line.baseQuantity) / Number(line.quantity)) || 1 : 1 }])
 const poMultiple = (line, code) => poUomOptions(line).find((o) => o.code === code)?.multiple || 1
-const poWeeks = (p) => Math.max(1, Math.round(Number(p.coverWeeks ?? p.preview?.coverWeeks ?? 1)) || 1)
+const poWeeks = (p) => Math.max(1, Math.round(Number(p.coverWeeks ?? p.preview?.coverWeeks ?? 2)) || 2)
 const poLineState = (p, line) => {
     const edit = p.lineEdits?.[line.productId] || {}
     const uom = edit.uom ?? line.purchaseUom
