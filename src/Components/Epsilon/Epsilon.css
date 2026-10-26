@@ -861,6 +861,79 @@
     opacity: 0.7;
 }
 
+/* Seven columns do not fit the chat panel on a phone; the table scrolls
+   sideways inside the card instead of pushing the panel wider. */
+.epsilon-po-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.epsilon-po-table-wrap .epsilon-po-table {
+    min-width: 440px;
+}
+
+.epsilon-po-table-wrap .epsilon-po-table th,
+.epsilon-po-table-wrap .epsilon-po-table td {
+    padding: 5px 4px;
+}
+
+.epsilon-po-qty-input {
+    width: 52px;
+}
+
+.epsilon-po-table-wrap .epsilon-po-cost-input:not(.epsilon-po-qty-input) {
+    width: 72px;
+}
+
+.epsilon-po-order-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 2px 0 8px;
+    font-size: 12.5px;
+    color: var(--epsilon-text);
+}
+
+.epsilon-po-weeks-input {
+    width: 56px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    border: 1px solid var(--epsilon-border-soft);
+    background: var(--epsilon-bg);
+    color: var(--epsilon-text);
+    font-size: 12px;
+}
+
+.epsilon-po-uom-select {
+    max-width: 76px;
+    padding: 3px 4px;
+    border-radius: 5px;
+    border: 1px solid var(--epsilon-border-soft);
+    background: var(--epsilon-bg);
+    color: var(--epsilon-text);
+    font-size: 11.5px;
+}
+
+.epsilon-po-uom-select:disabled {
+    opacity: 0.7;
+}
+
+.epsilon-po-input-invalid {
+    border-color: var(--epsilon-callout-error-text);
+}
+
+.epsilon-po-base-qty {
+    margin-top: 2px;
+    font-size: 10.5px;
+    color: var(--epsilon-text-muted);
+    white-space: nowrap;
+}
+
+.epsilon-po-velocity {
+    white-space: nowrap;
+    color: var(--epsilon-text-muted);
+}
+
 .epsilon-po-line-total {
     white-space: nowrap;
     color: var(--epsilon-text);

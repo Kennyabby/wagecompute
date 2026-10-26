@@ -25,6 +25,36 @@ const STYLE_STORAGE_KEY = 'epsilon-response-style'
 const THEME_STORAGE_KEY = 'epsilon-theme'
 const AUTO_SPEAK_STORAGE_KEY = 'epsilon-auto-speak'
 
+// Purchase order card: each line's quantity, purchase UOM and unit cost as
+// the user has set them. Every UOM offered is built on the line's own base
+// unit (purchaseAdvisor.js uomOptionsFor), so quantity x multiple is always
+// the stock that arrives, and a unit cost is per the chosen UOM. Cards saved
+// before these fields existed fall back to the line's one UOM.
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100
+const poUomOptions = (line) => (Array.isArray(line.uomOptions) && line.uomOptions.length
+    ? line.uomOptions
+    : [{ code: line.purchaseUom, name: line.purchaseUom, multiple: line.quantity ? (Number(line.baseQuantity) / Number(line.quantity)) || 1 : 1 }])
+const poMultiple = (line, code) => poUomOptions(line).find((o) => o.code === code)?.multiple || 1
+const poWeeks = (p) => Math.max(1, Math.round(Number(p.coverWeeks ?? p.preview?.coverWeeks ?? 1)) || 1)
+const poLineState = (p, line) => {
+    const edit = p.lineEdits?.[line.productId] || {}
+    const uom = edit.uom ?? line.purchaseUom
+    const qty = edit.qty ?? line.quantity
+    const cost = edit.cost ?? line.unitCost
+    const multiple = poMultiple(line, uom)
+    const qtyNum = Number(qty)
+    const costNum = Number(cost)
+    const valid = qty !== '' && Number.isFinite(qtyNum) && qtyNum > 0 && cost !== '' && Number.isFinite(costNum) && costNum >= 0
+    return { uom, qty, cost, multiple, manual: !!edit.manual, valid, baseQty: round2((qtyNum || 0) * multiple), total: round2((qtyNum || 0) * (costNum || 0)) }
+}
+// Quantity for the chosen weeks: the line's sales over that time plus what
+// it is already short of its restock level, in base units, then whole UOMs.
+const poCoverQty = (line, weeks, multiple) => {
+    const base = Math.max(1, Math.ceil((Number(line.avgDailySales) || 0) * 7 * weeks + Math.max(0, Number(line.shortfallBase) || 0)))
+    return Math.max(1, Math.ceil(base / (multiple || 1)))
+}
+const hasPlanning = (line) => line.avgDailySales !== undefined
+
 // Friendly status text per backend tool name (see epsilon.js's TOOLS list).
 // Falls back to a title-cased version of the raw name for any tool not
 // listed here, so a newly-added tool never shows up blank.
@@ -946,12 +976,12 @@ const Epsilon = () => {
         const body = { token }
         if (kind === 'purchase_order') {
             const lines = poEdits?.preview?.lines || []
-            const overrides = {}
+            const lineEdits = {}
             lines.forEach((line) => {
-                const edited = poEdits?.editedLines?.[line.productId]
-                overrides[line.productId] = (edited !== undefined && edited !== '') ? Number(edited) : line.unitCost
+                const state = poLineState(poEdits, line)
+                lineEdits[line.productId] = { quantity: Number(state.qty), purchaseUom: state.uom, unitCost: Number(state.cost) }
             })
-            if (Object.keys(overrides).length) body.unitCostOverrides = overrides
+            if (Object.keys(lineEdits).length) body.lineEdits = lineEdits
             if (poEdits?.editedVendorId) body.vendorId = poEdits.editedVendorId
             if (poEdits?.excludedProductIds?.length) body.excludeProductIds = poEdits.excludedProductIds
             const acceptedDate = poEdits?.editedPostingDate ?? poEdits?.preview?.suggestedOrderDate
@@ -1195,6 +1225,40 @@ const Epsilon = () => {
                                 const excluded = p.excludedProductIds || []
                                 const visibleLines = p.preview.lines.filter((line) => !excluded.includes(line.productId))
                                 const anyFlagged = visibleLines.some((line) => line.categoryLooksOffForLocation)
+                                const locked = p.status !== 'pending'
+                                const weeks = poWeeks(p)
+                                const setLine = (line, patch) => updateProposal(p.token, {
+                                    lineEdits: { ...(p.lineEdits || {}), [line.productId]: { ...(p.lineEdits?.[line.productId] || {}), ...patch } },
+                                })
+                                // Lines the user has not typed a quantity into follow
+                                // the weeks; typed ones keep what was typed.
+                                const changeWeeks = (value) => {
+                                    const w = Math.min(Math.max(Math.round(Number(value)) || 1, 1), 52)
+                                    const next = { ...(p.lineEdits || {}) }
+                                    p.preview.lines.forEach((line) => {
+                                        if (!hasPlanning(line)) return
+                                        const state = poLineState(p, line)
+                                        if (state.manual) return
+                                        next[line.productId] = { ...(next[line.productId] || {}), qty: poCoverQty(line, w, state.multiple) }
+                                    })
+                                    updateProposal(p.token, { coverWeeks: w, lineEdits: next })
+                                }
+                                // A new UOM keeps the same stock and the same price per
+                                // base unit: 2 ctn12 becomes 24 pcs, ₦9,600 a carton
+                                // becomes ₦800 a piece. Rounded up to whole units.
+                                const changeUom = (line, code) => {
+                                    const state = poLineState(p, line)
+                                    const nextMultiple = poMultiple(line, code)
+                                    const perBase = (Number(state.cost) || 0) / (state.multiple || 1)
+                                    setLine(line, {
+                                        uom: code,
+                                        qty: Math.max(1, Math.ceil(((Number(state.qty) || 0) * state.multiple) / nextMultiple)),
+                                        cost: round2(perBase * nextMultiple),
+                                    })
+                                }
+                                const states = visibleLines.map((line) => poLineState(p, line))
+                                const orderTotal = round2(states.reduce((sum, s) => sum + s.total, 0))
+                                const showPlanning = visibleLines.some(hasPlanning)
                                 return (
                                     <>
                                         {anyFlagged && (
@@ -1202,35 +1266,88 @@ const Epsilon = () => {
                                                 ⚠ A highlighted product's category doesn't match what's normally bought for this location (see Settings &gt; Warehouses), which is usually a stock-tagging mix-up. Remove it if it doesn't belong here.
                                             </div>
                                         )}
+                                        {showPlanning && (
+                                            <div className="epsilon-po-vendor-row">
+                                                <span>Stock for</span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="52"
+                                                    step="1"
+                                                    className="epsilon-po-weeks-input"
+                                                    value={weeks}
+                                                    disabled={locked}
+                                                    onChange={(e) => changeWeeks(e.target.value)}
+                                                    aria-label="Weeks of stock"
+                                                />
+                                                <span>{weeks === 1 ? 'week' : 'weeks'} of sales</span>
+                                            </div>
+                                        )}
+                                        <div className="epsilon-po-table-wrap">
                                         <table className="epsilon-po-table">
                                             <thead>
-                                                <tr><th>Product</th><th>Qty</th><th>Unit cost (₦)</th><th>Total</th><th /></tr>
+                                                <tr><th>Product</th>{showPlanning && <th>Velocity</th>}<th>Qty</th><th>UOM</th><th>Unit cost (₦)</th><th>Total</th><th /></tr>
                                             </thead>
                                             <tbody>
-                                                {visibleLines.map((line) => {
-                                                    const edited = p.editedLines?.[line.productId]
-                                                    const cost = (edited !== undefined && edited !== '') ? Number(edited) : Number(line.unitCost) || 0
-                                                    const total = cost * (Number(line.quantity) || 0)
+                                                {visibleLines.map((line, idx) => {
+                                                    const state = states[idx]
+                                                    const options = poUomOptions(line)
                                                     return (
                                                         <tr key={line.productId} className={line.categoryLooksOffForLocation ? 'epsilon-po-row-warning' : ''}>
                                                             <td title={line.categoryLooksOffForLocation ? `Category: ${line.categoryName || line.category}, not normally bought for this location` : undefined}>
                                                                 {line.categoryLooksOffForLocation ? '⚠ ' : ''}{line.productName}
                                                             </td>
-                                                            <td>{line.quantity} {line.purchaseUom}</td>
+                                                            {showPlanning && (
+                                                                <td
+                                                                    className="epsilon-po-velocity"
+                                                                    title={hasPlanning(line) ? `Average over the last 90 days. In stock now: ${line.currentStock} ${line.baseUom}${line.threshold != null ? `, restock level ${line.threshold}` : ''}.` : undefined}
+                                                                >
+                                                                    {hasPlanning(line) ? `${Number(line.avgDailySales).toLocaleString()} ${line.baseUom}/day` : '-'}
+                                                                </td>
+                                                            )}
+                                                            <td>
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="1"
+                                                                    className={`epsilon-po-cost-input epsilon-po-qty-input${state.valid ? '' : ' epsilon-po-input-invalid'}`}
+                                                                    value={state.qty}
+                                                                    disabled={locked}
+                                                                    aria-label={`Quantity of ${line.productName}`}
+                                                                    onChange={(e) => setLine(line, { qty: e.target.value, manual: true })}
+                                                                />
+                                                                {state.multiple !== 1 && (
+                                                                    <div className="epsilon-po-base-qty">{`= ${state.baseQty.toLocaleString()} ${line.baseUom}`}</div>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                <select
+                                                                    className="epsilon-po-uom-select"
+                                                                    value={state.uom}
+                                                                    disabled={locked || options.length < 2}
+                                                                    aria-label={`Purchase unit of ${line.productName}`}
+                                                                    onChange={(e) => changeUom(line, e.target.value)}
+                                                                >
+                                                                    {/* The short code keeps the column narrow in the chat
+                                                                        panel; the full name is in the tooltip. */}
+                                                                    {options.map((o) => (
+                                                                        <option key={o.code} value={o.code} title={o.multiple === 1 ? o.name : `${o.name}, ${o.multiple} ${line.baseUom}`}>{o.code}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
                                                             <td>
                                                                 <input
                                                                     type="number"
                                                                     min="0"
                                                                     step="0.01"
                                                                     className="epsilon-po-cost-input"
-                                                                    value={edited ?? line.unitCost ?? ''}
-                                                                    disabled={p.status !== 'pending'}
-                                                                    onChange={(e) => updateProposal(p.token, {
-                                                                        editedLines: { ...(p.editedLines || {}), [line.productId]: e.target.value },
-                                                                    })}
+                                                                    value={state.cost ?? ''}
+                                                                    disabled={locked}
+                                                                    aria-label={`Unit cost of ${line.productName}`}
+                                                                    onChange={(e) => setLine(line, { cost: e.target.value })}
                                                                 />
                                                             </td>
-                                                            <td className="epsilon-po-line-total">{total.toLocaleString()}</td>
+                                                            <td className="epsilon-po-line-total">{state.total.toLocaleString()}</td>
                                                             <td>
                                                                 <button
                                                                     type="button"
@@ -1247,18 +1364,22 @@ const Epsilon = () => {
                                             </tbody>
                                             <tfoot>
                                                 <tr>
-                                                    <td colSpan={3}>Total</td>
-                                                    <td className="epsilon-po-line-total">
-                                                        {visibleLines.reduce((sum, line) => {
-                                                            const edited = p.editedLines?.[line.productId]
-                                                            const cost = (edited !== undefined && edited !== '') ? Number(edited) : Number(line.unitCost) || 0
-                                                            return sum + cost * (Number(line.quantity) || 0)
-                                                        }, 0).toLocaleString()}
-                                                    </td>
+                                                    <td colSpan={showPlanning ? 5 : 4}>Total</td>
+                                                    <td className="epsilon-po-line-total">{orderTotal.toLocaleString()}</td>
                                                     <td />
                                                 </tr>
                                             </tfoot>
                                         </table>
+                                        </div>
+                                        {/* The table can be wider than the chat panel, so the
+                                            total also sits here where it is always in view. */}
+                                        <div className="epsilon-po-order-total">
+                                            <span>Order total</span>
+                                            <strong>{`₦${orderTotal.toLocaleString()}`}</strong>
+                                        </div>
+                                        {states.some((s) => !s.valid) && (
+                                            <div className="epsilon-proposal-note">Every line needs a quantity above zero and a unit cost.</div>
+                                        )}
                                         {!visibleLines.length && (
                                             <div className="epsilon-proposal-note">Every product was removed. Dismiss this order, or ask Epsilon to propose it again.</div>
                                         )}
@@ -1283,7 +1404,10 @@ const Epsilon = () => {
                                 <div className="epsilon-proposal-actions">
                                     <button
                                         className="epsilon-proposal-run-btn"
-                                        disabled={p.kind === 'purchase_order' && Array.isArray(p.preview?.lines) && (p.excludedProductIds || []).length >= p.preview.lines.length}
+                                        disabled={p.kind === 'purchase_order' && Array.isArray(p.preview?.lines) && (
+                                            (p.excludedProductIds || []).length >= p.preview.lines.length
+                                            || p.preview.lines.filter((line) => !(p.excludedProductIds || []).includes(line.productId)).some((line) => !poLineState(p, line).valid)
+                                        )}
                                         onClick={() => confirmProposal(p.token, p.kind, p)}
                                     >Run it</button>
                                     <button className="epsilon-proposal-dismiss-btn" onClick={() => dismissProposal(p.token, p.kind)}>Dismiss</button>
