@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa';
 import { format } from 'date-fns';
 import ContextProvider from '../../../Resources/ContextProvider';
+import { currentDayWindow } from '../../../Resources/viewWindow';
 import { exportToExcel, exportToPDF } from './exportUtils';
 import './TransactionReports.css';
 
@@ -38,7 +39,7 @@ const TransactionReports = ({
     const {
         company, server, fetchServer, user, companyRecord, centralCompany, allowBacklogs,
         paymentReceipts, getPosOrders, fetchSessions, paymentMethods,
-        setAlert, setAlertState, setAlertTimeout
+        setAlert, setAlertState, setAlertTimeout, getSessionStart
     } = useContext(ContextProvider);
     const [loading, setLoading] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
@@ -91,15 +92,17 @@ const TransactionReports = ({
         lastDeliveredBy: ''
     });
 
-    // Non-admin date restriction: compute yesterday start and today end bounds
+    // Without admin status or allowBacklogs, only the current day is shown.
     const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
+    // The current day only (Resources/viewWindow.js), as local start and
+    // end of day.
     const getNonAdminDateBounds = () => {
-        const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(today.getDate() - 1);
+        const { start, end } = currentDayWindow(getSessionStart);
+        const [y1, m1, d1] = start.split('-').map(Number);
+        const [y2, m2, d2] = end.split('-').map(Number);
         return {
-            minDate: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0),
-            maxDate: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+            minDate: new Date(y1, m1 - 1, d1, 0, 0, 0, 0),
+            maxDate: new Date(y2, m2 - 1, d2, 23, 59, 59, 999)
         };
     };
 
@@ -175,7 +178,7 @@ const TransactionReports = ({
         setPayPointAccounts({ ...payPoints, 'Employee': 'EMPLOYEE' })
     }, [paymentMethods])
 
-    // Clamp date filters for non-admin users to yesterday to today on mount.
+    // Clamp the date filters to the current day on mount.
     // But never when a GL "Go to source" deep-link pointed at a specific
     // historical date, or this clamp silently overwrites that target date
     // with "today" right after mount and the session/order it's trying to

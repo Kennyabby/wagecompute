@@ -111,6 +111,10 @@ export default function createSSE(server, onMessage, onError, { onOpen, onResync
     if (Date.now() - lastSeen > limit || !es || es.readyState === EventSource.CLOSED) {
       setConnected(false)
       try { es && es.close() } catch (e) { /* already closed */ }
+      // A reconnect already waiting may have backed off to 30 seconds after
+      // an outage; the network is back now, so it is replaced by a prompt one.
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
       retryMs = 1000
       scheduleReconnect(true)
     }

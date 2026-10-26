@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ContextProvider from '../../Resources/ContextProvider';
 import './PointOfSales.css';
@@ -23,9 +24,10 @@ import {
 // offlineSync.js). Order changes carry an action and the till's full copy of
 // the order (snapshot), so the server can apply a payment, cancellation or
 // delivery by its own rules and rebuild an order that never reached it.
-import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClose, describeNotReady, getChangeResult } from '../../Resources/offlineSync';
+import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClose, describeNotReady, describeQuiet, getChangeResult } from '../../Resources/offlineSync';
 import { orderBusinessFields, deliveryBusinessFields, businessDayOf } from '../../Resources/businessDay';
 import { getTerminalId } from '../../Resources/clientTxnId';
+import SessionManagerReconcile from './SessionManagerReconcile';
 
 const PointOfSales = () => {
     // =========================================
@@ -353,7 +355,7 @@ const PointOfSales = () => {
             window.localStorage.removeItem('auto-sales')
             setTimeout(()=>{
                 // Only where the Session Manager is in use.
-                if (sessionManagerRequired) createSessionManager()
+                if (sessionManagerRequired) requestSessionManagerStart()
             },1500)
         }
     },[window.localStorage.getItem('back-to-pos')])
@@ -365,9 +367,13 @@ const PointOfSales = () => {
             if (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('access_pos_sessions') || companyRecord?.permissions?.includes('manage_session_manager')){                    
                 fetchSessionManagers(company, companyRecord)
                 getLastActiveSessions(company, companyRecord)
+            } else if (sessionManagerRequired) {
+                // Everyone is told when starting is on hold after a declined
+                // reconciliation, so every POS user reads the Session Managers.
+                fetchSessionManagers(company, companyRecord)
             }
         }
-    }, [company, companyRecord])
+    }, [company, companyRecord, sessionManagerRequired])
 
     useEffect(()=>{
         if (sales.length){
@@ -829,6 +835,33 @@ const PointOfSales = () => {
         }
     };
 
+    // Every start goes through the reconciliation of the Session Manager
+    // before it (SessionManagerReconcile.js); it starts only when approved.
+    // The very first one, with nothing before it, starts straight away.
+    const [reconcileManager, setReconcileManager] = useState(null)
+    const requestSessionManagerStart = async () => {
+        const stopped = (list) => [...(list || [])].filter((m) => m?.end).sort((a, b) => b.start - a.start)[0] || null
+        let last = stopped(sessionManagers)
+        if (!last && company) {
+            // Kept to the last two days in memory; a business closed for
+            // longer still has its last day checked.
+            const resp = await fetchServer("POST", { database: company, collection: "SessionManagers", prop: { end: { $ne: null }, start: { $gte: Date.now() - 60 * 24 * 60 * 60 * 1000 } } }, "getDocsDetails", server).catch(() => null)
+            last = stopped(resp?.record)
+        }
+        if (!last) {
+            createSessionManager()
+            return
+        }
+        setReconcileManager(last)
+    }
+    const latestSessionManager = [...(sessionManagers || [])].sort((a, b) => b.start - a.start)[0] || null
+    const startOnHold = sessionManagerRequired && !!latestSessionManager?.end && latestSessionManager?.reconciliation?.status === 'declined'
+        ? latestSessionManager.reconciliation
+        : null
+    const startOnHoldMessage = startOnHold
+        ? `Starting sessions is on hold. ${startOnHold.by} declined the reconciliation of ${formatDateToDefault(latestSessionManager.start)}${startOnHold.note ? `: ${startOnHold.note}` : '.'} Sessions start again once it is resolved and the Session Manager is started.`
+        : ''
+
     const stopSessionManager = async (activeSessions)=>{
         const dayStart = getSessionStart(currSessionManager?.start || Date.now())
         if (!(await confirmEverythingSynced({ from: dayStart, to: getSessionEnd(dayStart) }, 'business day'))) return
@@ -1048,7 +1081,19 @@ const PointOfSales = () => {
         setAlert(`Checking that every sale for this ${what} has reached the server...`)
         setAlertTimeout(60000)
         const check = await checkReadyToClose(company, companyRecord.emailid, scope)
-        if (check.ready) return true
+        if (check.ready) {
+            // Nothing known to be missing, but the cashier's till stopped
+            // checking in without signing out, so it may hold sales it could
+            // not send. Whoever is ending the session decides.
+            const quiet = describeQuiet(check)
+            if (quiet && !window.confirm(`${quiet}\n\nEnd the ${what} anyway?`)) {
+                setAlertState('info')
+                setAlert(`${quiet} Ask the cashier to open the POS on that device while online, then end the ${what}.`)
+                setAlertTimeout(12000)
+                return false
+            }
+            return true
+        }
         const message = describeNotReady(check)
         if (companyRecord?.status === 'admin' && window.confirm(`${message}\n\nEnd the ${what} anyway? Anything still on those devices will not be in its totals.`)) {
             return true
@@ -3509,6 +3554,12 @@ const PointOfSales = () => {
     // 8. UI Rendering Functions
     // =========================================
     const handleStartSession = async () => {
+        if (startOnHoldMessage && (!currSessionManager || currSessionManager?.end)) {
+            setAlertState('error')
+            setAlert(startOnHoldMessage)
+            setAlertTimeout(7000)
+            return
+        }
         if (companyRecord.status === 'admin' || companyRecord.permissions.includes('access_pos_sessions')) {
             if (sessionUser !== null) {
                 setWrh('')
@@ -3807,29 +3858,69 @@ const PointOfSales = () => {
         )
     }
 
-    const renderKeypad = () => (
-        <div className="keypad-section">
-            <div className="quantity-display">{quantity || '0'}</div>
-            <div className="keypad-grid">
-                {['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', '.'].map(key => (
+    // The quantity keypad opens as a pop-up over the till. Inside the order
+    // panel it sat under the picked items, so on most screens Enter was out
+    // of view until the cashier scrolled. Rendered on document.body so no
+    // parent's overflow or transform can clip or shift it.
+    const closeKeypad = () => {
+        setQuantity('')
+        setSelectedProduct(null)
+    }
+    const renderKeypad = () => createPortal(
+        <div className="pos-keypad-overlay" onClick={closeKeypad}>
+            <div
+                className="pos-keypad-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Quantity for ${selectedProduct?.name || 'item'}`}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="pos-keypad-head">
+                    <div className="pos-keypad-title">
+                        <strong>{selectedProduct?.name}</strong>
+                        <span>₦{Number(wrh === 'vip' ? (selectedProduct?.vipPrice || selectedProduct?.salesPrice) : selectedProduct?.salesPrice || 0).toLocaleString()} each</span>
+                    </div>
+                    <button type="button" className="pos-keypad-close" aria-label="Close keypad" onClick={closeKeypad}>×</button>
+                </div>
+                <div className="pos-keypad-display" aria-live="polite">{quantity || '0'}</div>
+                <div className="pos-keypad-grid">
+                    {['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', '.'].map(key => (
+                        <button
+                            type="button"
+                            key={key}
+                            className={`pos-keypad-key${key === 'C' ? ' clear' : ''}`}
+                            onClick={() => handleKeypadClick(key)}
+                        >
+                            {key}
+                        </button>
+                    ))}
                     <button
-                        key={key}
-                        className="keypad-btn"
-                        onClick={() => handleKeypadClick(key)}
+                        type="button"
+                        className="pos-keypad-key enter"
+                        onClick={() => handleKeypadEnter()}
+                        disabled={!selectedProduct || !quantity}
                     >
-                        {key}
+                        Enter
                     </button>
-                ))}
-                <button
-                    className="keypad-btn enter"
-                    onClick={() => handleKeypadEnter()}
-                    disabled={!selectedProduct || !quantity}
-                >
-                    Enter
-                </button>
+                </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
+
+    // A physical keyboard or a scanner keypad types into the pop-up too.
+    useEffect(() => {
+        if (!selectedProduct) return undefined
+        const onKey = (e) => {
+            if (/^[0-9]$/.test(e.key) || e.key === '.') { e.preventDefault(); handleKeypadClick(e.key) }
+            else if (e.key === 'Backspace') { e.preventDefault(); setQuantity((prev) => String(prev || '').slice(0, -1)) }
+            else if (e.key === 'Enter') { e.preventDefault(); handleKeypadEnter() }
+            else if (e.key === 'Escape') { e.preventDefault(); closeKeypad() }
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedProduct, quantity])
 
     const renderOrderScreen = () => (
         <div className="order-screen">
@@ -4225,6 +4316,19 @@ const PointOfSales = () => {
     // =========================================
     return (
         <div className="pos-container" ref={posContainerRef}>
+            {startOnHoldMessage && <div className="pos-start-on-hold" role="alert">{startOnHoldMessage}</div>}
+            {reconcileManager && <SessionManagerReconcile
+                manager={reconcileManager}
+                onApproved={(record) => {
+                    if (record) setSessionManagers((prev) => (prev || []).map((m) => (m.start === record.start ? { ...m, ...record } : m)))
+                    setReconcileManager(null)
+                    createSessionManager()
+                }}
+                onClose={(record) => {
+                    if (record) setSessionManagers((prev) => (prev || []).map((m) => (m.start === record.start ? { ...m, ...record } : m)))
+                    setReconcileManager(null)
+                }}
+            />}
             {(loadSession || startSession || endSession) && renderSessionEntry()}
             {viewSesions ?
                 <POSDashboard
@@ -4248,7 +4352,8 @@ const PointOfSales = () => {
                     allOrders={allOrders}
                     setSessionUser={setSessionUser}
                     currSessionManager={currSessionManager}
-                    createSessionManager={createSessionManager}
+                    createSessionManager={requestSessionManagerStart}
+                    startOnHoldMessage={startOnHoldMessage}
                     stopSessionManager={stopSessionManager}
                     fetchSessionManagers={fetchSessionManagers}
                     getLastActiveSessions={getLastActiveSessions}
@@ -4978,28 +5083,11 @@ const POSDashboard = ({
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd,
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,currSessionManager, createSessionManager, stopSessionManager,
     fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
-    setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories, glDeepLink
+    setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories, glDeepLink, startOnHoldMessage
 }) => {
     const { fetchServer, server, company, wrhs, formatDateToDefault, settings, sessionManagerRequired, sessionManagerStopRequired, getSessionStart } = useContext(ContextProvider);
 
     const canRunSessionManager = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')
-    const [savingStopRule, setSavingStopRule] = useState(false)
-    const saveStopRule = async (stopManagerBeforeEnd) => {
-        setSavingStopRule(true)
-        const resp = await fetchServer("POST", { stopManagerBeforeEnd }, "pos/sessionRules", server).catch(() => null)
-        setSavingStopRule(false)
-        if (!resp || resp.err || !resp.ok) {
-            setAlertState('error')
-            setAlert(resp?.mess || 'Could not save the Session Manager rule.')
-            setAlertTimeout(4000)
-            return
-        }
-        setAlertState('success')
-        setAlert(stopManagerBeforeEnd
-            ? 'Sessions can now only be ended after the Session Manager is stopped.'
-            : 'Sessions can now be ended and started while the Session Manager is running.')
-        setAlertTimeout(4000)
-    }
 
     // Devices still holding POS changes the server has not received, and
     // changes it refused. Shown to admins and session runners so a missing
@@ -5123,7 +5211,7 @@ const POSDashboard = ({
 
             if (sessionManagerRequired && endedCount && endedCount === lastActiveSessions.length && (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager'))){
                 setAlertState('info')
-                setAlert('All sesisons ended, Please Start Session Manager!')
+                setAlert('All sessions ended. Please start the Session Manager.')
                 setAlertTimeout(8000)
             }
         }
@@ -5343,21 +5431,6 @@ const POSDashboard = ({
                         >
                             {((currSessionManager === null || currSessionManager?.end)) ? 'Start' : 'Stop'}
                         </div>}
-                        {sessionManagerRequired && canRunSessionManager && <label className='pos-stop-rule'>
-                            <input
-                                type='checkbox'
-                                aria-label='Stop the Session Manager before sessions end'
-                                checked={sessionManagerStopRequired}
-                                disabled={savingStopRule}
-                                onChange={(e) => saveStopRule(e.target.checked)}
-                            />
-                            <span>
-                                Stop the Session Manager before sessions end
-                                <small>{sessionManagerStopRequired
-                                    ? 'Users\' sessions can be ended once the Session Manager is stopped.'
-                                    : 'Users with permission can end and start sessions while the Session Manager runs.'}</small>
-                            </span>
-                        </label>}
                         {/* Only once there's an actual stopped Session Manager to clear
                             for, clearing sweeps that manager's own day (still its
                             `start` date even after stopping), so there's nothing
@@ -5660,7 +5733,7 @@ const POSDashboard = ({
                                                                                     setStartSession(true)
                                                                                 }else{
                                                                                     setAlertState('error')
-                                                                                    setAlert('Session Manager is not active. Start Session Manager to Continue!')
+                                                                                    setAlert(startOnHoldMessage || 'Session Manager is not active. Start Session Manager to Continue!')
                                                                                     setAlertTimeout(3000)
                                                                                 }
                                                                             }
@@ -5683,7 +5756,7 @@ const POSDashboard = ({
                                                                                             setStartSession(true)
                                                                                         }else{
                                                                                             setAlertState('error')
-                                                                                            setAlert('Session Manager is not active. Start Session Manager to Continue!')
+                                                                                            setAlert(startOnHoldMessage || 'Session Manager is not active. Start Session Manager to Continue!')
                                                                                             setAlertTimeout(3000)
                                                                                         }
                                                                                     }

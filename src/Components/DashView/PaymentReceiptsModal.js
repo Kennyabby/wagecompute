@@ -3,9 +3,14 @@ import ContextProvider from '../../Resources/ContextProvider';
 import { FaTimes, FaFilter, FaReceipt } from 'react-icons/fa';
 import { exportReceiptsTableToPDF, exportSummaryMatrixToPDF } from './pdfUtils';
 import { generateExcel } from '../../utils/exportUtils';
+import { currentDayWindow } from '../../Resources/viewWindow';
 
-const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
-  const { employees, paymentMethods, companyRecord, centralCompany, allowBacklogs } = useContext(ContextProvider);
+// fixedRange ({ from, to }) pins the dates, for a view of one period such as
+// the Session Manager reconciliation, where the dates are not the viewer's
+// to change. title and footer let that view name itself and add its own
+// actions under the figures.
+const PaymentReceiptsModal = ({ open, onClose, paymentReceipts, title = 'Payment Receipts', fixedRange = null, footer = null, notice = null }) => {
+  const { employees, paymentMethods, companyRecord, centralCompany, allowBacklogs, getSessionStart } = useContext(ContextProvider);
   const companyLogoUrl = centralCompany?.logoUrl || companyRecord?.logoUrl || null;
   // Get earliest date boundary
   const earliestDate = useMemo(() => {
@@ -16,33 +21,21 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     }, null)?.toISOString().slice(0, 10);
   }, [paymentReceipts]);
 
-  // Non-admin date visibility bounds: yesterday and today (YYYY-MM-DD)
-  const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
-  const getYesterdayAndToday = () => {
-    const todayObj = new Date();
-    const yesterdayObj = new Date();
-    yesterdayObj.setDate(todayObj.getDate() - 1);
-    
-    const getLocalDateString = (dateObj) => {
-      const year = dateObj.getFullYear();
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const day = String(dateObj.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    
-    return {
-      today: getLocalDateString(todayObj),
-      yesterday: getLocalDateString(yesterdayObj)
-    };
+  // Users without backlog access see the current day only
+  // (Resources/viewWindow.js).
+  const isNonAdmin = !fixedRange && companyRecord?.status !== 'admin' && !allowBacklogs;
+  const getViewDays = () => {
+    const { start, end } = currentDayWindow(getSessionStart);
+    return { today: end, dayStart: start };
   };
 
   const [payPointAccounts, setPayPointAccounts] = useState({});
   useEffect(() => {
     const payPoints = paymentMethods.reduce((obj, method) => {
       if (method.name !== 'cash') {
-        obj[method.name] = `${method.i_d}-${method.account}`
+        obj[method.name] = method.i_d ? `${method.i_d}-${method.account}` : method.name
       } else {
-        obj[method.name] = `${method.i_d}`
+        obj[method.name] = method.i_d ? `${method.i_d}` : method.name
       }
       return obj
     }, {})
@@ -59,13 +52,15 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     onlyDuplicates: false
   });
 
-  // Clamp date filters to yesterday-today on mount/load for non-admin users
+  // Clamp the date filters to the current day for users without backlog access
   useEffect(() => {
-    if (isNonAdmin) {
-      const { yesterday, today } = getYesterdayAndToday();
+    if (fixedRange) {
+      setFilter(f => ({ ...f, from: fixedRange.from, to: fixedRange.to }));
+    } else if (isNonAdmin) {
+      const { dayStart, today } = getViewDays();
       setFilter(f => ({
         ...f,
-        from: yesterday,
+        from: dayStart,
         to: today
       }));
     } else {
@@ -75,7 +70,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
         to: ''
       }));
     }
-  }, [companyRecord, earliestDate, isNonAdmin]);
+  }, [companyRecord, earliestDate, isNonAdmin, fixedRange?.from, fixedRange?.to]);
 
   // Multi-select toggles for each filter
   const [multiPaypoint, setMultiPaypoint] = useState(false);
@@ -97,8 +92,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
       let effectiveFrom = filter.from;
       let effectiveTo = filter.to;
       if (isNonAdmin) {
-        const { yesterday, today } = getYesterdayAndToday();
-        if (!effectiveFrom || effectiveFrom < yesterday) effectiveFrom = yesterday;
+        const { dayStart, today } = getViewDays();
+        if (!effectiveFrom || effectiveFrom < dayStart) effectiveFrom = dayStart;
         if (!effectiveTo || effectiveTo > today) effectiveTo = today;
       }
       if (effectiveFrom && d < effectiveFrom) return false;
@@ -166,6 +161,10 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
     return { paypoints: paypointList, modules: moduleList, matrix, rowTotals, colTotals, grandTotal };
   }, [filteredReceipts, paymentReceipts]);
 
+  // Debt and shortage rows (the Session Manager reconciliation) also show
+  // how much of each has been recovered and how much remains.
+  const showOwed = paymentReceipts.some((r) => r.kind === 'debt' || r.kind === 'shortage');
+
   if (!open) return null;
 
   // Use grouped receipts for table and totals if needed
@@ -182,8 +181,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
   }
 
   return (
-    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5000, background: 'rgba(0,0,0,0.25)' }}>
-      <div className="modal-content" style={{ position: 'relative', background: '#fff', borderRadius: 12, maxWidth: 1200, width: '98%', margin: '40px auto', padding: 32, boxShadow: '0 4px 32px rgba(0,0,0,0.12)', position: 'relative' }}>
+    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5000, background: 'rgba(0,0,0,0.25)', overflowY: 'auto' }}>
+      <div className="modal-content" style={{ position: 'relative', background: '#fff', borderRadius: 12, maxWidth: 1200, width: 'calc(100% - 32px)', margin: '24px auto', padding: 'clamp(16px, 3vw, 32px)', boxSizing: 'border-box', boxShadow: '0 4px 32px rgba(0,0,0,0.12)', position: 'relative' }}>
         {/* PDF Download Section */}
         <div style={{ marginTop: '25px', marginBottom: '2px', display: 'flex', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
           <button
@@ -213,6 +212,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                 { name: 'Module', reference: 'paymentModule' },
                 { name: 'Paypoint', reference: 'paymentPoint' },
                 { name: 'Amount', reference: 'paymentAmount', numeric: true },
+                ...(showOwed ? [{ name: 'Recovered', reference: 'recoveredAmount', numeric: true }, { name: 'Remaining', reference: 'remainingAmount', numeric: true }] : []),
                 { name: 'Receipt #', reference: 'paymentReceipt' },
                 { name: 'Date', reference: 'paymentDate' },
                 { name: 'Handler', reference: 'paymentHandler' },
@@ -291,7 +291,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
           </button>
         </div>
         <button onClick={onClose} style={{ position: 'absolute', top: 5, right: 5, fontSize: 22, background: 'none', border: 'none', cursor: 'pointer' }}><FaTimes /></button>
-        <h2 style={{ marginBottom: 16 }}><FaReceipt style={{ marginRight: 8 }} />Payment Receipts</h2>
+        <h2 style={{ marginBottom: 16 }}><FaReceipt style={{ marginRight: 8 }} />{title}</h2>
+        {notice}
         <div className="modal-filters" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -307,13 +308,14 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             <input 
               type="date" 
               value={filter.from} 
-              min={isNonAdmin ? getYesterdayAndToday().yesterday : earliestDate} 
-              max={isNonAdmin ? getYesterdayAndToday().today : undefined} 
+              disabled={!!fixedRange} 
+              min={isNonAdmin ? getViewDays().dayStart : earliestDate} 
+              max={isNonAdmin ? getViewDays().today : undefined} 
               onChange={e => {
                 let val = e.target.value;
                 if (isNonAdmin) {
-                  const { yesterday, today } = getYesterdayAndToday();
-                  if (val < yesterday) val = yesterday;
+                  const { dayStart, today } = getViewDays();
+                  if (val < dayStart) val = dayStart;
                   if (val > today) val = today;
                 }
                 setFilter(f => ({ ...f, from: val }));
@@ -326,13 +328,14 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             <input 
               type="date" 
               value={filter.to} 
-              min={isNonAdmin ? getYesterdayAndToday().yesterday : filter.from} 
-              max={isNonAdmin ? getYesterdayAndToday().today : undefined} 
+              disabled={!!fixedRange} 
+              min={isNonAdmin ? getViewDays().dayStart : filter.from} 
+              max={isNonAdmin ? getViewDays().today : undefined} 
               onChange={e => {
                 let val = e.target.value;
                 if (isNonAdmin) {
-                  const { yesterday, today } = getYesterdayAndToday();
-                  if (val < yesterday) val = yesterday;
+                  const { dayStart, today } = getViewDays();
+                  if (val < dayStart) val = dayStart;
                   if (val > today) val = today;
                 }
                 setFilter(f => ({ ...f, to: val }));
@@ -457,7 +460,12 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
               totalCount = tableReceipts.length;
               totalAmount = tableReceipts.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
             }
-            return `${totalCount} result${totalCount === 1 ? '' : 's'} found. Total Amount: ₦${totalAmount.toLocaleString()}`;
+            // Debt and shortage rows (the Session Manager reconciliation) are
+            // owed, not received, so they are named apart from the money.
+            const owedRows = (isGrouped ? tableReceipts.flatMap((g) => g.group) : tableReceipts).filter((r) => r.kind === 'debt' || r.kind === 'shortage');
+            const owed = owedRows.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0);
+            const base = `${totalCount} result${totalCount === 1 ? '' : 's'} found. Total Amount: ₦${totalAmount.toLocaleString()}`;
+            return owedRows.length ? `${base}, of which ₦${owed.toLocaleString()} is debts and shortages and ₦${(totalAmount - owed).toLocaleString()} was received` : base;
           })()}
         </div>
         <div style={{ marginBottom: '18px', display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -511,12 +519,12 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
               {filteredReceipts.map((r, idx) => {
                 const emp = employees?.find(e => String(e.i_d) === String(r.paymentHandler) || String(e.id) === String(r.paymentHandler));
                 const approver = employees?.find(e => String(e.i_d) === String(r.paymentApprover) || String(e.id) === String(r.paymentApprover));
-                console.log(approver)
                 return (
                   <div key={idx} className="receipt-card" style={{ background: '#f5faff', border: '1px solid #90caf9', borderRadius: 8, padding: '18px 16px', minWidth: 260, flex: '1 1 260px', boxShadow: '0 2px 8px rgba(25,118,210,0.08)' }}>
                     <div style={{ fontWeight: 'bold', fontSize: '1.08em', marginBottom: 6 }}>{r.paymentModule.toUpperCase()}</div>
                     <div><b>Paypoint:</b> {r.paymentPoint}</div>
                     <div><b>Amount:</b> ₦{Number(r.paymentAmount).toLocaleString()}</div>
+                    {r.kind && <div><b>Recovered:</b> ₦{Number(r.recoveredAmount || 0).toLocaleString()} <b>Remaining:</b> ₦{Number(r.remainingAmount || 0).toLocaleString()}</div>}
                     <div><b>Receipt #:</b> {r.paymentReceipt}</div>
                     <div><b>Date:</b> {new Date(r.paymentDate).toLocaleDateString()}</div>
                     <div><b>Handler:</b> {r.paymentHandler} {emp ? <span style={{ color: '#1976d2', fontWeight: 'bold' }}>({emp.name || emp.fullName || emp.firstName + ' ' + emp.lastName})</span> : null}</div>
@@ -541,6 +549,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                     <th style={{ padding: '8px', border: '1px solid #90caf9', cursor: 'pointer' }} onClick={() => setSortConfig(s => ({ key: 'paymentAmount', direction: s.key === 'paymentAmount' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
                       Amount {sortConfig.key === 'paymentAmount' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
                     </th>
+                    {showOwed && <th style={{ padding: '8px', border: '1px solid #90caf9' }}>Recovered</th>}
+                    {showOwed && <th style={{ padding: '8px', border: '1px solid #90caf9' }}>Remaining</th>}
                     <th style={{ padding: '8px', border: '1px solid #90caf9', cursor: 'pointer' }} onClick={() => setSortConfig(s => ({ key: 'paymentReceipt', direction: s.key === 'paymentReceipt' && s.direction === 'asc' ? 'desc' : 'asc' }))}>
                       Receipt # {sortConfig.key === 'paymentReceipt' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
                     </th>
@@ -573,6 +583,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                             <td style={{ padding: '8px', border: '1px solid #90caf9', fontWeight: 'bold' }}>{r.paymentModule.toUpperCase()}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{payPointAccounts[r.paymentPoint] || r.paymentPoint}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>₦{Number(r.paymentAmount).toLocaleString()}</td>
+                            {showOwed && <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.kind ? `₦${Number(r.recoveredAmount || 0).toLocaleString()}` : ''}</td>}
+                            {showOwed && <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.kind ? `₦${Number(r.remainingAmount || 0).toLocaleString()}` : ''}</td>}
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.paymentReceipt}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{new Date(r.paymentDate).toLocaleDateString()}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.paymentHandler} {emp ? <span style={{ color: '#1976d2', fontWeight: 'bold' }}>({emp.name || emp.fullName || emp.firstName + ' ' + emp.lastName})</span> : null}</td>
@@ -587,7 +599,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                         <td style={{ padding: '8px', border: '1px solid #90caf9' }}>
                           ₦{group.reduce((sum, r) => sum + Number(r.paymentAmount || 0), 0).toLocaleString()}
                         </td>
-                        <td style={{ padding: '8px', border: '1px solid #90caf9' }} colSpan={5}></td>
+                        <td style={{ padding: '8px', border: '1px solid #90caf9' }} colSpan={showOwed ? 7 : 5}></td>
                       </tr>
                     ])
                   ) : (
@@ -601,6 +613,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                             <td style={{ padding: '8px', border: '1px solid #90caf9', fontWeight: 'bold' }}>{r.paymentModule.toUpperCase()}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{payPointAccounts[r.paymentPoint] || r.paymentPoint}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>₦{Number(r.paymentAmount).toLocaleString()}</td>
+                            {showOwed && <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.kind ? `₦${Number(r.recoveredAmount || 0).toLocaleString()}` : ''}</td>}
+                            {showOwed && <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.kind ? `₦${Number(r.remainingAmount || 0).toLocaleString()}` : ''}</td>}
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.paymentReceipt}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{new Date(r.paymentDate).toLocaleDateString()}</td>
                             <td style={{ padding: '8px', border: '1px solid #90caf9' }}>{r.paymentHandler} {emp ? <span style={{ color: '#1976d2', fontWeight: 'bold' }}>({emp.name || emp.fullName || emp.firstName + ' ' + emp.lastName})</span> : null}</td>
@@ -621,6 +635,8 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
                             }
                           })()}
                         </td>
+                        {showOwed && <td style={{ padding: '8px', border: '1px solid #90caf9' }}>₦{tableReceipts.reduce((sum, r) => sum + Number(r.recoveredAmount || 0), 0).toLocaleString()}</td>}
+                        {showOwed && <td style={{ padding: '8px', border: '1px solid #90caf9' }}>₦{tableReceipts.reduce((sum, r) => sum + Number(r.remainingAmount || 0), 0).toLocaleString()}</td>}
                         <td style={{ padding: '8px', border: '1px solid #90caf9' }} colSpan={5}></td>
                       </tr>
                     </>
@@ -630,6 +646,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts }) => {
             </div>
           )}
         </div>
+        {footer}
       </div>
     </div>
   );

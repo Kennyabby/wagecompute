@@ -71,6 +71,19 @@ const Attendance = () => {
         return () => clearInterval(intervalId);
     }, [window.localStorage.getItem('sessn-cmp')])
 
+    // An attendance the server posted the moment it was finally approved
+    // (Settings > Approval Rules) shows up in the list straight away.
+    useEffect(() => {
+        const refresh = (event) => {
+            if (event.detail?.module !== 'attendance') return
+            const cmp_val = window.localStorage.getItem('sessn-cmp')
+            if (cmp_val) getAttendance(cmp_val, companyRecord)
+            setCurApproval(null)
+        }
+        window.addEventListener('wc:approval-auto-posted', refresh)
+        return () => window.removeEventListener('wc:approval-auto-posted', refresh)
+    }, [companyRecord])
+
     const [columns, setColumns] = useState([])
     const [selectedCols, setSelectedCols] = useState([])
     useEffect(() => {

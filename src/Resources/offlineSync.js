@@ -78,13 +78,15 @@ export function getChangeResult(id) {
 }
 
 const lastReport = new Map();
-async function reportOutbox(company, userId, remaining, fetchServer, server, { force = false } = {}) {
+// Also the device's heartbeat: sent at least every REPORT_MS even with
+// nothing queued, so the server knows when a till was last in touch. A till
+// that went quiet without logging out may hold sales it could not report,
+// and ending its session warns about that (wageserver posOps closeCheck).
+async function reportOutbox(company, userId, remaining, fetchServer, server, { force = false, closing = false } = {}) {
   const key = `${company}|${userId}`;
   const previous = lastReport.get(key);
   const signature = remaining.map((c) => `${c.id}:${c.attempts || 0}`).join(',');
-  if (!force && previous && previous.signature === signature && Date.now() - previous.at < REPORT_MS) return;
-  // A device with nothing queued that never reported has nothing to clear.
-  if (!remaining.length && !previous && !force) return;
+  if (!force && !closing && previous && previous.signature === signature && Date.now() - previous.at < REPORT_MS) return;
   const pending = remaining.map((change) => ({
     opId: change.id,
     entityType: change.entityType,
@@ -96,7 +98,7 @@ async function reportOutbox(company, userId, remaining, fetchServer, server, { f
     lastError: change.lastError || null,
     status: change.lastStatus || null,
   }));
-  const resp = await fetchServer('POST', { terminalId: getTerminalId(), pending }, 'pos/outbox/report', server).catch(() => null);
+  const resp = await fetchServer('POST', { terminalId: getTerminalId(), pending, ...(closing ? { closing: true } : {}) }, 'pos/outbox/report', server).catch(() => null);
   if (resp && !resp.err) lastReport.set(key, { signature, at: Date.now() });
 }
 
@@ -261,6 +263,16 @@ export function startBackgroundSync(company, userId) {
   };
 }
 
+/**
+ * Tells the server this device is signing out, with whatever it still holds.
+ * A till closed this way is not reported as gone quiet.
+ */
+export async function reportDeviceClosed(company, userId, fetchServer = transport.fetchServer, server = transport.server) {
+  if (!company || !userId || !fetchServer) return;
+  const pending = await loadPendingChanges(company, userId).catch(() => []);
+  await reportOutbox(company, userId, pending, fetchServer, server, { closing: true }).catch(() => {});
+}
+
 /** How many changes this device still holds, and how many the server refused. */
 export async function getQueueSummary(company, userId) {
   const pending = await loadPendingChanges(company, userId);
@@ -296,7 +308,18 @@ export async function checkReadyToClose(company, userId, scope, fetchServer = tr
   if (!resp || resp.err) {
     return { ready: false, offline: true, localLeft, tills: [], stuck: [], message: resp?.mess || 'Could not reach the server to check that everything has synced.' };
   }
-  return { ready: !localLeft.length && resp.ready === true, localLeft, tills: resp.tills || [], stuck: resp.stuck || [] };
+  return { ready: !localLeft.length && resp.ready === true, localLeft, tills: resp.tills || [], stuck: resp.stuck || [], quiet: resp.quiet || [] };
+}
+
+/**
+ * One line for a confirmation: tills of this session that stopped checking
+ * in without signing out, so may hold sales they could not send.
+ */
+export function describeQuiet(check) {
+  const quiet = check?.quiet || [];
+  if (!quiet.length) return '';
+  const list = quiet.map((till) => `${till.user || 'a device'}'s device ${till.terminalId}, last in touch ${new Date(till.lastSeenAt).toLocaleTimeString()}`).join('; ');
+  return `No sales are known to be missing, but ${list}. Anything sold on it since then has not reached the server yet.`;
 }
 
 /** One line for the screen: why a session cannot close yet. */
