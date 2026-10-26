@@ -11,7 +11,7 @@ import { loadReconciliation, totalsOf, businessDateOf } from '../../Resources/re
 // Manager, or declines, which puts starting on hold for everyone until it is
 // approved (wageserver /pos/sessionManager/reconcile).
 const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
-    const { fetchServer, server, company, setAlert, setAlertState, setAlertTimeout, getSessionStart, getSessionEnd } = useContext(ContextProvider)
+    const { fetchServer, server, company, setAlert, setAlertState, setAlertTimeout, getSessionStart, getSessionEnd, sessionManagers } = useContext(ContextProvider)
     const [data, setData] = useState(null)
     const [loadError, setLoadError] = useState('')
     const [note, setNote] = useState('')
@@ -41,6 +41,19 @@ const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [manager.start, manager.end])
 
+    // Another device may start the next Session Manager, or decide on this
+    // one, while this is open. Once it has started there is nothing left to
+    // approve here, so the window closes and says who started it.
+    useEffect(() => {
+        const next = (sessionManagers || []).filter((m) => Number(m.start) > Number(manager.start)).sort((a, b) => a.start - b.start)[0]
+        if (!next) return
+        setAlertState('info')
+        setAlert(`The Session Manager was started on another device by ${next.startedBy || 'someone else'} at ${new Date(next.start).toLocaleString()}. Nothing more needs approving here.`)
+        setAlertTimeout(6000)
+        onClose(null)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionManagers])
+
     const receipts = data?.rows || []
     const totals = totalsOf(receipts)
 
@@ -50,7 +63,7 @@ const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
         setSaving('')
         if (resp?.ok) {
             if (decision === 'approved') {
-                onApproved(resp.record)
+                onApproved(resp.record, resp)
             } else {
                 setAlertState('info')
                 setAlert('Reconciliation declined. Everyone is told that starting is on hold until it is approved.')
@@ -66,12 +79,14 @@ const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
             if (window.confirm('You are offline, so the approval cannot be recorded on the server now. Start the Session Manager anyway?')) onApproved(null)
             return
         }
-        setAlertState('error')
+        setAlertState(resp?.alreadyStarted ? 'info' : 'error')
         setAlert(resp?.mess || 'Could not save the reconciliation. Check the connection and try again.')
-        setAlertTimeout(5000)
+        setAlertTimeout(resp?.alreadyStarted ? 6000 : 5000)
+        if (resp?.alreadyStarted) onClose(null)
     }
 
-    const previous = manager.reconciliation
+    // A decision made on another device while this is open shows here too.
+    const previous = ((sessionManagers || []).find((m) => m.start === manager.start) || manager).reconciliation
     const toShown = to || from
     const days = `${from}${toShown !== from ? ` to ${toShown}` : ''}`
     const notice = (
