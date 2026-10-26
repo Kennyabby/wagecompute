@@ -702,7 +702,17 @@ const Products = ({
                 }
                 return
             } else {
-                // console.log('product added successfully')
+                // The ID this screen worked out was taken by a product saved
+                // from another device; the server saved it under the next
+                // free one. Everything below uses the ID it was saved under.
+                if (resps.assigned?.i_d) {
+                    newProduct.i_d = resps.assigned.i_d
+                    if (resps.mess) {
+                        setAlertState('info')
+                        setAlert(resps.mess)
+                        setAlertTimeout(5000)
+                    }
+                }
                 const bomLines = Array.isArray(newProduct.billOfMaterials)
                     ? newProduct.billOfMaterials
                         .filter((line) => line.productId && Number(line.quantity || 0) > 0)

@@ -1148,14 +1148,18 @@ const Accommodation = () => {
             setAlertTimeout(5000)
             setCustomerStatus('Add Customer')
         } else {
+            // The ID worked out here was already taken (another device added
+            // a customer first); the server saved this one under the next
+            // free ID, which is the one shown from now on.
+            if (resps.assigned?.i_d) newCustomer.i_d = resps.assigned.i_d
             setCustomers(newCustomers)
             setCurCustomer(newCustomer)
             setIsView(true)
             setCustomerFields({ ...newCustomer })
             getCustomers(company)
             setAlertState('success')
-            setAlert('Customer Added Successfully!')
-            setAlertTimeout(1000)
+            setAlert(resps.assigned?.i_d ? `Customer added as ${resps.assigned.i_d}.` : 'Customer Added Successfully!')
+            setAlertTimeout(resps.assigned?.i_d ? 4000 : 1000)
             setCustomerStatus('Add Customer')
         }
     }
