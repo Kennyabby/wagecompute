@@ -966,6 +966,23 @@ function App() {
                 })
               }
               break;
+            case 'Profile':
+              // Access changed elsewhere (a dismissal taking permissions,
+              // sign-in and debt recovery away, or another admin's edit)
+              // shows in Settings at once. Matched by email: the screens
+              // keep profiles without their _id.
+              try {
+                setProfiles((prev) => {
+                  const keyOf = (item) => (item?.emailid ? String(item.emailid).trim().toLowerCase() : null)
+                  // The list holds verified profiles only, as fetchProfiles reads them.
+                  const merged = upsertByKey(prev, payload, keyOf).filter((item) => item?.verified !== false)
+                  setCached(company, 'profiles', merged, companyRecord?.emailid)
+                  return merged
+                })
+              } catch (e) {
+                console.error('SSE Profile apply error', e)
+              }
+              break;
             default:
               // fallback: trigger a reload count so dependent hooks refresh
               setReloadCount((c) => c + 1)

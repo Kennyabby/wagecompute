@@ -627,6 +627,20 @@ const Settings = () => {
         }))
     }, [profiles])
 
+    // The profile open for editing follows a change made elsewhere to its
+    // access (a dismissal clearing permissions, sign-in and debt recovery,
+    // or another admin's save), instead of showing what it had when opened
+    // until the page is reloaded.
+    useEffect(() => {
+        if (!selectedEmployee?.emailid) return
+        const latest = profiles.find((profile) => String(profile.emailid).trim().toLowerCase() === String(selectedEmployee.emailid).trim().toLowerCase())
+        if (!latest) return
+        const fields = ['permissions', 'enableLogin', 'enableDebtRecovery', 'aiAccess', 'status', 'access']
+        const changed = fields.some((field) => JSON.stringify(latest[field] ?? null) !== JSON.stringify(selectedEmployee[field] ?? null))
+        if (changed) handleProfileSelect(latest)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profiles])
+
     useEffect(() => {
         const updateDBStatus = async () => {
             if (accessValue === magicWord || accessValue === activationWord) {
