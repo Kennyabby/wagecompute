@@ -1,0 +1,141 @@
+/* The reconciliation inside the Payment Receipts view: the bar with the
+   totals and Approve/Decline before a Session Manager starts, and the
+   summary and decision shown when looking back at dates. */
+
+.sm-reconcile-notice p {
+    margin: 0 0 10px;
+    color: #355244;
+    line-height: 1.45;
+}
+
+.sm-reconcile-declined {
+    color: #8a2f2f;
+    font-weight: 600;
+}
+
+/* Kept in view while the figures below it scroll, so the choice never sits
+   over the tables. */
+.sm-reconcile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border: 1px solid rgba(23, 56, 41, 0.14);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(23, 56, 41, 0.08);
+}
+
+.sm-reconcile-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.9rem;
+    color: #355244;
+}
+
+.sm-reconcile-totals strong {
+    font-size: 1.05rem;
+    color: #173829;
+}
+
+.sm-reconcile-note {
+    flex: 1 1 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #5d7164;
+}
+
+.sm-reconcile-note textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #90caf9;
+    font: inherit;
+    resize: vertical;
+}
+
+.sm-reconcile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.sm-reconcile-decline,
+.sm-reconcile-approve {
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sm-reconcile-decline {
+    background: #fdf0f0;
+    color: #8a2f2f;
+    border: 1px solid rgba(198, 83, 83, 0.4);
+}
+
+.sm-reconcile-approve {
+    background: linear-gradient(135deg, #173829, #2b6a4b);
+    color: #ffffff;
+}
+
+.sm-reconcile-decline:disabled,
+.sm-reconcile-approve:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sm-reconcile-history {
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: #f5faff;
+    border: 1px solid #90caf9;
+}
+
+.sm-reconcile-verdicts {
+    margin-top: 10px;
+}
+
+.sm-verdict {
+    margin: 6px 0 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.sm-verdict-approved {
+    background: #eaf6ee;
+    color: #1f6b41;
+}
+
+.sm-verdict-declined {
+    background: #fdf0f0;
+    color: #8a2f2f;
+}
+
+.sm-verdict-none {
+    background: #f2f4f3;
+    color: #4d5e55;
+}
+
+@media (max-width: 560px) {
+    .sm-reconcile-actions {
+        width: 100%;
+    }
+    .sm-reconcile-decline,
+    .sm-reconcile-approve {
+        flex: 1 1 0;
+    }
+}

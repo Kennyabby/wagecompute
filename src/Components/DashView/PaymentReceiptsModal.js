@@ -3,14 +3,25 @@ import ContextProvider from '../../Resources/ContextProvider';
 import { FaTimes, FaFilter, FaReceipt } from 'react-icons/fa';
 import { exportReceiptsTableToPDF, exportSummaryMatrixToPDF } from './pdfUtils';
 import { generateExcel } from '../../utils/exportUtils';
+import './PaymentReceiptsModal.css';
 import { currentDayWindow } from '../../Resources/viewWindow';
+import { loadReconciliation, totalsOf, describeVerdicts } from '../../Resources/reconciliationData';
 
 // fixedRange ({ from, to }) pins the dates, for a view of one period such as
 // the Session Manager reconciliation, where the dates are not the viewer's
-// to change. title and footer let that view name itself and add its own
-// actions under the figures.
-const PaymentReceiptsModal = ({ open, onClose, paymentReceipts, title = 'Payment Receipts', fixedRange = null, footer = null, notice = null }) => {
-  const { employees, paymentMethods, companyRecord, centralCompany, allowBacklogs, getSessionStart } = useContext(ContextProvider);
+// to change. title names the view; actions sit above the figures and stay
+// in view while they scroll; footer goes under them.
+//
+// Opened anywhere else, it can also show the reconciliation of the chosen
+// dates (Show reconciliation): the same money, debts and shortages the
+// Session Manager is shown before it starts, without approving or declining,
+// and the decision made, when one day is chosen.
+const PaymentReceiptsModal = ({ open, onClose, paymentReceipts: receiptsProp, title = 'Payment Receipts', fixedRange = null, footer = null, notice = null, actions = null }) => {
+  const { employees, paymentMethods, companyRecord, centralCompany, allowBacklogs, getSessionStart, getSessionEnd, fetchServer, server, company } = useContext(ContextProvider);
+  const [reconOn, setReconOn] = useState(false);
+  const [recon, setRecon] = useState(null);
+  const [reconState, setReconState] = useState({ loading: false, error: '' });
+  const paymentReceipts = reconOn ? (recon?.rows || []) : (receiptsProp || []);
   const companyLogoUrl = centralCompany?.logoUrl || companyRecord?.logoUrl || null;
   // Get earliest date boundary
   const earliestDate = useMemo(() => {
@@ -54,6 +65,9 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts, title = 'Payment
 
   // Clamp the date filters to the current day for users without backlog access
   useEffect(() => {
+    // The reconciliation is read for the dates chosen; resetting them to
+    // what it returned would read again without end.
+    if (reconOn) return;
     if (fixedRange) {
       setFilter(f => ({ ...f, from: fixedRange.from, to: fixedRange.to }));
     } else if (isNonAdmin) {
@@ -70,7 +84,26 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts, title = 'Payment
         to: ''
       }));
     }
-  }, [companyRecord, earliestDate, isNonAdmin, fixedRange?.from, fixedRange?.to]);
+  }, [companyRecord, earliestDate, isNonAdmin, fixedRange?.from, fixedRange?.to, reconOn]);
+
+  // Reads the reconciliation of the chosen business days. A month at most:
+  // it brings every order and session of the range.
+  const today = () => currentDayWindow(getSessionStart).end;
+  const reconFrom = filter.from || today();
+  const reconTo = filter.to || today();
+  const reconDays = Math.round((new Date(reconTo).getTime() - new Date(reconFrom).getTime()) / 86400000) + 1;
+  useEffect(() => {
+    if (!reconOn || !open) return undefined;
+    if (reconDays > 31) { setRecon(null); setReconState({ loading: false, error: 'Choose 31 days or fewer to see the reconciliation.' }); return undefined; }
+    if (reconDays < 1) { setRecon(null); setReconState({ loading: false, error: 'The end date is before the start date.' }); return undefined; }
+    let cancelled = false;
+    setReconState({ loading: true, error: '' });
+    loadReconciliation({ fetchServer, server, company, from: reconFrom, to: reconTo, getSessionStart, getSessionEnd })
+      .then((result) => { if (!cancelled) { setRecon(result); setReconState({ loading: false, error: '' }); } })
+      .catch((error) => { if (!cancelled) setReconState({ loading: false, error: error.message || 'Could not load the reconciliation.' }); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reconOn, open, reconFrom, reconTo]);
 
   // Multi-select toggles for each filter
   const [multiPaypoint, setMultiPaypoint] = useState(false);
@@ -293,6 +326,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts, title = 'Payment
         <button onClick={onClose} style={{ position: 'absolute', top: 5, right: 5, fontSize: 22, background: 'none', border: 'none', cursor: 'pointer' }}><FaTimes /></button>
         <h2 style={{ marginBottom: 16 }}><FaReceipt style={{ marginRight: 8 }} />{title}</h2>
         {notice}
+        {actions}
         <div className="modal-filters" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -448,7 +482,39 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts, title = 'Payment
               </label>
             )}
           </div>
+          {!fixedRange && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start', marginTop: '8px' }}>
+              <label htmlFor="show-reconciliation" style={{ fontWeight: 'bold', color: '#1976d2' }}>Show reconciliation</label>
+              <input id="show-reconciliation" type="checkbox" checked={reconOn} onChange={e => { setReconOn(e.target.checked); if (!e.target.checked) setRecon(null); }} style={{ width: '18px', height: '18px' }} />
+              <span style={{ fontSize: '0.85em', color: '#555' }}>Money taken, debts and shortages for these business days, as checked before the Session Manager starts.</span>
+            </div>
+          )}
         </div>
+        {reconOn && (
+          <div className="sm-reconcile-history">
+            {reconState.loading && <p>Loading the reconciliation for {reconFrom}{reconTo !== reconFrom ? ` to ${reconTo}` : ''}...</p>}
+            {reconState.error && <p className="sm-reconcile-declined">{reconState.error}</p>}
+            {!reconState.loading && !reconState.error && recon && (() => {
+              const t = totalsOf(recon.rows);
+              const verdicts = reconFrom === reconTo ? describeVerdicts(recon.managers.filter((m) => m.businessDate === reconFrom)) : [];
+              return (
+                <>
+                  <div className="sm-reconcile-totals">
+                    <strong>{`Reconciliation of ${reconFrom}${reconTo !== reconFrom ? ` to ${reconTo}` : ''}: received ₦${t.received.toLocaleString()}`}</strong>
+                    <span>{`Debts ₦${t.debts.toLocaleString()} · Shortages ₦${t.shortages.toLocaleString()} · recovered ₦${t.recovered.toLocaleString()}, remaining ₦${t.remaining.toLocaleString()}`}</span>
+                  </div>
+                  {reconFrom === reconTo && (
+                    <div className="sm-reconcile-verdicts">
+                      {verdicts.length
+                        ? verdicts.map((v, i) => <p key={i} className={`sm-verdict sm-verdict-${v.status}`}>{v.text}</p>)
+                        : <p className="sm-verdict sm-verdict-none">No Session Manager was stopped on this business day, so there is no decision for it.</p>}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
         <div style={{ marginBottom: '12px', fontWeight: 'bold', color: '#1976d2', fontSize: '1.05em' }}>
           {(() => {
             let totalCount = 0;
@@ -511,7 +577,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts, title = 'Payment
           </div>
         )}
 
-        <div className="modal-details" style={{ maxHeight: '55vh' }}>
+        <div className="modal-details" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
           {filteredReceipts.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#888', marginTop: 32 }}>No receipts found for selected filters.</div>
           ) : viewType === 'card' ? (
