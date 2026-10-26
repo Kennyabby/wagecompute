@@ -215,7 +215,11 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts: receiptsProp, ti
 
   return (
     <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5000, background: 'rgba(0,0,0,0.25)', overflowY: 'auto' }}>
-      <div className="modal-content" style={{ position: 'relative', background: '#fff', borderRadius: 12, maxWidth: 1200, width: 'calc(100% - 32px)', margin: '24px auto', padding: 'clamp(16px, 3vw, 32px)', boxSizing: 'border-box', boxShadow: '0 4px 32px rgba(0,0,0,0.12)', position: 'relative' }}>
+      {/* .modal-content is styled globally by other screens (a flex column
+          held to 90% of the screen). Here the window is one tall page that the
+          backdrop scrolls, so that layout is switched off; it squeezed the
+          transactions table to a few pixels under the summary. */}
+      <div className="modal-content" style={{ position: 'relative', display: 'block', maxHeight: 'none', overflow: 'visible', background: '#fff', borderRadius: 12, maxWidth: 1200, width: 'calc(100% - 32px)', margin: '24px auto', padding: 'clamp(16px, 3vw, 32px)', boxSizing: 'border-box', boxShadow: '0 4px 32px rgba(0,0,0,0.12)' }}>
         {/* PDF Download Section */}
         <div style={{ marginTop: '25px', marginBottom: '2px', display: 'flex', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
           <button
@@ -577,7 +581,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts: receiptsProp, ti
           </div>
         )}
 
-        <div className="modal-details" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+        <div className="modal-details" style={{ maxHeight: '70vh', overflowY: 'auto', flexShrink: 0 }}>
           {filteredReceipts.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#888', marginTop: 32 }}>No receipts found for selected filters.</div>
           ) : viewType === 'card' ? (
