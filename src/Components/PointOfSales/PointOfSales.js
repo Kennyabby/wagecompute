@@ -702,7 +702,9 @@ const PointOfSales = () => {
     
             if (currSessionManager && currSessionManager?.active && !activeSessions.length){
                 setAlertState('info')
-                setAlert('SessionManager Started. Start all Sessions')
+                // Says who started it and when: on a device that did not,
+                // this is how its user learns it is already running.
+                setAlert(`Session Manager running, started ${new Date(currSessionManager.start).toLocaleString()} by ${currSessionManager.startedBy || 'another device'}. Start all sessions.`)
                 setAlertTimeout(6000)
             }
         }
@@ -839,20 +841,59 @@ const PointOfSales = () => {
     // before it (SessionManagerReconcile.js); it starts only when approved.
     // The very first one, with nothing before it, starts straight away.
     const [reconcileManager, setReconcileManager] = useState(null)
+    // What the server holds now, not this device's list, which can be a step
+    // behind: another device may have started the Session Manager already.
+    // Kept to sixty days so a business closed for a while still finds its
+    // last one. null when the server cannot be reached.
+    const readServerSessionManagers = async () => {
+        if (!company) return null
+        const resp = await fetchServer("POST", { database: company, collection: "SessionManagers", prop: { start: { $gte: Date.now() - 60 * 24 * 60 * 60 * 1000 } } }, "getDocsDetails", server).catch(() => null)
+        if (!resp || resp.err || !Array.isArray(resp.record)) return null
+        setSessionManagers((prev) => {
+            const byStart = new Map((prev || []).map((m) => [m.start, m]))
+            resp.record.forEach((m) => byStart.set(m.start, { ...(byStart.get(m.start) || {}), ...m }))
+            return [...byStart.values()]
+        })
+        return resp.record
+    }
+    const runningIn = (list) => [...(list || [])].filter((m) => !m?.end && m?.active !== false).sort((a, b) => b.start - a.start)[0] || null
+    const sayAlreadyRunning = (running) => {
+        setAlertState('info')
+        setAlert(`The Session Manager is already running, started ${new Date(running.start).toLocaleString()} by ${running.startedBy || 'another device'}. Nothing more was started.`)
+        setAlertTimeout(6000)
+    }
+
     const requestSessionManagerStart = async () => {
-        const stopped = (list) => [...(list || [])].filter((m) => m?.end).sort((a, b) => b.start - a.start)[0] || null
-        let last = stopped(sessionManagers)
-        if (!last && company) {
-            // Kept to the last two days in memory; a business closed for
-            // longer still has its last day checked.
-            const resp = await fetchServer("POST", { database: company, collection: "SessionManagers", prop: { end: { $ne: null }, start: { $gte: Date.now() - 60 * 24 * 60 * 60 * 1000 } } }, "getDocsDetails", server).catch(() => null)
-            last = stopped(resp?.record)
+        // The automatic start after posting pending sales is asked for once.
+        window.localStorage.removeItem('back-to-pos')
+        const fromServer = await readServerSessionManagers()
+        const list = fromServer || sessionManagers
+        const running = runningIn(list)
+        if (running) {
+            sayAlreadyRunning(running)
+            return
         }
+        const last = [...(list || [])].filter((m) => m?.end).sort((a, b) => b.start - a.start)[0] || null
         if (!last) {
             createSessionManager()
             return
         }
         setReconcileManager(last)
+    }
+
+    // Approved here: started only if no other device started one meanwhile.
+    const startAfterApproval = async (resp) => {
+        if (resp?.alreadyStarted) {
+            sayAlreadyRunning(resp.alreadyStarted)
+            return
+        }
+        const fromServer = await readServerSessionManagers()
+        const running = runningIn(fromServer || [])
+        if (running) {
+            sayAlreadyRunning(running)
+            return
+        }
+        createSessionManager()
     }
     const latestSessionManager = [...(sessionManagers || [])].sort((a, b) => b.start - a.start)[0] || null
     const startOnHold = sessionManagerRequired && !!latestSessionManager?.end && latestSessionManager?.reconciliation?.status === 'declined'
@@ -993,6 +1034,28 @@ const PointOfSales = () => {
             setAlert('Please Select Your Sales Post');
             setAlertTimeout(5000);
             return;
+        }
+
+        // One open sales session per person: the one already open is ended
+        // before another is started. Asked of the server, which every device
+        // writes to, falling back to this device's list when offline. The
+        // server refuses a second one too (wageserver posOps.js).
+        const forUser = ![null, undefined].includes(sessionUser) ? sessionUser.profile.emailid : companyRecord.emailid
+        const openHere = [...(allSessions || []), ...(sessions || []), ...(lastActiveSessions || [])]
+            .find((s) => s?.employee_id === forUser && (s?.type || 'sales') === 'sales' && !s?.end)
+        let openSession = openHere || null
+        if (company) {
+            const resp = await fetchServer("POST", { database: company, collection: "POSSessions", prop: { employee_id: forUser, type: 'sales', end: { $in: [null, ''] } } }, "getDocsDetails", server).catch(() => null)
+            if (resp && !resp.err && Array.isArray(resp.record)) openSession = resp.record[0] || null
+        }
+        if (openSession) {
+            const who = employees.find((e) => e.i_d === forUser)
+            const name = who ? `${who.firstName || ''} ${who.lastName || ''}`.trim() : forUser
+            setAlertState('error')
+            setAlert(`${name} already has a session open, started ${new Date(openSession.start).toLocaleString()}${openSession.wrh ? ` at ${openSession.wrh}` : ''}. End it before starting another.`)
+            setAlertTimeout(6000)
+            setLoading(false)
+            return
         }
 
         const newDate = new Date().getTime();
@@ -4319,10 +4382,10 @@ const PointOfSales = () => {
             {startOnHoldMessage && <div className="pos-start-on-hold" role="alert">{startOnHoldMessage}</div>}
             {reconcileManager && <SessionManagerReconcile
                 manager={reconcileManager}
-                onApproved={(record) => {
+                onApproved={(record, resp) => {
                     if (record) setSessionManagers((prev) => (prev || []).map((m) => (m.start === record.start ? { ...m, ...record } : m)))
                     setReconcileManager(null)
-                    createSessionManager()
+                    startAfterApproval(resp)
                 }}
                 onClose={(record) => {
                     if (record) setSessionManagers((prev) => (prev || []).map((m) => (m.start === record.start ? { ...m, ...record } : m)))
