@@ -52,6 +52,40 @@ const Sales = () => {
 
     // The dates a user without backlog access sees (Resources/viewWindow.js):
     // the current business day and today, nothing earlier.
+    // Kitchen sales delivered by someone other than the order's cashier are
+    // credited to whoever delivered them (the kitchen). The cashier is
+    // credited only with kitchen items they delivered themselves. The kitchen
+    // share of a mixed order used to go to both, which overstated the day's
+    // sales by that share (2026-10-25 at one workspace: 55,400).
+    const deliveredByAnother = (sessionOrder, employeeId, wh) => (
+        wh === 'kitchen' && !!sessionOrder?.lastDeliveredBy && sessionOrder.lastDeliveredBy !== employeeId
+    )
+
+    // The inventory shortage each day's reconciliation charged to staff, by
+    // posting date. A sales day's card shows this, the same figure the
+    // Session Manager reconciliation shows. The total stored on the sales
+    // day added a session's shortage once per row it had (one per employee
+    // and sales point), and left out sessions with no sales row.
+    const [reconShortageByDate, setReconShortageByDate] = useState({})
+    useEffect(() => {
+        const dates = [...new Set((sales || []).map((sale) => sale?.postingDate).filter(Boolean))]
+        if (!company || !dates.length) return
+        let cancelled = false
+        fetchServer('POST', { database: company, collection: 'InventoryReconciliations', prop: { postingDate: { $in: dates } } }, 'getDocsDetails', server)
+            .then((resp) => {
+                if (cancelled || !Array.isArray(resp?.record)) return
+                const byDate = {}
+                resp.record.forEach((rec) => {
+                    const charged = (rec.locations || []).reduce((sum, loc) => sum + (loc.shortagePostings || []).reduce((s, p) => s + Number(p.amountCharged || 0), 0), 0)
+                    byDate[rec.postingDate] = (byDate[rec.postingDate] || 0) + charged
+                })
+                setReconShortageByDate(byDate)
+            })
+            .catch(() => {})
+        return () => { cancelled = true }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [company, sales])
+
     const getViewDays = () => {
         const { start, end } = currentDayWindow(getSessionStart);
         return { today: end, dayStart: start };
@@ -814,6 +848,9 @@ const Sales = () => {
             // console.log(multSessions)
             setActiveSessions(activeSessions)
             let mct = 0
+            // A session's inventory shortage is its own, once, however many
+            // rows (employees and sales points) its orders are spread over.
+            const shortageCounted = new Set()
             sessionEmployees.forEach((employeeId) => {
                 if (employeeId !== null) {
                     let totalWrhTransactions = {}
@@ -876,7 +913,7 @@ const Sales = () => {
                                                     splitPayment['exclude'] = true
                                                 }
     
-                                                if (sessionOrder.handlerId === employeeId) {
+                                                if (sessionOrder.handlerId === employeeId && !deliveredByAnother(sessionOrder, employeeId, wh)) {
                                                     wrhSessionOrders.push({ session, sessionOrder, splitPayment })
                                                 } else {
                                                     if (session.employee_id !== employeeId && wh === 'kitchen') {
@@ -904,7 +941,7 @@ const Sales = () => {
                                                 splitPayment['exclude'] = true
                                             }
 
-                                            if (sessionOrder.handlerId === employeeId) {
+                                            if (sessionOrder.handlerId === employeeId && !deliveredByAnother(sessionOrder, employeeId, wh)) {
                                                 wrhSessionOrders.push({ session, sessionOrder, splitPayment })
                                             } else {
                                                 if (session.employee_id !== employeeId && wh === 'kitchen') {
@@ -965,7 +1002,10 @@ const Sales = () => {
                                         const { totalSalesAmount, debtDue, unAccountedSales, inventoryShortageDue } = session
                                         totalWrhTransactions[wh].debt += Number(debtDue)
                                         totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
-                                        totalWrhTransactions[wh].inventoryShortageDue += Number(inventoryShortageDue || 0)
+                                        if (!shortageCounted.has(session.start)) {
+                                            shortageCounted.add(session.start)
+                                            totalWrhTransactions[wh].inventoryShortageDue += Number(inventoryShortageDue || 0)
+                                        }
 
                                         totalWrhTransactions[wh].totalSales += Number(unAccountedSales || 0)
                                     }
@@ -1211,6 +1251,9 @@ const Sales = () => {
             let mct = 0
             // console.log('session employees with sales for posting date:', postingDate, sessionEmployees)
             
+            // A session's inventory shortage is its own, once, however many
+            // rows (employees and sales points) its orders are spread over.
+            const shortageCounted = new Set()
             sessionEmployees.forEach((employeeId) => {
                 if (employeeId !== null) {
                     let totalWrhTransactions = {}
@@ -1265,7 +1308,7 @@ const Sales = () => {
                                                     splitPayment['exclude'] = true
                                                 }
     
-                                                if (sessionOrder.handlerId === employeeId) {
+                                                if (sessionOrder.handlerId === employeeId && !deliveredByAnother(sessionOrder, employeeId, wh)) {
                                                     wrhSessionOrders.push({ session, sessionOrder, splitPayment })
                                                 } else {
                                                     if (session.employee_id !== employeeId && wh === 'kitchen') {
@@ -1293,7 +1336,7 @@ const Sales = () => {
                                                 splitPayment['exclude'] = true
                                             }
 
-                                            if (sessionOrder.handlerId === employeeId) {
+                                            if (sessionOrder.handlerId === employeeId && !deliveredByAnother(sessionOrder, employeeId, wh)) {
                                                 wrhSessionOrders.push({ session, sessionOrder, splitPayment })
                                             } else {
                                                 if (session.employee_id !== employeeId && wh === 'kitchen') {
@@ -1354,7 +1397,10 @@ const Sales = () => {
                                         const { totalSalesAmount, debtDue, unAccountedSales, inventoryShortageDue } = session
                                         totalWrhTransactions[wh].debt += Number(debtDue)
                                         totalWrhTransactions[wh].unAccountedSales += Number(unAccountedSales)
-                                        totalWrhTransactions[wh].inventoryShortageDue += Number(inventoryShortageDue || 0)
+                                        if (!shortageCounted.has(session.start)) {
+                                            shortageCounted.add(session.start)
+                                            totalWrhTransactions[wh].inventoryShortageDue += Number(inventoryShortageDue || 0)
+                                        }
 
                                         totalWrhTransactions[wh].totalSales += Number(unAccountedSales || 0)
                                     }
@@ -3787,7 +3833,10 @@ const Sales = () => {
                                         physical-inventory-reconciliation shortage charged to staff for this
                                         day, recoverable from the Recovery section below or the Reconcile
                                         Inventory modal. */}
-                                        {Number(totalInventoryShortageDue) > 0 && <div>Inventory Shortage: <b>{'₦' + Number(totalInventoryShortageDue).toLocaleString()}</b></div>}
+                                        {(() => {
+                                            const shortage = reconShortageByDate[postingDate] ?? Number(totalInventoryShortageDue || 0)
+                                            return shortage > 0 ? <div>Inventory Shortage: <b>{'₦' + Number(shortage).toLocaleString()}</b></div> : null
+                                        })()}
                                         <div className='deptdesc'>{`Number of Sales Made:`} <b>{`${record.length}`}</b></div>
                                         {approval && approval?.approvers?.length &&
                                             <div

@@ -1,75 +1,52 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import ContextProvider from '../../Resources/ContextProvider'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
-import { buildPaymentReceipts, buildDebtRows, localDate } from '../../Resources/paymentReceipts'
+import { loadReconciliation, totalsOf, businessDateOf } from '../../Resources/reconciliationData'
 
-// The last step before a Session Manager starts: the money the previous one
-// took, by module, payment method and employee, laid out as the Payment
-// Receipts view does, for that Session Manager's own period only. Whoever
-// runs it checks the figures against the bank for that date and approves,
-// which starts the new Session Manager, or declines, which puts starting on
-// hold for everyone until it is approved (wageserver
-// /pos/sessionManager/reconcile).
+// The last step before a Session Manager starts: the money taken and the
+// debts and shortages incurred over the business day(s) the stopped Session
+// Manager ran, laid out as the Payment Receipts view does
+// (Resources/reconciliationData.js). Whoever runs it checks the figures
+// against the bank for that date and approves, which starts the new Session
+// Manager, or declines, which puts starting on hold for everyone until it is
+// approved (wageserver /pos/sessionManager/reconcile).
 const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
-    const { fetchServer, server, company, setAlert, setAlertState, setAlertTimeout } = useContext(ContextProvider)
+    const { fetchServer, server, company, setAlert, setAlertState, setAlertTimeout, getSessionStart, getSessionEnd } = useContext(ContextProvider)
     const [data, setData] = useState(null)
     const [loadError, setLoadError] = useState('')
     const [note, setNote] = useState('')
     const [saving, setSaving] = useState('')
 
-    const from = localDate(manager.start)
-    const to = localDate(manager.end || Date.now())
+    // The business days its sessions started on, the days their sales are
+    // posted under. A Session Manager stopped after the next morning's
+    // closing hour still covers one day when no session started that day.
+    const from = businessDateOf(manager.start, getSessionStart)
+    const [to, setTo] = useState(null)
 
     useEffect(() => {
         let cancelled = false
-        const read = (collection, prop) => fetchServer('POST', { database: company, collection, prop }, 'getDocsDetails', server)
-            .then((resp) => (resp && !resp.err && Array.isArray(resp.record) ? resp.record : Promise.reject(new Error(resp?.mess || `Could not load ${collection}.`))))
-        const span = { $gte: manager.start, $lte: manager.end || Date.now() }
-        Promise.all([
-            read('Orders', { $or: [{ createdAt: span }, { sessionId: span }] }),
-            read('POSSessions', { start: span }),
-            read('Accommodations', { $or: [{ 'paymentHistory.paymentDate': { $gte: from, $lte: to } }, { postingDate: { $gte: from, $lte: to } }] }),
-            read('Sales', { 'recoveryList.recoveryDate': { $gte: from, $lte: to } }),
-            read('InventoryReconciliations', { postingDate: { $gte: from, $lte: to } }),
-        ]).then(async ([orders, sessions, accommodations, sales, reconciliations]) => {
-            // The sales days these sessions were posted under, whatever their
-            // date, carry what has been recovered of each session's debt.
-            const starts = sessions.map((s) => s.start).filter((v) => v != null)
-            const postedUnder = starts.length ? await read('Sales', { salesSessions: { $in: starts } }) : []
-            if (!cancelled) setData({ orders, sessions, accommodations, sales, reconciliations, postedUnder })
-        }).catch((error) => {
-            if (!cancelled) setLoadError(error.message || 'Could not load the figures for this Session Manager.')
-        })
+        const end = manager.end || Date.now()
+        fetchServer('POST', { database: company, collection: 'POSSessions', prop: { start: { $gte: manager.start, $lte: end } } }, 'getDocsDetails', server)
+            .catch(() => null)
+            .then((resp) => {
+                const days = (Array.isArray(resp?.record) ? resp.record : []).map((s) => businessDateOf(s.start, getSessionStart))
+                const last = days.reduce((max, day) => (day > max ? day : max), from)
+                if (cancelled) return null
+                setTo(last)
+                return loadReconciliation({ fetchServer, server, company, from, to: last, getSessionStart, getSessionEnd })
+            })
+            .then((result) => { if (!cancelled && result) setData(result) })
+            .catch((error) => { if (!cancelled) setLoadError(error.message || 'Could not load the figures for this Session Manager.') })
         return () => { cancelled = true }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [manager.start, manager.end])
 
-    // Orders and sessions were read for this Session Manager's own window;
-    // the other modules carry only a date, so they are kept to its dates.
-    // Debts and shortages, from closed POS sessions, the inventory
-    // reconciliation and accommodation, sit in the same table as the
-    // payments, marked by kind, so the money received is totalled on its own.
-    const receipts = useMemo(() => {
-        if (!data) return []
-        const paid = buildPaymentReceipts({ sales: data.sales, accommodations: data.accommodations, orders: data.orders, sessions: data.sessions })
-            .filter((row) => {
-                if (String(row.paymentModule).startsWith('POS Order')) return true
-                const day = String(row.paymentDate || '').slice(0, 10)
-                return day >= from && day <= to
-            })
-        const owed = buildDebtRows({ sessions: data.sessions, accommodations: data.accommodations, reconciliations: data.reconciliations, sales: data.postedUnder, from, to })
-        return [...paid, ...owed]
-    }, [data, from, to])
-    const sumOf = (kind, field = 'paymentAmount') => receipts.filter((row) => (row.kind || 'payment') === kind).reduce((sum, row) => sum + Number(row[field] || 0), 0)
-    const total = sumOf('payment')
-    const debts = sumOf('debt')
-    const shortages = sumOf('shortage')
-    const owedRecovered = sumOf('debt', 'recoveredAmount') + sumOf('shortage', 'recoveredAmount')
-    const owedRemaining = sumOf('debt', 'remainingAmount') + sumOf('shortage', 'remainingAmount')
+    const receipts = data?.rows || []
+    const totals = totalsOf(receipts)
 
     const decide = async (decision) => {
         setSaving(decision)
-        const resp = await fetchServer('POST', { start: manager.start, decision, note, total }, 'pos/sessionManager/reconcile', server).catch(() => null)
+        const resp = await fetchServer('POST', { start: manager.start, decision, note, total: totals.received }, 'pos/sessionManager/reconcile', server).catch(() => null)
         setSaving('')
         if (resp?.ok) {
             if (decision === 'approved') {
@@ -95,10 +72,12 @@ const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
     }
 
     const previous = manager.reconciliation
+    const toShown = to || from
+    const days = `${from}${toShown !== from ? ` to ${toShown}` : ''}`
     const notice = (
         <div className='sm-reconcile-notice'>
             <p>
-                {`Check what the Session Manager started ${new Date(manager.start).toLocaleString()} took, against the bank and cash for ${from}${to !== from ? ` to ${to}` : ''}. `}
+                {`Check what was taken on ${days} (the Session Manager started ${new Date(manager.start).toLocaleString()}), against the bank and cash for those dates. `}
                 Approve to start today&apos;s Session Manager. Decline to hold starting for everyone until it is resolved.
             </p>
             {previous?.status === 'declined' && (
@@ -111,19 +90,20 @@ const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
         </div>
     )
 
-    const footer = (
-        <div className='sm-reconcile-footer'>
-            <label>
+    // Above the figures, and kept in view while they scroll, so the choice
+    // never sits on top of the tables.
+    const actions = (
+        <div className='sm-reconcile-bar'>
+            <div className='sm-reconcile-totals'>
+                <strong>{`Received ₦${totals.received.toLocaleString()}`}</strong>
+                <span>{`Debts ₦${totals.debts.toLocaleString()} · Shortages ₦${totals.shortages.toLocaleString()}`}</span>
+                <span>{`Of those, recovered ₦${totals.recovered.toLocaleString()}, remaining ₦${totals.remaining.toLocaleString()}`}</span>
+            </div>
+            <label className='sm-reconcile-note'>
                 <span>Note (optional, shown to everyone on a decline)</span>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} placeholder='For example: bank shows 12,000 less on transfers' />
             </label>
             <div className='sm-reconcile-actions'>
-                <div className='sm-reconcile-totals'>
-                    <strong>{`Received ₦${total.toLocaleString()}`}</strong>
-                    <span>{`Debts ₦${debts.toLocaleString()}`}</span>
-                    <span>{`Shortages ₦${shortages.toLocaleString()}`}</span>
-                    <span>{`Of those, recovered ₦${owedRecovered.toLocaleString()}, remaining ₦${owedRemaining.toLocaleString()}`}</span>
-                </div>
                 <button type='button' className='sm-reconcile-decline' disabled={!!saving || !data} onClick={() => decide('declined')}>
                     {saving === 'declined' ? 'Declining...' : 'Decline'}
                 </button>
@@ -139,10 +119,10 @@ const SessionManagerReconcile = ({ manager, onApproved, onClose }) => {
             open
             onClose={() => onClose(null)}
             paymentReceipts={receipts}
-            title={`Reconcile ${from}${to !== from ? ` to ${to}` : ''} before starting`}
-            fixedRange={{ from, to }}
+            title={`Reconcile ${days} before starting`}
+            fixedRange={{ from, to: toShown }}
             notice={notice}
-            footer={footer}
+            actions={actions}
         />
     )
 }
