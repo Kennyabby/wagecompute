@@ -2,6 +2,7 @@ import './Purchase.css'
 import { useEffect, useContext, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
+import { currentDayWindow } from '../../Resources/viewWindow'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import { exportPurchaseDocumentToPDF } from '../DashView/pdfUtils';
 import { useScroll } from 'framer-motion'
@@ -19,13 +20,13 @@ const Purchase = () => {
     const { storePath,
         server, intervalPeriod,
         fetchServer, posSettings,
-        companyRecord, allowBacklogs,
+        companyRecord, allowBacklogs, getSessionStart,
         company, getDate, products, getProducts, setProducts, getProductsWithStock,
         employees, getEmployees, months, getPurchase, setPurchase, purchase,
         settings, setAlert, setAlertState, setAlertTimeout, setActionMessage,
         showApprovalBox, setShowApprovalBox,
         curApproval, setCurApproval,
-        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval, canApproveSection,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval, canApproveSection, isOwnApproval,
         setApprovalStatus, setApprovalMessage, getProductsStockReport,
         paymentMethods,
     } = useContext(ContextProvider)
@@ -416,11 +417,18 @@ const Purchase = () => {
         }
     }, [settings])
 
+    // Without backlog access only the current day is shown
+    // (Resources/viewWindow.js); admins and backlog users keep the month.
     useEffect(() => {
-        if (!allowBacklogs) {
+        if (companyRecord && companyRecord.status !== 'admin' && !allowBacklogs) {
+            const { start, end } = currentDayWindow(getSessionStart)
+            setSaleFrom(start)
+            setSaleTo(end)
+        } else if (!allowBacklogs) {
             setSaleFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
         }
-    }, [companyRecord])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyRecord, allowBacklogs])
 
     useEffect(() => {
         if (curPurchase) {
@@ -724,7 +732,7 @@ const Purchase = () => {
                 }
             }
             if (curApproval && curApproval?.approved) {
-                if (companyRecord?.status !== 'admin' && !(companyRecord?.permissions || []).includes('allow_purchase_posts')) {
+                if (companyRecord?.status !== 'admin' && !(companyRecord?.permissions || []).includes('allow_purchase_posts') && !isOwnApproval(curApproval)) {
                     setAlertState('error')
                     setAlert('You are not allowed to post purchases!')
                     setAlertTimeout(3000)

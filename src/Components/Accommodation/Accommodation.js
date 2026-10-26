@@ -6,6 +6,7 @@ import { useState, useEffect, useContext, useRef, use } from 'react'
 import { useLocation } from 'react-router-dom'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
+import { currentDayWindow } from '../../Resources/viewWindow'
 import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDatesPanel';
 import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
@@ -24,14 +25,14 @@ const Accommodation = () => {
         fetchServer, paymentMethods,
         server, intervalPeriod,
         companyRecord, products, getProductsWithStock,
-        company, recoveryVal, allowBacklogs,
+        company, recoveryVal, allowBacklogs, getSessionStart,
         employees, getEmployees,
         accommodations, setAccommodations, getAccommodations, months,
         customers, setCustomers, getCustomers,
         getDate, removeComma, showApprovalBox, setShowApprovalBox,
         alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
-        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, canApproveSection,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, canApproveSection, isOwnApproval,
         paymentReceipts, obtainPaymentReceipts,
         removeApproval, curApproval, setCurApproval, setApprovalStatus, setApprovalMessage,
     } = useContext(ContextProvider)
@@ -561,10 +562,10 @@ const Accommodation = () => {
     }, [customers, isView])
     useEffect(() => {
         const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs
-        const today = new Date(Date.now()).toISOString().slice(0, 10)
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        const today = currentDayWindow(getSessionStart).end
+        const dayStart = currentDayWindow(getSessionStart).start
         if (isNonAdmin) {
-            setSaleFrom(yesterday)
+            setSaleFrom(dayStart)
             setSaleTo(today)
         } else {
             // keep existing defaults for admins / allowBacklogs users
@@ -1311,15 +1312,15 @@ const Accommodation = () => {
                                         placeholder='From'
                                         value={saleFrom}
                                         disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
-                                        min={(companyRecord?.status !== 'admin' && !allowBacklogs) ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
-                                        max={(companyRecord?.status !== 'admin' && !allowBacklogs) ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
+                                        min={(companyRecord?.status !== 'admin' && !allowBacklogs) ? currentDayWindow(getSessionStart).start : undefined}
+                                        max={(companyRecord?.status !== 'admin' && !allowBacklogs) ? currentDayWindow(getSessionStart).end : undefined}
                                         onChange={(e) => {
                                             const val = e.target.value
                                             if (companyRecord?.status !== 'admin' && !allowBacklogs) {
-                                                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-                                                const today = new Date(Date.now()).toISOString().slice(0, 10)
-                                                if (new Date(val).getTime() < new Date(yesterday).getTime()) {
-                                                    setSaleFrom(yesterday)
+                                                const dayStart = currentDayWindow(getSessionStart).start
+                                                const today = currentDayWindow(getSessionStart).end
+                                                if (new Date(val).getTime() < new Date(dayStart).getTime()) {
+                                                    setSaleFrom(dayStart)
                                                 } else if (new Date(val).getTime() > new Date(today).getTime()) {
                                                     setSaleFrom(today)
                                                 } else {
@@ -1341,15 +1342,15 @@ const Accommodation = () => {
                                 placeholder='To'
                                 value={saleTo}
                                 disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
-                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
-                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
+                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? currentDayWindow(getSessionStart).start : undefined}
+                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? currentDayWindow(getSessionStart).end : undefined}
                                 onChange={(e) => {
                                     const val = e.target.value
                                     if (companyRecord?.status !== 'admin' && !allowBacklogs) {
-                                        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-                                        const today = new Date(Date.now()).toISOString().slice(0, 10)
-                                        if (new Date(val).getTime() < new Date(yesterday).getTime()) {
-                                            setSaleTo(yesterday)
+                                        const dayStart = currentDayWindow(getSessionStart).start
+                                        const today = currentDayWindow(getSessionStart).end
+                                        if (new Date(val).getTime() < new Date(dayStart).getTime()) {
+                                            setSaleTo(dayStart)
                                         } else if (new Date(val).getTime() > new Date(today).getTime()) {
                                             setSaleTo(today)
                                         } else {
@@ -2351,7 +2352,7 @@ const Accommodation = () => {
                                                         }
                                                     }
                                                     if (curApproval && curApproval?.approved) {
-                                                        if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_accommodation_posts')) {
+                                                        if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_accommodation_posts') && !isOwnApproval(curApproval)) {
                                                             setAlertState('error')
                                                             setAlert('You are not allowed to post payments!')
                                                             setAlertTimeout(3000)

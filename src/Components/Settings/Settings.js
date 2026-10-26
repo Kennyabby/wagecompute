@@ -39,10 +39,15 @@ const DEFAULT_APPROVAL_CONFIG = {
 // Modules whose approved postings the server can post on its own once the
 // final approver approves (wageserver/UserModule/Approvals/autoPost.js), and
 // what they are called in the switch's explanation.
+// Every kind of request the server can post on approval
+// (wageserver/UserModule/Approvals/autoPost.js), worded for the switch.
 const AUTO_POST_MODULES = {
     expense: 'expenses',
     purchase: 'purchases (recorded awaiting receipt, as when posted by hand)',
     accommodation: 'accommodation payments',
+    sales: 'sales days, debt recoveries, rentals and products added to a posted sales day',
+    inventory: 'internal transfers',
+    attendance: 'monthly attendance',
 }
 
 const Settings = () => {
@@ -2280,7 +2285,7 @@ const Settings = () => {
                                         <div className='inpcov toggle-row'>
                                             <div>
                                                 Post automatically after final approval
-                                                <div className='settings-toggle-hint'>{`When on, ${AUTO_POST_MODULES[moduleName]} are posted the moment the final approver approves them, without waiting for the requester to post. If posting fails (for example, not enough funds on the payment method), the approval stays approved with the reason and can be posted by hand.`}</div>
+                                                <div className='settings-toggle-hint'>{`On: ${AUTO_POST_MODULES[moduleName]} are posted the moment the final approver approves them, recorded as the requester's own post, and leave every pending list. If posting fails (for example, not enough funds on the payment method), the approval stays approved with the reason and can be posted by hand. Off: once approved, the requester, an admin or someone with the posting permission posts it.`}</div>
                                             </div>
                                             <label className='toggle-switch'>
                                                 <input
@@ -2650,7 +2655,7 @@ const Settings = () => {
                                             {curPropSet.requireSessionManager === true && <div className='inpcov toggle-row'>
                                                 <div>
                                                     Stop the Session Manager before sessions end
-                                                    <div className='settings-toggle-hint'>When on, a user's session can only be ended once the Session Manager has been stopped. When off, users with permission to end or start sessions can do so while the Session Manager is still running. Admins and Session Manager holders can also switch this on the All Sessions page.</div>
+                                                    <div className='settings-toggle-hint'>When on, a user's session can only be ended once the Session Manager has been stopped. When off, users with permission to end or start sessions can do so while the Session Manager is still running. This is the only place it can be changed.</div>
                                                 </div>
                                                 <label className='toggle-switch'>
                                                     {/* On unless switched off, which is how it always behaved. */}

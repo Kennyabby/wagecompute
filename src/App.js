@@ -58,7 +58,9 @@ import { read, utils, writeFileXLSX } from 'xlsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import fetchServer, { setConnectivityStatus, callDesktop } from './Resources/ClientServerAPIConn/fetchServer'
 import createSSE from './Resources/ClientServerAPIConn/sseClient'
-import { syncPendingChanges, setSyncTransport, startBackgroundSync } from './Resources/offlineSync';
+import { syncPendingChanges, setSyncTransport, startBackgroundSync, reportDeviceClosed } from './Resources/offlineSync';
+import { buildPaymentReceipts } from './Resources/paymentReceipts';
+import { canSeeBacklog, isInCurrentDay } from './Resources/viewWindow';
 import { useConnectionStatus } from './Resources/useConnectionStatus';
 import {
   getAppCache,
@@ -607,6 +609,10 @@ function App() {
     if (window.electronAPI?.isElectron && !window.localStorage.getItem('desktop-selected-tenant')) {
       return
     }
+    // Only once someone is signed in. On the login page there is no token,
+    // and the connection, which now keeps retrying, would ask the server for
+    // one every 30 seconds for nothing.
+    if (!company || !companyRecord?.emailid) return
     // subscribe to server-sent events for realtime updates
     let es = null
     try {
@@ -726,7 +732,11 @@ function App() {
             case 'Settings':
               try {
                 setSettings((prev) => {
-                  const merged = applySseCollectionChange(prev, payload);
+                  // Matched by name, unique per settings record. Several
+                  // screens delete _id from the records they read (in place),
+                  // so matching by _id added every live change as a second
+                  // copy and the screens kept reading the old one.
+                  const merged = upsertByKey(prev, payload, (item) => item?.name);
                   setCached(company, 'settings', merged, companyRecord?.emailid);
                   return merged;
                 });
@@ -1296,7 +1306,12 @@ function App() {
     // listing it for admins until it arrives.
     if (company && companyRecord?.emailid) {
       await Promise.race([
-        syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER).catch(() => []),
+        (async () => {
+          await syncPendingChanges(company, companyRecord.emailid, fetchServer, SERVER).catch(() => [])
+          // Signed out on purpose, with whatever is left: this till is not
+          // reported as gone quiet when its session is ended.
+          await reportDeviceClosed(company, companyRecord.emailid, fetchServer, SERVER)
+        })(),
         new Promise((resolve) => setTimeout(resolve, 8000)),
       ])
     }
@@ -1517,9 +1532,9 @@ function App() {
   const activePosMode = (settings || []).find((setting) => setting?.name === 'posSettings')?.posSettings?.find((mode) => mode?.active)
   const sessionManagerRequired = activePosMode?.requireSessionManager === true
   // Whether ending a user's session waits for the Session Manager to be
-  // stopped. On, as it always was, unless an admin or the person running
-  // the Session Manager switches it off (POS settings, or the All Sessions
-  // page). Only means anything where the Session Manager is in use.
+  // stopped. On, as it always was, unless switched off in Settings, POS
+  // Settings, the only place it is set. Only means anything where the
+  // Session Manager is in use.
   const sessionManagerStopRequired = sessionManagerRequired && activePosMode?.stopManagerBeforeEnd !== false
 
   const getApprovalConfig = (module, section, approverId) => {
@@ -1575,6 +1590,29 @@ function App() {
   // button then does come from the same answer.
   const canApproveSection = (module, section) => getApprovalConfig(module, section, companyRecord?.emailid).isApprover
 
+  // Whether the signed-in user raised this approval request. Where a module
+  // is not set to post on approval, the requester posts it once approved,
+  // whether or not they also hold that module's posting permission.
+  const isOwnApproval = (approval) => {
+    const mine = String(companyRecord?.emailid || '').trim().toLowerCase()
+    return !!mine && String(approval?.handlerId || '').trim().toLowerCase() === mine
+  }
+
+  // What the screens and side-panel badges are given. Without admin status
+  // or allowBacklogs, a request dated before the current day
+  // (Resources/viewWindow.js) is not shown, pending or approved: it can
+  // still be raised, and once approved it is posted on approval or by
+  // whoever holds the authority. An approver still sees the earlier ones
+  // waiting for their approval, or nobody could approve them.
+  const visibleApprovals = useMemo(() => {
+    if (canSeeBacklog(companyRecord, allowBacklogs)) return approvals
+    return (approvals || []).filter((appr) => (
+      isInCurrentDay(appr?.postingDate, getSessionStart)
+      || (!appr?.approved && getApprovalConfig(appr?.module, appr?.section, companyRecord?.emailid).isApprover)
+    ))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approvals, companyRecord, allowBacklogs, settings])
+
   const postApprovalUpdate = async (company, module, section, curApproval) => {
     const { isApprover, approverLevel, finalLevel } = getApprovalConfig(module, section, companyRecord?.emailid)
     if (isApprover) {
@@ -1610,7 +1648,7 @@ function App() {
           const autoPost = resp.autoPost
           if (autoPost?.status === 'posted') {
             setAlertState('success')
-            setAlert(`Approved and posted automatically${autoPost.documentNo ? ` (${autoPost.documentNo})` : ''}.`)
+            setAlert(`Approved and posted automatically${autoPost.postedFor ? ` for ${autoPost.postedFor}` : ''}${autoPost.documentNo ? ` (${autoPost.documentNo})` : ''}.`)
             setAlertTimeout(4000)
           } else if (autoPost?.status === 'failed') {
             setAlertState('error')
@@ -1714,6 +1752,25 @@ function App() {
 
     if (![null, undefined].includes(curApproval)) {
       if (curApproval.approved) {
+        // An approval the server posted on approval is deleted there. A
+        // screen opened before that still holds it, and posting from it
+        // would record the same thing twice.
+        const stillThere = await fetchServer("POST", {
+          database: company,
+          collection: "Approvals",
+          prop: { module, section, createdAt: curApproval.createdAt }
+        }, "getDocsDetails", SERVER).catch(() => null)
+        const gone = stillThere && !stillThere.err && Array.isArray(stillThere.record)
+          ? stillThere.record.length === 0
+          : !(approvals || []).some((appr) => appr.module === module && appr.section === section && appr.createdAt === curApproval.createdAt)
+        if (gone) {
+          setAlertState('info')
+          setAlert('This request was already posted when it was approved. Nothing was posted again.')
+          setAlertTimeout(5000)
+          setCurApproval(null)
+          getApprovals(company, companyRecord)
+          return true
+        }
         executePostAction()
         return true
       } else {
@@ -2170,9 +2227,11 @@ function App() {
 
         // Get 5 most recent delivery sessions
         const lastDeliverySessions = deliverySessions.slice(0, 5);
-        setAllSessions(allSessions)
+        // getAllSessions has already merged these into the session lists,
+        // with this device's unsent changes on top; setting them raw here
+        // would undo that.
 
-        if (setState !== null) {
+        if (typeof setState === 'function') {
           setState({
             activeSessions,
             lastActiveSessions: lastActiveByLocation,
@@ -2396,107 +2455,7 @@ function App() {
       if (cached) {
         setPaymentReceipts(cached)
       }
-      const recoveryReceipts = []
-      const accommodationReceipts = []
-      const posOrderReceipts = []
-      const dateBoundary = new Date('2025-07-01').toISOString().slice(0, 10)
-
-      let paymentReceipts = []
-      if (sales.length) {
-        sales?.forEach((sale) => {
-          (sale.recoveryList || []).forEach((recovery) => {
-            // No longer gated on "is this payPoint one of the CURRENTLY
-            // configured payment method names", a payment method renamed in
-            // Settings (e.g. adding an account number suffix) after this
-            // recovery was recorded made the exact-name check fail forever,
-            // silently dropping real historical payments from this report.
-            // What actually happened shouldn't depend on today's Settings.
-            let dateVar = new Date(recovery.recoveryDate).toISOString().slice(0, 10)
-            if (dateVar >= dateBoundary) {
-              recoveryReceipts.push({
-                paymentModule: 'recovery',
-                paymentPoint: recovery.recoveryPoint,
-                paymentAmount: Number(recovery.recoveryAmount),
-                paymentReceipt: Number(recovery.recoveryReceipt) || recovery.recoveryReceipt,
-                paymentFor: `For ${sale.postingDate} Debt`,
-                paymentDate: recovery.recoveryDate,
-                paymentHandler: recovery.recoveryEmployeeId,
-                paymentModuleRef: sale.createdAt,
-                paymentApprover: 'Default'
-              })
-            }
-          })
-        })
-      }
-      if (accommodations.length) {
-        accommodations?.forEach((acc) => {
-          let dateVar = new Date(acc.postingDate).toISOString().slice(0, 10)
-          if (dateVar >= dateBoundary) {
-            // A booking's payment can be split across multiple payment
-            // methods in one submission (Accommodation.js's "Also Paid in
-            // Cash" split-bill), one receipt per paymentHistory entry, not
-            // one receipt using the booking's top-level payPoint/
-            // paymentAmount (now the LAST leg's payPoint and the
-            // CUMULATIVE total received, not any single payment's amount).
-            const history = Array.isArray(acc.paymentHistory) ? acc.paymentHistory : []
-            const events = history.length
-              ? history
-              : (acc.payPoint && Number(acc.paymentAmount) > 0 ? [{ payPoint: acc.payPoint, paymentAmount: acc.paymentAmount, paymentReceipt: acc.paymentReceipt }] : [])
-            events.forEach((event) => {
-              accommodationReceipts.push({
-                paymentModule: 'accommodation',
-                paymentPoint: event.payPoint,
-                paymentAmount: Number(event.paymentAmount),
-                paymentReceipt: Number(event.paymentReceipt) || event.paymentReceipt,
-                paymentFor: `For Room ${acc.roomNo}`,
-                paymentDate: event.paymentDate || acc.postingDate,
-                paymentHandler: acc.employeeId,
-                paymentModuleRef: acc.createdAt,
-                paymentApprover: 'Default'
-              })
-            })
-          }
-        })
-      }
-
-      if (allPosOrders.length && allSessions.length) {
-        allPosOrders?.forEach((order) => {
-          if (order.salesPosts && order.status !== 'cancelled') {
-            Object.keys(order.salesPosts).forEach((payPoint) => {
-              // if (!order.createdAt){
-              //   console.log(order, order.createdAt)
-              // }
-              let dateVar = order.createdAt ? new Date(order.createdAt).toISOString().slice(0, 10) : dateBoundary
-              if (dateVar >= dateBoundary) {
-                const location = order.salesPosts[payPoint]
-                const receiptNo = (payPoint === 'cash') ? 'cash' : order.receipts[payPoint]
-                const amount = Number(order[payPoint])
-                const session = allSessions?.find(session => (session.start === order.sessionId))
-                const sessionApprover = session?.endedby || 'Active Session'
-                posOrderReceipts.push({
-                  paymentModule: `POS Order-${location}`,
-                  paymentPoint: payPoint,
-                  paymentAmount: amount,
-                  paymentReceipt: Number(receiptNo) || receiptNo,
-                  paymentFor: `(${location})-${order.orderNumber} Ordered from ${order.wrh}`,
-                  paymentTable: order.tableId,
-                  paymentOrder: order.orderNumber,
-                  paymentDate: dateVar,
-                  paymentHandler: order.handlerId,
-                  paymentModuleRef: order.createdAt,
-                  paymentApprover: sessionApprover
-                })
-              }
-            })
-          }
-        })
-      }
-
-      paymentReceipts = [
-        ...recoveryReceipts,
-        ...accommodationReceipts,
-        ...posOrderReceipts
-      ]
+      const paymentReceipts = buildPaymentReceipts({ sales, accommodations, orders: allPosOrders, sessions: allSessions })
       setPaymentReceipts(paymentReceipts)
       setCached(company, 'paymentReceipts', paymentReceipts, companyRecord?.emailid)
     }
@@ -4235,8 +4194,8 @@ function App() {
         isLive, setIsLive, liveErrorMessages, setLiveErrorMessages,
         tables, setTables, fetchTables,
 
-        approvals, setApprovals, getApprovals,
-        runApprovalWorkFlow, requestApproval, postApprovalUpdate, canApproveSection,
+        approvals: visibleApprovals, setApprovals, getApprovals,
+        runApprovalWorkFlow, requestApproval, postApprovalUpdate, canApproveSection, isOwnApproval,
         updateApproval, removeApproval,
         approvalStatus, setApprovalStatus,
         approvalMessage, setApprovalMessage,

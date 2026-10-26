@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import ContextProvider from '../../../Resources/ContextProvider';
+import { currentDayWindow } from '../../../Resources/viewWindow';
 import { putInventoryTransactions, getAppCache, setAppCache } from '../../../Resources/offlineDb';
 import { FaFilter, FaFileExport, FaSearch, FaSync, FaDownload, FaFilePdf } from 'react-icons/fa';
 import { CSVLink } from 'react-csv';
@@ -119,6 +120,7 @@ const TransactionHistory = () => {
     getApprovals,
     inventoryDateRange,
     setInventoryDateRange,
+    getSessionStart
   } = useContext(ContextProvider);
 
   const [transactions, setTransactions] = useState([]);
@@ -200,19 +202,15 @@ const TransactionHistory = () => {
   // and is cleared (not sent to the server) when Apply Filters is clicked.
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Non-admin date restriction: compute yesterday start and today end bounds
+  // Without admin status or allowBacklogs, only the current day is shown.
   const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
+  // The current day only (Resources/viewWindow.js).
   const getNonAdminDateBounds = () => {
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-    return {
-      minDate: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0).toISOString().slice(0,10),
-      maxDate: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString().slice(0,10)
-    };
+    const { start, end } = currentDayWindow(getSessionStart);
+    return { minDate: start, maxDate: end };
   };
 
-  // Clamp date filters for non-admin users to yesterday to today on mount
+  // Clamp the date filters to the current day on mount
   useEffect(() => {
     if (companyRecord && isNonAdmin) {
       const { minDate, maxDate } = getNonAdminDateBounds();
@@ -2078,7 +2076,7 @@ const TransactionHistory = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    // If non-admin, clamp date changes to yesterday..today
+    // Without backlog access, date changes stay within the current day
     if (isNonAdmin && (name === 'startDate' || name === 'endDate')) {
       const bounds = getNonAdminDateBounds();
       let newStart = name === 'startDate' ? value : filters.startDate;

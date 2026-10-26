@@ -19,6 +19,7 @@ import {
 // Charts (install: npm i recharts)
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, PieChart, Pie, Cell, LabelList } from 'recharts'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb';
+import { clampToCurrentDay } from '../../Resources/viewWindow';
 
 const fmt = (n)=> Number(n||0).toLocaleString()
 const DASHBOARD_SUMMARY_ENGINE_VERSION = 5
@@ -43,16 +44,31 @@ const DashView = () =>{
         rentals, getRentals,
         employees, getEmployees, getSessionEnd,
         salesSessions, lastActiveSessions, sessionManagers, sessionManagerRequired,
-        setAlert, setAlertState, setAlertTimeout
+        setAlert, setAlertState, setAlertTimeout,
+        allowBacklogs, getSessionStart
     } = useContext(ContextProvider)
     // Default date range (current month)
     const defaultFromDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10)
     const defaultToDate = new Date().toISOString().slice(0,10)
-    
+
     const [fromDate, setFromDate] = useState(saleFrom || defaultFromDate)
     const [toDate, setToDate] = useState(saleTo || defaultToDate)
     const [draftFromDate, setDraftFromDate] = useState(saleFrom || defaultFromDate)
     const [draftToDate, setDraftToDate] = useState(saleTo || defaultToDate)
+    // Without admin status or allowBacklogs the dashboard shows the current
+    // day only (Resources/viewWindow.js). Every way of picking dates (the
+    // inputs, MTD/QTD/YTD, the season filter, clearing) lands back here.
+    const currentDayOnly = companyRecord?.status !== 'admin' && !allowBacklogs
+    useEffect(() => {
+        if (!currentDayOnly) return
+        const applied = clampToCurrentDay(fromDate, toDate, getSessionStart)
+        if (applied.from !== fromDate) setFromDate(applied.from)
+        if (applied.to !== toDate) setToDate(applied.to)
+        const draft = clampToCurrentDay(draftFromDate, draftToDate, getSessionStart)
+        if (draft.from !== draftFromDate) setDraftFromDate(draft.from)
+        if (draft.to !== draftToDate) setDraftToDate(draft.to)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentDayOnly, fromDate, toDate, draftFromDate, draftToDate])
     const dashboardRequestRef = useRef(0)
         // Which location's low-stock popup is open, null means closed. The
         // location NAME, not an index into `restock`, `restock` can now
@@ -324,7 +340,8 @@ const DashView = () =>{
                 productFilter,
                 employeeFilter,
                 seasonFilter,
-                forceRefresh: !!force
+                forceRefresh: !!force,
+                tzOffset: new Date().getTimezoneOffset()
             }, 'getDashboardSummary', server)
 
             if (summaryResponse && !summaryResponse.ok) {
@@ -929,7 +946,7 @@ const DashView = () =>{
 
             if (sessionManagerRequired && endedCount && endedCount === lastActiveSessions?.length && companyRecord?.status === 'admin'){
                 setAlertState('info')
-                setAlert('All sesisons ended, Please Start Session Manager!')
+                setAlert('All sessions ended. Please start the Session Manager.')
                 setAlertTimeout(8000)
             }
         }
@@ -1248,11 +1265,11 @@ const DashView = () =>{
                 <div className='dash-filters'>
                     <div className='filter-group1'>
                         <label>From</label>
-                        <input type='date' value={draftFromDate} onChange={e=>setDraftFromDate(e.target.value)} />
+                        <input type='date' value={draftFromDate} disabled={currentDayOnly} onChange={e=>setDraftFromDate(e.target.value)} />
                     </div>
                     <div className='filter-group1'>
                         <label>To</label>
-                        <input type='date' value={draftToDate} onChange={e=>setDraftToDate(e.target.value)} />
+                        <input type='date' value={draftToDate} disabled={currentDayOnly} onChange={e=>setDraftToDate(e.target.value)} />
                     </div>
                     <div className='filter-group1'>
                         <label>Presets</label>

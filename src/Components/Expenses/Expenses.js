@@ -3,6 +3,7 @@ import { useEffect, useContext, useState, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
+import { currentDayWindow } from '../../Resources/viewWindow'
 import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDatesPanel';
 // import { useInventory } from '../../Resources/InventoryContext';
 // import { useAttendance } from '../../Resources/AttendanceContext';
@@ -28,7 +29,7 @@ const Expenses = () => {
         company, getDate,
         alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
-        expenses, setExpenses, getExpenses, allowBacklogs,
+        expenses, setExpenses, getExpenses, allowBacklogs, getSessionStart,
         chartOfAccounts, setChartOfAccounts, getChartOfAccounts,
         attendance, getAttendance, months, monthDays, employees, getEmployees,
         approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, canApproveSection,
@@ -251,10 +252,10 @@ const Expenses = () => {
 
     useEffect(() => {
         const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs
-        const today = new Date(Date.now()).toISOString().slice(0, 10)
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        const today = currentDayWindow(getSessionStart).end
+        const dayStart = currentDayWindow(getSessionStart).start
         if (isNonAdmin) {
-            setExpenseFrom(yesterday)
+            setExpenseFrom(dayStart)
             setExpenseTo(today)
         } else {
             if (!expenseFrom) setExpenseFrom(new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().slice(0, 10))
@@ -746,15 +747,15 @@ const Expenses = () => {
                                 placeholder='From'
                                 value={expenseFrom}
                                 disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
-                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
-                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
+                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? currentDayWindow(getSessionStart).start : undefined}
+                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? currentDayWindow(getSessionStart).end : undefined}
                                 onChange={(e) => {
                                     const val = e.target.value
                                     if (companyRecord?.status !== 'admin' && !allowBacklogs) {
-                                        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-                                        const today = new Date(Date.now()).toISOString().slice(0, 10)
-                                        if (new Date(val).getTime() < new Date(yesterday).getTime()) {
-                                            setExpenseFrom(yesterday)
+                                        const dayStart = currentDayWindow(getSessionStart).start
+                                        const today = currentDayWindow(getSessionStart).end
+                                        if (new Date(val).getTime() < new Date(dayStart).getTime()) {
+                                            setExpenseFrom(dayStart)
                                         } else if (new Date(val).getTime() > new Date(today).getTime()) {
                                             setExpenseFrom(today)
                                         } else {
@@ -775,15 +776,15 @@ const Expenses = () => {
                                 placeholder='To'
                                 value={expenseTo}
                                 disabled={!(companyRecord?.status === 'admin' || allowBacklogs)}
-                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10) : undefined}
-                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? new Date(Date.now()).toISOString().slice(0, 10) : undefined}
+                                min={companyRecord?.status !== 'admin' && !allowBacklogs ? currentDayWindow(getSessionStart).start : undefined}
+                                max={companyRecord?.status !== 'admin' && !allowBacklogs ? currentDayWindow(getSessionStart).end : undefined}
                                 onChange={(e) => {
                                     const val = e.target.value
                                     if (companyRecord?.status !== 'admin' && !allowBacklogs) {
-                                        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-                                        const today = new Date(Date.now()).toISOString().slice(0, 10)
-                                        if (new Date(val).getTime() < new Date(yesterday).getTime()) {
-                                            setExpenseTo(yesterday)
+                                        const dayStart = currentDayWindow(getSessionStart).start
+                                        const today = currentDayWindow(getSessionStart).end
+                                        if (new Date(val).getTime() < new Date(dayStart).getTime()) {
+                                            setExpenseTo(dayStart)
                                         } else if (new Date(val).getTime() > new Date(today).getTime()) {
                                             setExpenseTo(today)
                                         } else {

@@ -2747,31 +2747,6 @@ select.pos-session-board-btn {
     }
 }
 
-/* Session Manager rule switch, inside the Session Manager panel. */
-.pos-container .pos-stop-rule {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-top: 14px;
-    font-size: 0.85rem;
-    color: var(--pos-ink);
-    cursor: pointer;
-}
-
-.pos-container .pos-stop-rule input {
-    margin-top: 3px;
-    width: 16px;
-    height: 16px;
-    accent-color: var(--pos-accent);
-}
-
-.pos-container .pos-stop-rule small {
-    display: block;
-    color: var(--pos-ink-soft);
-    font-size: 0.75rem;
-    margin-top: 2px;
-}
-
 /* Devices still holding sales the server has not received. */
 .pos-container .pos-unsynced {
     margin: 12px 0;
@@ -2796,4 +2771,242 @@ select.pos-session-board-btn {
     display: block;
     margin-top: 8px;
     color: var(--pos-ink-soft);
+}
+
+/* Quantity keypad pop-up. Rendered on document.body, so the POS colour
+   variables are not inherited and each one carries its own value. Sized
+   from the viewport height so the display, every key and Enter fit on one
+   screen, phone or till, without scrolling. */
+.pos-keypad-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 32, 24, 0.45);
+}
+
+.pos-keypad-modal {
+    --kp-key: clamp(36px, 8.5vh, 72px);
+    width: min(380px, 100%);
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(8px, 1.6vh, 14px);
+    padding: clamp(12px, 2.2vh, 20px);
+    border-radius: 18px;
+    background: #ffffff;
+    color: #173829;
+    box-shadow: 0 24px 64px rgba(15, 32, 24, 0.28);
+    box-sizing: border-box;
+}
+
+@supports (height: 100dvh) {
+    .pos-keypad-modal {
+        --kp-key: clamp(36px, 8.5dvh, 72px);
+        max-height: calc(100dvh - 32px);
+    }
+}
+
+.pos-keypad-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.pos-keypad-title {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.pos-keypad-title strong {
+    font-size: 1.05rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pos-keypad-title span {
+    font-size: 0.82rem;
+    color: #5d7164;
+}
+
+.pos-keypad-close {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 10px;
+    background: #eff6f1;
+    color: #173829;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pos-keypad-display {
+    padding: clamp(8px, 1.6vh, 14px) 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(23, 56, 41, 0.1);
+    background: linear-gradient(135deg, #fff8ea, #f3f8f3);
+    font-size: clamp(1.4rem, 4vh, 2rem);
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.pos-keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: var(--kp-key);
+    gap: clamp(6px, 1.2vh, 10px);
+}
+
+.pos-keypad-key {
+    border: 1px solid rgba(23, 56, 41, 0.1);
+    border-radius: 12px;
+    background: #ffffff;
+    color: #173829;
+    font-size: clamp(1.1rem, 3vh, 1.5rem);
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(23, 56, 41, 0.06);
+    touch-action: manipulation;
+}
+
+.pos-keypad-key:active {
+    background: #eff6f1;
+}
+
+.pos-keypad-key.clear {
+    color: #c65353;
+}
+
+.pos-keypad-key.enter {
+    grid-column: 1 / -1;
+    border: none;
+    background: linear-gradient(135deg, #173829, #2b6a4b);
+    color: #ffffff;
+}
+
+.pos-keypad-key.enter:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Starting is on hold after a declined Session Manager reconciliation.
+   Shown to every POS user. */
+.pos-start-on-hold {
+    margin: 0 0 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(198, 83, 83, 0.35);
+    background: #fdf0f0;
+    color: #8a2f2f;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* Session Manager reconciliation, inside the Payment Receipts view. */
+.sm-reconcile-notice p {
+    margin: 0 0 10px;
+    color: #355244;
+    line-height: 1.45;
+}
+
+.sm-reconcile-notice .sm-reconcile-declined {
+    color: #8a2f2f;
+    font-weight: 600;
+}
+
+.sm-reconcile-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(23, 56, 41, 0.12);
+}
+
+.sm-reconcile-footer label {
+    flex: 1 1 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #5d7164;
+}
+
+.sm-reconcile-footer textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #90caf9;
+    font: inherit;
+    resize: vertical;
+}
+
+.sm-reconcile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.sm-reconcile-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-right: 6px;
+    font-size: 0.9rem;
+    color: #355244;
+}
+
+.sm-reconcile-totals strong {
+    font-size: 1.05rem;
+    color: #173829;
+}
+
+.sm-reconcile-decline,
+.sm-reconcile-approve {
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sm-reconcile-decline {
+    background: #fdf0f0;
+    color: #8a2f2f;
+    border: 1px solid rgba(198, 83, 83, 0.4);
+}
+
+.sm-reconcile-approve {
+    background: linear-gradient(135deg, #173829, #2b6a4b);
+    color: #ffffff;
+}
+
+.sm-reconcile-decline:disabled,
+.sm-reconcile-approve:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+    .sm-reconcile-actions {
+        width: 100%;
+    }
+    .sm-reconcile-decline,
+    .sm-reconcile-approve {
+        flex: 1 1 0;
+    }
 }

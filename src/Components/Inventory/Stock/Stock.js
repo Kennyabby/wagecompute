@@ -4,6 +4,7 @@ import { generatePDF, generateExcel } from '../../../utils/exportUtils';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import ContextProvider from '../../../Resources/ContextProvider';
+import { currentDayWindow } from '../../../Resources/viewWindow'
 import { syncPendingChanges } from '../../../Resources/offlineSync';
 import './Stock.css';
 
@@ -24,8 +25,8 @@ const Stock = ({
         server, fetchServer, getProducts, getProductsWithStock, getProductsStockReport,
         setAlert, setAlertState, setAlertTimeout, intervalPeriod,
         products, setProducts, settings, company, companyRecord, centralCompany,
-          runApprovalWorkFlow, approvals, getApprovals, allowBacklogs,
-        inventoryDateRange, setInventoryDateRange,
+          runApprovalWorkFlow, approvals, isOwnApproval, getApprovals, allowBacklogs,
+        inventoryDateRange, setInventoryDateRange, getSessionStart
     } = useContext(ContextProvider);
     const intervalRef = useRef(null);
     const [warehouses, setWarehouses] = useState([]);
@@ -52,17 +53,10 @@ const Stock = ({
     const [applyMessage, setApplyMessage] = useState('');
     const applyStatusTimeoutRef = useRef(null);
 
-    // Non-admin date restriction: if not admin and no allowBacklogs permission, restrict to yesterday-today
+    // Without admin status or allowBacklogs, only the current day is shown.
     const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
-    const getNonAdminDateBounds = () => {
-        const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(today.getDate() - 1);
-        return {
-            start: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0,0,0,0).toISOString().slice(0,10),
-            end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23,59,59,999).toISOString().slice(0,10)
-        };
-    };
+    // The current day only (Resources/viewWindow.js).
+    const getNonAdminDateBounds = () => currentDayWindow(getSessionStart);
 
     // Fetch warehouses from the database
     const getWarehouses = async () => {
@@ -318,6 +312,19 @@ const Stock = ({
         }
     }, [settings]);
 
+    // A transfer the server posted the moment it was finally approved
+    // (Settings > Approval Rules) shows up in the stock straight away.
+    useEffect(() => {
+        const refresh = (event) => {
+            if (event.detail?.module !== 'inventory' || !company) return
+            getProductsStockReport(company, products, { startDate: inventoryDateRange.startDate, endDate: inventoryDateRange.endDate })
+            getApprovals(company, companyRecord)
+        }
+        window.addEventListener('wc:approval-auto-posted', refresh)
+        return () => window.removeEventListener('wc:approval-auto-posted', refresh)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [company, products, inventoryDateRange])
+
     const resetCount = () => {
         let defaultEntries = []
         products.forEach(product => {
@@ -495,7 +502,9 @@ const Stock = ({
             });
 
             const postTransferDocuments = async () => {
-                if (companyRecord?.permissions?.includes('allow_transfer_posts') || companyRecord?.status === 'admin'){
+                // The requester may post their own approved transfer, as
+                // in every other module, when it is not posted on approval.
+                if (companyRecord?.permissions?.includes('allow_transfer_posts') || companyRecord?.status === 'admin' || (transferApproval?.approved && isOwnApproval(transferApproval))){
 
                     setAlertState('info');
                     setAlert('Transferring products...');

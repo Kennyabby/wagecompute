@@ -1,5 +1,6 @@
 import './Sales.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal';
+import { currentDayWindow } from '../../Resources/viewWindow';
 import heic2any from "heic2any";
 import { useState, useEffect, useContext, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -28,7 +29,7 @@ const Sales = () => {
         fetchServer, paymentMethods,
         server, intervalPeriod,
         companyRecord, centralCompany, posSettings,
-        company, recoveryVal, allowBacklogs,
+        company, recoveryVal, allowBacklogs, getSessionStart,
         employees, setEmployees, getEmployees, getPendingSalesDates,
         sales, setSales, getSales, months, years, initialYear,
         allSessions, getAllSessions, getSessionEnd, fetchAllSessions,
@@ -44,27 +45,16 @@ const Sales = () => {
         alert, alertState, alertTimeout, actionMessage,
         setAlert, setAlertState, setAlertTimeout, setActionMessage,
         curApproval, setCurApproval, showApprovalBox, setShowApprovalBox,
-        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval, canApproveSection,
+        approvals, getApprovals, postApprovalUpdate, runApprovalWorkFlow, removeApproval, canApproveSection, isOwnApproval,
         setApprovalStatus, setApprovalMessage,
         paymentReceipts, obtainPaymentReceipts,
     } = useContext(ContextProvider)
 
-    const getYesterdayAndToday = () => {
-        const todayObj = new Date();
-        const yesterdayObj = new Date();
-        yesterdayObj.setDate(todayObj.getDate() - 1);
-        
-        const getLocalDateString = (dateObj) => {
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
-        
-        return {
-            today: getLocalDateString(todayObj),
-            yesterday: getLocalDateString(yesterdayObj)
-        };
+    // The dates a user without backlog access sees (Resources/viewWindow.js):
+    // the current business day and today, nothing earlier.
+    const getViewDays = () => {
+        const { start, end } = currentDayWindow(getSessionStart);
+        return { today: end, dayStart: start };
     };
 
     const recoveryReasons = [
@@ -140,6 +130,21 @@ const Sales = () => {
     const [glDeepLinkTargetKey, setGlDeepLinkTargetKey] = useState(null)
     const saleCardRefs = useRef({})
     const rentCardRefs = useRef({})
+    // A sales day, recovery, rental or product list the server posted the
+    // moment it was finally approved (Settings > Approval Rules) shows up
+    // straight away, with the stock and debts it changed.
+    useEffect(() => {
+        const refresh = (event) => {
+            if (event.detail?.module !== 'sales' || !company) return
+            getSales(company)
+            getRentals(company)
+            getEmployees(company)
+            getProductsWithStock(company, products)
+        }
+        window.addEventListener('wc:approval-auto-posted', refresh)
+        return () => window.removeEventListener('wc:approval-auto-posted', refresh)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [company, products])
     useEffect(() => {
         if (glDeepLinkAppliedRef.current) return;
         const params = new URLSearchParams(glLocation.search)
@@ -1936,8 +1941,8 @@ const Sales = () => {
             const isNonAdmin = companyRecord?.status !== 'admin' && !allowBacklogs;
             if (companyRecord) {
                 if (isNonAdmin) {
-                    const { today, yesterday } = getYesterdayAndToday();
-                    setSaleFrom(yesterday);
+                    const { today, dayStart } = getViewDays();
+                    setSaleFrom(dayStart);
                     setSaleTo(today);
                 } else {
                     // admin or users with allowBacklogs: default to first of month if no backlogs allowed
@@ -2264,7 +2269,7 @@ const Sales = () => {
                 return;
             }
             if (curSale.approval && curSale.approval?.approved) {
-                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_add_sales_products')) {
+                if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_add_sales_products') && !isOwnApproval(curSale.approval)) {
                     setAlertState('error')
                     setAlert('You are not allowed to add sales product!')
                     setAlertTimeout(3000)
@@ -2818,6 +2823,7 @@ const Sales = () => {
                 imgId: field.imgId,
                 viewLink: field.viewLink,
                 downloadLink: field.downloadLink,
+                approvalCreatedAt: curApproval?.approved ? curApproval.createdAt : undefined,
             }, 'inventoryReconciliation/postShortageRecovery', server)
             if (resp?.err || !resp?.ok) {
                 setAlertState('error')
@@ -2873,10 +2879,10 @@ const Sales = () => {
 
     const calculateReportSales = () => {
         var reportFromDate = saleFrom;
-        if (companyRecord?.status !== 'admin') {
-            const { yesterday } = getYesterdayAndToday();
-            if (new Date(saleFrom).getTime() < new Date(yesterday).getTime()) {
-                reportFromDate = yesterday;
+        if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+            const { dayStart } = getViewDays();
+            if (new Date(saleFrom).getTime() < new Date(dayStart).getTime()) {
+                reportFromDate = dayStart;
             }
         }
         var filteredReportSales = {
@@ -2894,11 +2900,11 @@ const Sales = () => {
             const slPostingDate = new Date(ftrsale.postingDate).getTime()
             let fromDate = new Date(saleFrom).getTime()
             let toDate = new Date(saleTo).getTime()
-            if (companyRecord?.status !== 'admin') {
-                const { yesterday, today } = getYesterdayAndToday();
-                const yesterdayTime = new Date(yesterday).getTime();
+            if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+                const { dayStart, today } = getViewDays();
+                const dayStartTime = new Date(dayStart).getTime();
                 const todayTime = new Date(today).getTime();
-                fromDate = Math.max(fromDate, yesterdayTime);
+                fromDate = Math.max(fromDate, dayStartTime);
                 toDate = Math.min(toDate, todayTime);
             }
             if (slPostingDate >= fromDate && slPostingDate <= toDate
@@ -3421,8 +3427,8 @@ const Sales = () => {
                             setReportSales(null)
                         }
                     }}
-                    fromDate={companyRecord?.status !== 'admin' ? (new Date(saleFrom).getTime() < new Date(getYesterdayAndToday().yesterday).getTime() ? getYesterdayAndToday().yesterday : saleFrom) : saleFrom}
-                    toDate={companyRecord?.status !== 'admin' ? (new Date(saleTo).getTime() > new Date(getYesterdayAndToday().today).getTime() ? getYesterdayAndToday().today : saleTo) : saleTo}
+                    fromDate={(companyRecord?.status !== 'admin' && !allowBacklogs) ? (new Date(saleFrom).getTime() < new Date(getViewDays().dayStart).getTime() ? getViewDays().dayStart : saleFrom) : saleFrom}
+                    toDate={(companyRecord?.status !== 'admin' && !allowBacklogs) ? (new Date(saleTo).getTime() > new Date(getViewDays().today).getTime() ? getViewDays().today : saleTo) : saleTo}
                 />}
 
                 {showDebtReport && <DebtReport
@@ -3545,13 +3551,13 @@ const Sales = () => {
                                 placeholder='From'
                                 value={saleFrom}
                                 disabled={!allowBacklogs}
-                                min={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getYesterdayAndToday().yesterday : undefined}
-                                max={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getYesterdayAndToday().today : undefined}
+                                min={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getViewDays().dayStart : undefined}
+                                max={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getViewDays().today : undefined}
                                 onChange={(e) => {
                                     let val = e.target.value;
-                                    if (companyRecord?.status !== 'admin') {
-                                        const { yesterday, today } = getYesterdayAndToday();
-                                        if (val < yesterday) val = yesterday;
+                                    if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+                                        const { dayStart, today } = getViewDays();
+                                        if (val < dayStart) val = dayStart;
                                         if (val > today) val = today;
                                     }
                                     setSaleFrom(val)
@@ -3568,13 +3574,13 @@ const Sales = () => {
                                 placeholder='To'
                                 value={saleTo}
                                 disabled={!allowBacklogs}
-                                min={companyRecord?.status !== 'admin' ? getYesterdayAndToday().yesterday : undefined}
-                                max={companyRecord?.status !== 'admin' ? getYesterdayAndToday().today : undefined}
+                                min={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getViewDays().dayStart : undefined}
+                                max={(companyRecord?.status !== 'admin' && !allowBacklogs) ? getViewDays().today : undefined}
                                 onChange={(e) => {
                                     let val = e.target.value;
-                                    if (companyRecord?.status !== 'admin') {
-                                        const { yesterday, today } = getYesterdayAndToday();
-                                        if (val < yesterday) val = yesterday;
+                                    if (companyRecord?.status !== 'admin' && !allowBacklogs) {
+                                        const { dayStart, today } = getViewDays();
+                                        if (val < dayStart) val = dayStart;
                                         if (val > today) val = today;
                                     }
                                     setSaleTo(val)
@@ -3629,10 +3635,10 @@ const Sales = () => {
                         let fromDate = new Date(saleFrom).getTime()
                         let toDate = new Date(saleTo).getTime()
                         if (companyRecord?.status !== 'admin' && !allowBacklogs) {
-                            const { yesterday, today } = getYesterdayAndToday();
-                            const yesterdayTime = new Date(yesterday).getTime();
+                            const { dayStart, today } = getViewDays();
+                            const dayStartTime = new Date(dayStart).getTime();
                             const todayTime = new Date(today).getTime();
-                            fromDate = Math.max(fromDate, yesterdayTime);
+                            fromDate = Math.max(fromDate, dayStartTime);
                             toDate = Math.min(toDate, todayTime);
                         }
 
@@ -5469,7 +5475,7 @@ const Sales = () => {
                                             }
                                         }
                                         if (curApproval && curApproval?.approved) {
-                                            if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_recovery_posts')) {
+                                            if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_recovery_posts') && !isOwnApproval(curApproval)) {
                                                 setAlertState('error')
                                                 setAlert('You are not allowed to post recovery!')
                                                 setAlertTimeout(3000)
@@ -5507,7 +5513,7 @@ const Sales = () => {
                             onClick={() => {
                                 if (rentalFields.paymentAmount && rentalFields.expectedPayment) {
                                     if (curApproval && curApproval?.approved) {
-                                        if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_rental_posts')) {
+                                        if (companyRecord?.status !== 'admin' && !companyRecord?.permissions.includes('allow_rental_posts') && !isOwnApproval(curApproval)) {
                                             setAlertState('error')
                                             setAlert('You are not allowed to post rentals!')
                                             setAlertTimeout(3000)
