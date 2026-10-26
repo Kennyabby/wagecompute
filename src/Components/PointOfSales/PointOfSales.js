@@ -5567,10 +5567,16 @@ const POSDashboard = ({
                                         return
                                     }
                                 })
-                                if ((profile?.permissions.includes('pos') && hasPosSalesAccess) || profile?.permissions.includes('all')) {
+                                // Someone with a session still open is listed even
+                                // without POS permissions (dismissed, or access
+                                // changed mid-session), so the session can still be
+                                // ended and the Session Manager is not held up by
+                                // a session nobody can see.
+                                const hasOpenSession = (filteredSessions || stableSalesSessions || []).some((session) => session.employee_id === profile.emailid && !session.end)
+                                if ((profile?.permissions.includes('pos') && hasPosSalesAccess) || profile?.permissions.includes('all') || hasOpenSession) {
                                     const { firstName, lastName } = ((profile.status === 'admin' && profile.access === 'admin') ? {
                                         firstName: 'Admin', lastName: ''
-                                    } : employees.find(employee => { return employee.i_d === profile.emailid }))
+                                    } : (employees.find(employee => { return employee.i_d === profile.emailid }) || { firstName: profile.emailid, lastName: '' }))
 
                                     const employeeSessions = (filteredSessions || stableSalesSessions)?.filter(session => {
                                         return (

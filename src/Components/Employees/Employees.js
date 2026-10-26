@@ -258,7 +258,9 @@ const Employees = () => {
                 setAlert(
                     resps.mess
                 )
-                setAlertTimeout(5000)
+                // A dismissal refused because the person still has sessions
+                // open lists them; it stays up long enough to read.
+                setAlertTimeout(resps.code === 'OPEN_SESSIONS' ? 15000 : 5000)
             } else {
                 let employeeWithPhotos = updatedEmployee
                 let photoUploadFailed = false
