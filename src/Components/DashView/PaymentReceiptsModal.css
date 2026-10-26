@@ -2,6 +2,37 @@
    totals and Approve/Decline before a Session Manager starts, and the
    summary and decision shown when looking back at dates. */
 
+/* The window keeps the same gap above and below it and scrolls inside
+   itself, so the summary and the transactions table share one scroll. */
+.pr-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.pr-modal-window {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: clamp(16px, 3vw, 32px);
+    box-sizing: border-box;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
+}
+
+.pr-modal-details {
+    padding-bottom: 8px;
+}
+
 .sm-reconcile-notice p {
     margin: 0 0 10px;
     color: #355244;
