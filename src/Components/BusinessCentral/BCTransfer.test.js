@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import BCTransfer, { stepText } from './BCTransfer'
 
-const connection = { id: 'connection', primary: true, company: 'Jazmye Water Factory LIVE', storageMode: 'stored' }
+const connection = { id: 'connection', primary: true, company: 'Jazmyne Water Factory LIVE', storageMode: 'stored' }
 
 test('the workspace that has the connection makes a code, shown once, and can cancel it', async () => {
     const pending = { id: 't1', direction: 'out', status: 'pending', company: connection.company, createdAt: 1, createdBy: 'admin@test', moveData: true }
@@ -11,11 +11,11 @@ test('the workspace that has the connection makes a code, shown once, and can ca
         startTransfer: jest.fn(() => { listed = [pending]; return Promise.resolve({ ok: true, code: 'ABCD-EFGH-JKLM-NPQR', transfer: { ...pending, expiresAt: Date.now() + 86400000 } }) }),
         cancelTransfer: jest.fn(() => { listed = [{ ...pending, status: 'cancelled' }]; return Promise.resolve({ ok: true }) }),
     }
-    const sameServer = [{ id: 'connection', company: connection.company, baseUrl: 'http://bc.test/bcodata' }, { id: 'c2', company: 'Jazmye Drinks', baseUrl: 'http://BC.test/bcodata/' }, { id: 'c3', company: 'Elsewhere', baseUrl: 'http://other.test' }]
+    const sameServer = [{ id: 'connection', company: connection.company, baseUrl: 'http://bc.test/bcodata' }, { id: 'c2', company: 'Jazmyne Drinks', baseUrl: 'http://BC.test/bcodata/' }, { id: 'c3', company: 'Elsewhere', baseUrl: 'http://other.test' }]
     render(<BCTransfer api={api} connection={{ ...connection, baseUrl: 'http://bc.test/bcodata' }} connections={sameServer} />)
     // Every company on the same server moves together.
     expect(await screen.findByText('Move 2 companies on this server to another workspace')).toBeInTheDocument()
-    expect(screen.getByText(/Jazmye Water Factory LIVE, Jazmye Drinks move together/)).toBeInTheDocument()
+    expect(screen.getByText(/Jazmyne Water Factory LIVE, Jazmyne Drinks move together/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('checkbox', { name: /Move the stored copy too/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Make a transfer code' }))
     expect(await screen.findByLabelText('The transfer code')).toHaveTextContent('ABCD-EFGH-JKLM-NPQR')
@@ -53,7 +53,7 @@ test('a new workspace receives a connection with the code, and the module reload
     listed = [{ ...listed[0], status: 'done', finishedAt: Date.now(), progress: { step: 'done' } }]
     await act(async () => { jest.advanceTimersByTime(3100) })
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
-    expect(notify).toHaveBeenCalledWith('success', 'Jazmye Water Factory LIVE is now connected to this workspace.')
+    expect(notify).toHaveBeenCalledWith('success', 'Jazmyne Water Factory LIVE is now connected to this workspace.')
     jest.useRealTimers()
 })
 
