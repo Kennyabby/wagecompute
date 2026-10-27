@@ -526,7 +526,22 @@ function App() {
   // rather than a new network call. Full trial access and the "no field yet"
   // grandfather clause both intentionally return every module, see that
   // file's comments for why.
-  const isTrialFullAccess = !!subscriptionState?.trialActive && !subscriptionState?.hasConfiguredSubscription
+  // The company profile and the subscription status load separately. When
+  // the profile came first, a trialling workspace with no modules picked was
+  // shown only the free modules until the status caught up, so a page such
+  // as Business Central flashed "not included in your plan" on every
+  // refresh. The profile carries the trial's own label and end date, the
+  // same fields the server's module check reads (BusinessCentral/
+  // bcAccess.js), so it answers until the status arrives.
+  const profileTrialOpen = (profile) => (
+    ['trial_active', 'trial_expiring'].includes(String(profile?.subscriptionStatus || '')) &&
+    Number(profile?.trialExpiresAt || 0) > Date.now() &&
+    !profile?.trialSuspended &&
+    !(Number(profile?.subscriptionExpiresAt || 0) > Date.now())
+  )
+  const isTrialFullAccess = subscriptionState
+    ? !!subscriptionState.trialActive && !subscriptionState.hasConfiguredSubscription
+    : profileTrialOpen(centralCompany)
   const tenantEnabledModules = Array.isArray(centralCompany?.enabledModules) ? centralCompany.enabledModules : null
   const enabledModules = isTrialFullAccess || !tenantEnabledModules
     ? dashList
