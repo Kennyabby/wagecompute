@@ -4,7 +4,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import ContextProvider from '../../Resources/ContextProvider'
 import PageShell from '../Shared/ui/PageShell'
 import { createBcApi } from './bcApi'
-import { formatAgo } from './bcFormat'
+import { formatAgo, companyLabel, connectionLabel } from './bcFormat'
 import BCDashboard from './BCDashboard'
 import BCReports from './BCReports'
 import BCTransactions from './BCTransactions'
@@ -339,7 +339,7 @@ const BusinessCentral = () => {
         <div className='bc-switcher'>
             {connections.length > 1 && (
                 <select className='bc-input' aria-label='Business Central connection' value={connection.id} onChange={(event) => switchConnection(event.target.value)}>
-                    {connections.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}{entry.company && entry.company !== entry.name ? ` (${entry.company})` : ''}</option>)}
+                    {connections.map((entry) => <option key={entry.id} value={entry.id}>{connectionLabel(entry)}{companyLabel(entry) && companyLabel(entry) !== connectionLabel(entry) ? ` (${companyLabel(entry)})` : ''}</option>)}
                 </select>
             )}
             {canManage && <button type='button' className='bc-button' onClick={() => setAdding(true)}>Add connection</button>}
@@ -425,7 +425,7 @@ const BusinessCentral = () => {
                 <header className='bc-header'>
                     <div>
                         <h1>Business Central Reports</h1>
-                        <p className='bc-muted'>{connection.name && connection.name !== connection.company ? `${connection.name}: ` : ''}{connection.company || 'No company selected'}</p>
+                        <p className='bc-muted'>{connection.name && connection.name !== connection.company ? `${connection.name}: ` : ''}{companyLabel(connection) || 'No company selected'}</p>
                     </div>
                     {switcher}
                     <div className='bc-header-actions'>
@@ -441,7 +441,7 @@ const BusinessCentral = () => {
                 </header>
 
                 {info.moving && <div className='bc-banner bc-banner-info'>This connection is being moved between workspaces. Reports and syncs are held until the move has finished{access.admin ? '; its progress is on the Connection tab' : ''}.</div>}
-                {info.boundElsewhere && <div className='bc-banner bc-banner-error'>{connection.company} now belongs to another workspace, so it cannot be used here. {access.admin ? 'Remove this connection on the Connection tab, or ask that workspace for a transfer code.' : 'Ask an admin.'}</div>}
+                {info.boundElsewhere && <div className='bc-banner bc-banner-error'>{companyLabel(connection)} now belongs to another workspace, so it cannot be used here. {access.admin ? 'Remove this connection on the Connection tab, or ask that workspace for a transfer code.' : 'Ask an admin.'}</div>}
                 <nav className='bc-tabs' aria-label='Business Central sections'>
                     {tabs.map((entry) => (
                         <button key={entry.key} type='button' className={activeTab === entry.key ? 'active' : ''} aria-current={activeTab === entry.key ? 'page' : undefined} onClick={() => setTab(entry.key)}>

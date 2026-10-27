@@ -11,8 +11,8 @@ jest.mock('./bcEinvFiles', () => ({ downloadTemplate: jest.fn(), printInvoice: j
 // the next look at Business Central will report.
 const makeServer = () => {
     const state = { calls: [], live: { ready: true, seq: 0, changes: [] }, connections: [
-        { id: 'connection', name: 'Water factory', company: 'Jazmye Water Factory LIVE', primary: true, ready: true },
-        { id: 'c2', name: 'Drinks factory', company: 'Jazmye Drinks', primary: false, ready: true },
+        { id: 'connection', name: 'Water factory', company: 'Jazmyne Water Factory LIVE', primary: true, ready: true },
+        { id: 'c2', name: 'Drinks factory', company: 'Jazmyne Drinks', primary: false, ready: true },
     ], publishedServices: ['ItemApplicationEntries', 'PostedItemTrackingLines'] }
     const connectionOf = (id) => {
         const entry = state.connections.find((candidate) => candidate.id === (id || 'connection')) || state.connections[0]
@@ -54,12 +54,12 @@ test('connections can be switched, and each request names the one chosen', async
     const server = makeServer()
     mountModule(server)
     const switcher = await screen.findByLabelText('Business Central connection')
-    expect([...switcher.options].map((option) => option.textContent)).toEqual(['Water factory (Jazmye Water Factory LIVE)', 'Drinks factory (Jazmye Drinks)'])
+    expect([...switcher.options].map((option) => option.textContent)).toEqual(['Water factory (Jazmyne Water Factory LIVE)', 'Drinks factory (Jazmyne Drinks)'])
     expect(await screen.findByText('Sales of primary')).toBeInTheDocument()
 
     fireEvent.change(switcher, { target: { value: 'c2' } })
     expect(await screen.findByText('Sales of c2')).toBeInTheDocument()
-    expect(screen.getByText('Drinks factory: Jazmye Drinks')).toBeInTheDocument()
+    expect(screen.getByText('Drinks factory: Jazmyne Drinks')).toBeInTheDocument()
     // Nothing asked after the switch still points at the first connection.
     const after = server.state.calls.slice(server.state.calls.findIndex((call) => call.connectionId === 'c2'))
     expect(after.every((call) => call.connectionId === 'c2')).toBe(true)

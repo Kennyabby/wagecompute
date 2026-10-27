@@ -94,6 +94,7 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
     const [sameServer, setSameServer] = useState(adding && !!template)
     const [form, setForm] = useState(() => (adding ? { ...emptyForm, ...(template ? sharedFrom(template) : {}) } : formFrom(connection)))
     const [companies, setCompanies] = useState(connection?.company ? [connection.company] : [])
+    const [companyNames, setCompanyNames] = useState(connection?.company ? { [connection.company]: connection.companyDisplayName || '' } : {})
     // What the server needs to know when the form is for a new connection.
     const target = adding ? { id: 'new', ...(sameServer && template ? { copyFrom: template.id } : {}) } : {}
     // Only the first connection made can keep a stored copy.
@@ -133,6 +134,7 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
         try {
             const response = await api.testConnection(form, target)
             setCompanies(response.companies)
+            setCompanyNames(Object.fromEntries((response.companyDetails || []).map((c) => [c.name, c.displayName])))
             setTestResult({ ok: true, text: `Connected. ${response.companies.length} compan${response.companies.length === 1 ? 'y' : 'ies'} found.` })
             if (!form.company && response.companies.length === 1) setForm((current) => ({ ...current, company: response.companies[0] }))
         } catch (failure) {
@@ -274,7 +276,8 @@ const BCConnection = ({ api, connection, datasets, secretsConfigured, syncRunnin
                         <span className='bc-field-label'>Company</span>
                         <select className='bc-input' value={form.company} onChange={(event) => set({ company: event.target.value })}>
                             <option value=''>{companies.length ? 'Choose a company' : 'Test the connection to list companies'}</option>
-                            {companies.map((name) => <option key={name} value={name}>{name}</option>)}
+                            {/* BC's Display Name first when it differs; the Name is what is saved. */}
+                            {companies.map((name) => <option key={name} value={name}>{companyNames[name] && companyNames[name] !== name ? `${companyNames[name]} (${name})` : name}</option>)}
                         </select>
                     </label>
                     <label className='bc-field'>

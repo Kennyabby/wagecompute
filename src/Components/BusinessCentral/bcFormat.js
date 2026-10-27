@@ -83,3 +83,9 @@ export const DATE_PRESETS = [
 ].map((preset) => ({ ...preset, resolve: () => { const [from, to] = preset.range(); return { from: toDateString(from), to: toDateString(to) } } }))
 
 export const defaultRange = () => DATE_PRESETS[0].resolve()
+
+// What a company is called on screen: BC's Display Name when it has one,
+// which can be changed in BC without renaming the company, otherwise its
+// Name. A connection's own label is used when someone gave it one.
+export const companyLabel = (entry) => entry?.companyDisplayName || entry?.company || ''
+export const connectionLabel = (entry) => (entry?.name && entry.name !== entry.company ? entry.name : companyLabel(entry) || entry?.name || '')
