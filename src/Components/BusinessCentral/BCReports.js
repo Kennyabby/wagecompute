@@ -376,7 +376,8 @@ const BCReports = ({ api, lookups, lastSyncedAt, openKey, openPreset, onOpenKey,
                                                 <span>{report.description}</span>
                                                 {report.custom?.pinned && <span className='bc-report-reason'>Shown on the dashboard</span>}
                                                 {report.custom?.draft && <span className='bc-report-reason'>Draft: only you can see it. Press Continue to carry on.</span>}
-                                                {!report.available && !report.custom?.draft && <span className='bc-report-reason'>Not available yet: {report.reason}</span>}
+                                                {/* "Yet" is wrong for a built report that cannot be kept to this person's limits: it will not open for them until those change. */}
+                                                {!report.available && !report.custom?.draft && <span className='bc-report-reason'>{report.limited ? 'Not open to you' : 'Not available yet'}: {report.reason}</span>}
                                             </button>
                                         )
                                         // A report someone built can also be changed or deleted.
