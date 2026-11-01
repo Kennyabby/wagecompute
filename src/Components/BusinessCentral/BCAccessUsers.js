@@ -41,7 +41,7 @@ export const accessWarnings = (access, catalogue) => {
     if (limited.some((key) => key !== 'locations' && key !== 'branches') && access.tabs.includes('dashboard')) warnings.push('The dashboard can only be narrowed by location and branch, so with these limits it will not open for this user.')
     else if (limited.length && access.tabs.includes('dashboard')) warnings.push('With limits, the dashboard leaves off the company-wide parts: general ledger, bank, VAT, and customer and vendor balances.')
     if (limited.length && (access.tabs.includes('changes') || access.tabs.includes('einvoice'))) warnings.push('The Changes and E-Invoicing tabs list everything, whatever the limits, so they are closed to a user with limits.')
-    if (restricted && (access.reports.custom || access.actions.some((key) => key.startsWith('builder.')))) warnings.push('Built reports and the report builder can read past any limit, so they are closed to a user with limits or with earlier dates refused.')
+    if (restricted && (access.reports.custom || access.actions.some((key) => key.startsWith('builder.')))) warnings.push('Built reports and the report builder are held to these limits. A report reading a page with no field for one of them will not open for this user.')
     const has = (key) => access.actions.includes(key)
     const someReports = access.reports.all || access.reports.custom || access.reports.domains.length > 0 || access.reports.keys.length > 0
     if (someReports && !access.tabs.includes('reports') && !access.tabs.includes('dashboard') && !access.tabs.includes('transactions')) warnings.push('Reports are chosen, but none of the Reports, Dashboard or Transactions tabs is, so they cannot be opened.')
