@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { generateExcel } from './exportUtils';
 import { loadPdfImage, fitImageBox } from './pdfLogo';
+import { letterheadFor, whereFromFilters } from './exportAddress';
 
 export const GL_EXPORT_COLUMNS = [
     { name: 'Posting Date', reference: 'postingDate' },
@@ -31,12 +32,14 @@ const toExportRow = (row = {}) => ({
     reversedLabel: row.reversedAt ? 'Yes' : 'No',
 });
 
-export const exportGlToExcel = (rows, companyInfo, dateRange, filtersSummary = {}, reportTitle = 'General Ledger') => {
+export const exportGlToExcel = async (rows, companyInfo, dateRange, filtersSummary = {}, reportTitle = 'General Ledger') => {
     const exportRows = (rows || []).map(toExportRow);
-    generateExcel(exportRows, GL_EXPORT_COLUMNS, companyInfo, dateRange, reportTitle, filtersSummary);
+    return generateExcel(exportRows, GL_EXPORT_COLUMNS, companyInfo, dateRange, reportTitle, filtersSummary);
 };
 
-export const exportGlToPDF = async (rows, companyInfo, dateRange, filtersSummary = {}, reportTitle = 'General Ledger') => {
+export const exportGlToPDF = async (rows, baseInfo, dateRange, filtersSummary = {}, reportTitle = 'General Ledger') => {
+    const companyInfo = await letterheadFor(baseInfo, whereFromFilters(filtersSummary), reportTitle);
+    if (!companyInfo) return false;
     const exportRows = (rows || []).map(toExportRow);
     const doc = new jsPDF({ orientation: 'landscape' });
 
@@ -58,6 +61,11 @@ export const exportGlToPDF = async (rows, companyInfo, dateRange, filtersSummary
     doc.text(reportTitle, textX, 23);
 
     let y = 29;
+    if (companyInfo?.address) {
+        const lines = doc.splitTextToSize(String(companyInfo.address), doc.internal.pageSize.width - textX - 14);
+        doc.text(lines, textX, y);
+        y += 6 * lines.length;
+    }
     if (dateRange?.startDate && dateRange?.endDate) {
         doc.text(`Period: ${dateRange.startDate} to ${dateRange.endDate}`, 14, y);
         y += 6;

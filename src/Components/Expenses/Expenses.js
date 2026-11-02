@@ -10,6 +10,7 @@ import ApprovalDatesPanel from '../../Resources/ApprovalDatesPanel/ApprovalDates
 // import { useApproval } from '../../Resources/ApprovalContext';
 
 import html2pdf from 'html2pdf.js';
+import { withReportAddress } from '../../utils/exportAddress';
 import { useScroll } from 'framer-motion'
 import { MdAdd, MdArrowBack } from 'react-icons/md'
 import { FaPlus } from "react-icons/fa";
@@ -620,7 +621,7 @@ const Expenses = () => {
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
-        html2pdf().set(options).from(element).save();
+        return withReportAddress(element, {}, 'Expense Description', () => html2pdf().set(options).from(element).save());
     };
 
     // PO is available as soon as the expense exists; Payment Invoice too.
@@ -632,7 +633,7 @@ const Expenses = () => {
         setAlert('Generating expense document...')
         setAlertTimeout(100000)
         try {
-            await exportExpenseDocumentToPDF({
+            const made = await exportExpenseDocumentToPDF({
                 type,
                 title: type === 'expenseInvoice' ? 'PAYMENT INVOICE' : 'PURCHASE ORDER',
                 companyRecord,
@@ -644,6 +645,12 @@ const Expenses = () => {
                 server,
                 fetchServer,
             })
+            if (made === false) {
+                setAlertState('info')
+                setAlert('Export cancelled.')
+                setAlertTimeout(1500)
+                return
+            }
             setAlertState('success')
             setAlert('Document generated successfully!')
             setAlertTimeout(1000)
@@ -930,6 +937,7 @@ const Expenses = () => {
                                     }}
                                 >
                                     <div className='dets sldets'>
+                                        <p data-report-address style={{ display: 'none', margin: '0 0 6px', fontSize: 12 }} />
                                         {(curExpense?.createdAt === createdAt && curExpense.showDetails) &&
                                             <FaPrint
                                                 className='desc-btn-top'

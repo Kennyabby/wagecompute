@@ -11,6 +11,7 @@ import BCBuilder from './BCBuilder'
 import BCDrillModal from './BCDrillModal'
 import BCReconcile from './BCReconcile'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
+import { whereFromDefinition } from '../../utils/exportAddress'
 import BCFilterBar, { initialFilterValues } from './BCFilterBar'
 import { formatKpi, formatValue } from './bcFormat'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
@@ -128,6 +129,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                 dateRange: dateRangeFrom(report.params),
                 filters: describeFilters(definition, report.params, lookups),
                 companyInfo: companyInfoFrom(context),
+                where: whereFromDefinition(definition, report.params),
             })
         } catch (failure) {
             setAlertState('error')
@@ -212,6 +214,7 @@ const ReportViewer = ({ api, definition, lookups, lastSyncedAt, onBack, onLoaded
                     report={report}
                     target={drill}
                     filters={describeFilters(definition, report.params, lookups)}
+                    where={whereFromDefinition(definition, report.params)}
                     onClose={() => setDrill(null)}
                 />
             )}

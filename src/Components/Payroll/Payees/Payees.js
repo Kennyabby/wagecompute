@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Barcode from 'react-barcode';
 import { loadPdfImage, fitImageBox } from '../../../utils/pdfLogo';
+import { letterheadFor } from '../../../utils/exportAddress';
 
 const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
     const [InvoiceNumber, setInvoiceNumber] = useState('')
@@ -70,6 +71,8 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
 
     const generatePDF = useCallback(async () => {
         try {
+            const letterhead = await letterheadFor({ email: companyRecord?.emailid || '' }, {}, 'Staff Payroll');
+            if (!letterhead) return;
             const doc = new jsPDF({
                 orientation: 'landscape',
                 unit: 'mm',
@@ -103,11 +106,11 @@ const Payee = ({setViewPayee, selectedMonth, selectedYear})=>{
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             
-            const address = companyRecord?.address || 'Company Address';
+            const address = letterhead.address || '';
             const addressWidth = doc.getTextWidth(address);
             doc.text(address, (pageWidth - addressWidth) / 2, 23);
             
-            const email = `Email: ${companyRecord?.emailid || 'info@company.com'}`;
+            const email = `Email: ${letterhead.email || 'info@company.com'}`;
             const emailWidth = doc.getTextWidth(email);
             doc.text(email, (pageWidth - emailWidth) / 2, 28);
             

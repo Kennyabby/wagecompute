@@ -4,6 +4,7 @@ import StatCardGrid from '../Shared/ui/StatCardGrid'
 import BCDataTable from './BCDataTable'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import { downloadReconExcel, downloadReconPdf, verdictOf } from './bcReconExport'
+import { letterheadFor, whereFromDefinition } from '../../utils/exportAddress'
 import { formatValue } from './bcFormat'
 import BCReconcileMapper from './BCReconcileMapper'
 import { useBCAccess } from './bcAccess'
@@ -502,7 +503,9 @@ const BCReconcile = ({ api, definition, report, companyInfo }) => {
     const exportAll = async (kind) => {
         setBusy(kind)
         try {
-            const meta = { fileName, company: companyInfo?.name || '', comparedAt: comparedAt || new Date() }
+            const letterhead = await letterheadFor(companyInfo, whereFromDefinition(definition, report.params), result.title)
+            if (!letterhead) return
+            const meta = { fileName, company: companyInfo?.name || '', address: letterhead.address || '', comparedAt: comparedAt || new Date() }
             if (kind === 'excel') await downloadReconExcel(result, meta)
             else await downloadReconPdf(result, meta)
         } catch (failure) {

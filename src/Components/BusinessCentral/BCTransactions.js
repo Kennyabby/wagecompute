@@ -4,6 +4,7 @@ import ContextProvider from '../../Resources/ContextProvider'
 import BCDataTable from './BCDataTable'
 import BCDrillModal from './BCDrillModal'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
+import { mergeWhere, whereFromFilters } from '../../utils/exportAddress'
 import BCFilterBar, { initialFilterValues } from './BCFilterBar'
 import { formatValue } from './bcFormat'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
@@ -135,6 +136,7 @@ const BCTransactions = ({ api, lookups, lastSyncedAt, onLoaded, onGoTo }) => {
                     ...Object.fromEntries(Object.entries(view?.filters || {}).map(([label, value]) => [`Filtered by ${label}`, value])),
                 },
                 companyInfo: companyInfoFrom(context),
+                where: mergeWhere(whereFromFilters(report.params), whereFromFilters(view?.filters)),
             })
         } catch (failure) {
             setAlertState('error')

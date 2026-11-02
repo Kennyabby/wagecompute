@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { generateExcel } from './exportUtils';
 import { loadPdfImage, fitImageBox } from './pdfLogo';
+import { letterheadFor } from './exportAddress';
 
 // Every column the on-screen reconciliation table shows (ReconciliationReview.js's
 // <table className='reconcile-review-table'>), in the same order, so the
@@ -59,10 +60,10 @@ const toTotalsRow = (rows = []) => rows.reduce((acc, row) => {
     return acc;
 }, { productId: '', name: 'TOTAL' });
 
-export const exportReconciliationExcel = ({ companyInfo, postingDate, location, lines = [] }) => {
+export const exportReconciliationExcel = async ({ companyInfo, postingDate, location, lines = [] }) => {
     const rows = lines.map(toReportRow);
     const totalsRow = toTotalsRow(rows);
-    generateExcel(
+    return generateExcel(
         [totalsRow, ...rows, totalsRow],
         RECONCILIATION_COLUMNS,
         companyInfo,
@@ -72,7 +73,9 @@ export const exportReconciliationExcel = ({ companyInfo, postingDate, location, 
     );
 };
 
-export const exportReconciliationPDF = async ({ companyInfo, postingDate, location, lines = [] }) => {
+export const exportReconciliationPDF = async ({ companyInfo: baseInfo, postingDate, location, lines = [] }) => {
+    const companyInfo = await letterheadFor(baseInfo, { location }, `Inventory Reconciliation - ${location}`);
+    if (!companyInfo) return false;
     const rows = lines.map(toReportRow);
     const totalsRow = toTotalsRow(rows);
     const allRows = [totalsRow, ...rows, totalsRow];
@@ -95,11 +98,17 @@ export const exportReconciliationPDF = async ({ companyInfo, postingDate, locati
     doc.setFontSize(10);
     doc.text(`Inventory Reconciliation: ${location}`, textX, 23);
     doc.text(`Posting Date: ${postingDate}`, textX, 29);
+    let tableTop = 36;
+    if (companyInfo?.address) {
+        const lines = doc.splitTextToSize(String(companyInfo.address), doc.internal.pageSize.width - textX - 14);
+        doc.text(lines, textX, 35);
+        tableTop = 37 + 5 * lines.length;
+    }
 
     autoTable(doc, {
         head: [RECONCILIATION_COLUMNS.map((col) => col.name)],
         body: allRows.map((row) => RECONCILIATION_COLUMNS.map((col) => row[col.reference])),
-        startY: 36,
+        startY: tableTop,
         margin: { top: 36 },
         styles: { fontSize: 8 },
         headStyles: { fillColor: [41, 128, 185] },

@@ -5,6 +5,7 @@ import StatCardGrid from '../Shared/ui/StatCardGrid'
 import BCDataTable from './BCDataTable'
 import { useBCAccess } from './bcAccess'
 import { companyInfoFrom, exportTable } from './bcExport'
+import { whereFromFilters } from '../../utils/exportAddress'
 import { formatValue, todayString } from './bcFormat'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import { ROLES, TEMPLATE_EXAMPLE, TEMPLATE_HEADERS, TEMPLATE_NOTES, findHeaderRow, guessMapping, sampleRows, toLines, validateStatement } from './bcStatement'
@@ -143,6 +144,7 @@ const BCBankStatement = ({ api, lookups }) => {
                 dateRange: { startDate: result.from, endDate: result.to },
                 filters: { 'Bank account': `${result.bank.bankAccountNo} ${result.bank.name}`.trim(), Statement: file?.name || '', ...Object.fromEntries(Object.entries(view?.filters || {}).map(([label, value]) => [`Filtered by ${label}`, value])) },
                 companyInfo: companyInfoFrom(context),
+                where: whereFromFilters(view?.filters),
             })
         } catch (failure) {
             say('error', 'The export could not be created. Please try again.')

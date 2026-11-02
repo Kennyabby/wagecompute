@@ -3,6 +3,7 @@ import {useState, useContext, useRef, useEffect} from 'react'
 import ContextProvider from '../../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
+import { withReportAddress } from '../../../utils/exportAddress';
 
 const RentalReceipt = ({
     rentalSale,    
@@ -72,7 +73,7 @@ const RentalReceipt = ({
             html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
-        html2pdf().set(options).from(element).save();
+        return withReportAddress(element, {}, 'Rental Receipt', () => html2pdf().set(options).from(element).save());
     };
     return(
         <>
@@ -95,8 +96,8 @@ const RentalReceipt = ({
                                             <div className="billfrom">
                                                 {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className="payee-report-logo" crossOrigin="anonymous" />}
                                                 <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
-                                                <p className='billfromitem'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
-                                                <p className='billfromitem'>{`Phone: +234 906 4648 510, Email: ${companyRecord.emailid}`}</p>
+                                                <p className='billfromitem' data-report-address>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
+                                                <p className='billfromitem' data-report-contact data-contact-phone='+234 906 4648 510' data-contact-email={companyRecord.emailid}>{`Phone: +234 906 4648 510, Email: ${companyRecord.emailid}`}</p>
                                                 <p className='billfromitem'><b>{`RENTAL RECEIPT FOR THE MONTH OF ${rentalSale.paymentMonth}`}</b></p>
                                                 <p className='billfromitem'>Created Date: <b>{getDate()}</b></p>
                                             </div>

@@ -3,6 +3,7 @@ import './Inventory.css'
 import { useState, useEffect, useContext, useRef } from "react";
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
+import { withReportAddress } from '../../utils/exportAddress';
 import ContextProvider from "../../Resources/ContextProvider";
 import Products from './Products/Products';
 import Adjustments from './Operations/Adjustments/Adjustments';
@@ -295,7 +296,7 @@ const Inventory = ()=>{
             html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
-        html2pdf().set(options).from(element).save();
+        return withReportAddress(element, {}, 'Inventory Record Report', () => html2pdf().set(options).from(element).save());
     };
     return (
         <>
@@ -484,6 +485,7 @@ const Inventory = ()=>{
                     </div>}
                 </div>
                 <div className='inventoryView' ref={targetRef}>
+                    <p data-report-address style={{ display: 'none', margin: '0 0 6px', fontSize: 12 }} />
                     {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" style={{ maxWidth: 60, maxHeight: 60, objectFit: 'contain', display: 'block', marginBottom: 6 }} crossOrigin="anonymous" />}
                     {view}
                 </div>

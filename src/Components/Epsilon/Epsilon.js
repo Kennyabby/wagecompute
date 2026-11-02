@@ -1027,15 +1027,15 @@ const Epsilon = () => {
     // {name, reference, numeric?} (see BusinessPartners.js's own callers).
     // A different shape from the {key, label} the report card's own inline
     // table uses, so it's adapted here rather than changing either contract.
-    const exportReport = (report, format) => {
+    const exportReport = async (report, format) => {
         const columns = (report.tabular?.columns || []).map((col) => ({ name: col.label, reference: col.key }))
         const rows = report.tabular?.rows || []
         const dateRange = report.fromDate && report.toDate ? { startDate: report.fromDate, endDate: report.toDate } : null
         try {
             if (format === 'pdf') {
-                generatePDF(rows, columns, companyInfo, dateRange, report.title || 'Report')
+                await generatePDF(rows, columns, companyInfo, dateRange, report.title || 'Report')
             } else {
-                generateExcel(rows, columns, companyInfo, dateRange, report.title || 'Report')
+                await generateExcel(rows, columns, companyInfo, dateRange, report.title || 'Report')
             }
         } catch (e) {
             setError(`Could not export this report as ${format === 'pdf' ? 'PDF' : 'Excel'}.`)

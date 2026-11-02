@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { loadPdfImage, fitImageBox } from './pdfLogo';
+import { letterheadFor, whereFromFilters } from './exportAddress';
 
 // Column widths in millimetres, at a given font size, for a table that must
 // never let one column's text run into the next.
@@ -114,8 +115,15 @@ const formatCurrency = (value) => {
 // `options.totalsRow` says the last row of `data` is a totals line, printed in
 // bold. A column may carry `pdfText`, a function that turns its value into
 // the text to print, for a caller that wants its own number formatting.
+// `options.where` gives the branch and location codes when `filters` holds
+// descriptions for people. Without it they are read from `filters`. Resolves
+// with false if the user cancels the address prompt.
 export const generatePDF = async (data, columns, companyInfo, dateRange, reportTitle, filters = {}, options = {}) => {
     try {
+        const letterhead = await letterheadFor(companyInfo, options.where || whereFromFilters(filters), reportTitle);
+        if (!letterhead) return false;
+        companyInfo = letterhead;
+
         // Create a new PDF document
         const doc = new jsPDF({
             orientation: 'landscape'
@@ -140,18 +148,21 @@ export const generatePDF = async (data, columns, companyInfo, dateRange, reportT
         doc.setFontSize(10);
 
         // Add company details
-        doc.text(companyInfo.address || '', textX, 22);
-        doc.text(`Phone: ${companyInfo.phone || ''}`, textX, 29);
-        doc.text(`Email: ${companyInfo.email || ''}`, textX, 36);
-        
+        // A long address wraps, and everything under it moves down to make room.
+        const addressLines = doc.splitTextToSize(String(companyInfo.address || ''), doc.internal.pageSize.width - textX - 14);
+        const addressPush = Math.max(addressLines.length - 1, 0) * 5;
+        doc.text(addressLines, textX, 22);
+        doc.text(`Phone: ${companyInfo.phone || ''}`, textX, 29 + addressPush);
+        doc.text(`Email: ${companyInfo.email || ''}`, textX, 36 + addressPush);
+
         // Add report title and date range
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         // A long title wraps instead of running off the page.
         const pageWidth = doc.internal.pageSize.width;
         const titleLines = doc.splitTextToSize(String(reportTitle || ''), pageWidth - 28);
-        doc.text(titleLines, 14, 50);
-        const pushed = (titleLines.length - 1) * 7;
+        doc.text(titleLines, 14, 50 + addressPush);
+        const pushed = addressPush + (titleLines.length - 1) * 7;
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -229,7 +240,8 @@ export const generatePDF = async (data, columns, companyInfo, dateRange, reportT
         
         // Save the PDF
         doc.save(`${reportTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
-        
+        return true;
+
     } catch (error) {
         console.error('Error generating PDF:', error);
         throw error;
@@ -239,9 +251,14 @@ export const generatePDF = async (data, columns, companyInfo, dateRange, reportT
 // `options.skipAutoTotals` is for a caller whose data already ends with its
 // own totals line. (The same switch inside `filters` still works, but there
 // it is also printed as if it were a filter.) A column may carry
-// `excelFormat`, the number format its figures are shown in.
-export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle, filters = {}, grouped = false, options = {}) => {
+// `excelFormat`, the number format its figures are shown in. `options.where`
+// works as it does for generatePDF, and so does the false on a cancel.
+export const generateExcel = async (data, columns, companyInfo, dateRange, reportTitle, filters = {}, grouped = false, options = {}) => {
     try {
+        const letterhead = await letterheadFor(companyInfo, options.where || whereFromFilters(filters), reportTitle);
+        if (!letterhead) return false;
+        companyInfo = letterhead;
+
         // Create a new workbook
         const wb = XLSX.utils.book_new();
         
@@ -440,7 +457,8 @@ export const generateExcel = (data, columns, companyInfo, dateRange, reportTitle
         
         // Save the Excel file
         XLSX.writeFile(wb, `${reportTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
-        
+        return true;
+
     } catch (error) {
         console.error('Error generating Excel:', error);
         throw error;

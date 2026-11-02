@@ -8,6 +8,7 @@ import jsPDF from 'jspdf'
 import { loadPdfImage, fitImageBox } from '../../utils/pdfLogo'
 import { generateExcel } from '../../utils/exportUtils'
 import { exportGlToExcel, exportGlToPDF } from '../../utils/glExport'
+import { letterheadFor } from '../../utils/exportAddress'
 import * as XLSX from 'xlsx'
 import { getAppCache, setAppCache } from '../../Resources/offlineDb'
 import { generateOperationId, checkPostingOperationStatus, usePostingOperationProgress } from '../../Resources/postingOperations'
@@ -882,6 +883,8 @@ const Journals = () => {
 
     const exportToPDF = async () => {
         const isTrialBalance = reportType === 'TB'
+        const letterhead = await letterheadFor({}, {}, reportType === 'PL' ? 'Profit and Loss Statement' : reportType === 'BS' ? 'Balance Sheet' : 'Trial Balance');
+        if (!letterhead) return;
         const doc = new jsPDF({ orientation: isTrialBalance ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
         const compName = companyRecord?.name || 'Enterprise Compute';
         const title = reportType === 'PL'
@@ -917,6 +920,10 @@ const Journals = () => {
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8.5);
             doc.text(`Period: ${fromDate} to ${toDate}`, headerTextX, y);
+            if (letterhead.address) {
+                y += 4.5;
+                doc.text(doc.splitTextToSize(String(letterhead.address), pageWidth - headerTextX - margin)[0], headerTextX, y);
+            }
             y += 9;
         };
 
@@ -1056,13 +1063,12 @@ const Journals = () => {
                 { section: 'Expenses', code: '', name: 'Total Operating Expenses', amount: totals.expenses },
                 { section: 'Summary', code: '', name: 'Net Income / (Loss)', amount: totals.netIncome },
             ];
-            generateExcel(data, [
+            return generateExcel(data, [
                 { name: 'Section', reference: 'section' },
                 { name: 'G/L Code', reference: 'code' },
                 { name: 'Account Name', reference: 'name' },
                 { name: 'Amount', reference: 'amount', numeric: true }
             ], compInfo, dRange, 'Profit and Loss Report', skipAutoTotals);
-            return;
         }
 
         if (reportType === 'BS') {
@@ -1076,13 +1082,12 @@ const Journals = () => {
                 { section: 'Equity', code: '', name: 'Total Equity', amount: totals.equity },
                 { section: 'Summary', code: '', name: 'Total Liabilities + Equity', amount: totals.liabilitiesAndEquity },
             ];
-            generateExcel(data, [
+            return generateExcel(data, [
                 { name: 'Section', reference: 'section' },
                 { name: 'G/L Code', reference: 'code' },
                 { name: 'Account Name', reference: 'name' },
                 { name: 'Amount', reference: 'amount', numeric: true }
             ], compInfo, dRange, 'Balance Sheet Report', skipAutoTotals);
-            return;
         }
 
         const tbRows = [
@@ -1106,7 +1111,7 @@ const Journals = () => {
             },
         ];
 
-        generateExcel(tbRows, [
+        return generateExcel(tbRows, [
             { name: 'G/L Code', reference: 'code' },
             { name: 'Account Name', reference: 'name' },
             { name: 'Opening Balance', reference: 'openingBalance', numeric: true },
@@ -3817,9 +3822,9 @@ const Journals = () => {
             const dRange = { startDate: fromDate, endDate: toDate }
             const filtersSummary = buildGlFiltersSummary()
             if (format === 'excel') {
-                exportGlToExcel(rows, compInfo, dRange, filtersSummary, 'General Ledger')
+                await exportGlToExcel(rows, compInfo, dRange, filtersSummary, 'General Ledger')
             } else {
-                exportGlToPDF(rows, compInfo, dRange, filtersSummary, 'General Ledger')
+                await exportGlToPDF(rows, compInfo, dRange, filtersSummary, 'General Ledger')
             }
         } catch (error) {
             setAlertState('error')

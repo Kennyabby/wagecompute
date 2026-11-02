@@ -98,8 +98,48 @@ test('a report with more columns than a page can hold carries on across pages, w
     expect(text).toContain('1,234,567.89')
 })
 
-test('a spreadsheet shows figures with separators and keeps them as numbers', () => {
-    generateExcel(
+describe('the address on a file', () => {
+    const { bindAddressPrompt, setAddressProfile } = require('./exportAddress')
+    const columns = [{ name: 'Item', reference: 'name' }]
+    const profile = { reportAddresses: [{ id: 'a', label: 'Depot', address: '5 Transamadi Road', branches: [], locations: ['WH-TM'] }] }
+    const bind = (answer) => { setAddressProfile(profile); bindAddressPrompt({ refresh: async () => {}, ask: answer }) }
+    const cellsOf = (book) => Object.values(book.Sheets.Sales).map((cell) => cell && cell.v)
+
+    afterEach(() => { bindAddressPrompt(null); setAddressProfile(null); global.savedBook = null })
+
+    test('a PDF and a spreadsheet filtered to a location print its address, not the company one, without asking', async () => {
+        const ask = jest.fn()
+        bind(ask)
+        await generatePDF([{ name: 'A' }], columns, company, null, 'Sales', { warehouse: 'WH-TM' })
+        expect(drawn(global.savedPdf).join('\n')).toContain('5 Transamadi Road')
+        expect(drawn(global.savedPdf).join('\n')).not.toContain('Demo company address')
+        await generateExcel([{ name: 'A' }], columns, company, null, 'Sales', {}, false, { where: { location: ['WH-TM'] } })
+        expect(cellsOf(global.savedBook)).toContain('5 Transamadi Road')
+        expect(ask).not.toHaveBeenCalled()
+    })
+
+    test('a long address wraps and pushes the title down, so nothing is drawn over it', async () => {
+        const long = `Plot 12, Trans Amadi Industrial Layout, Off Peter Odili Road, Port Harcourt, Rivers State, ${'close to the main depot gate, '.repeat(6)}and the weighbridge`
+        bind(jest.fn(async () => ({ address: long })))
+        await generatePDF([{ name: 'A' }], columns, company, null, 'Sales')
+        const text = drawn(global.savedPdf).join('\n')
+        expect(text).toContain('Plot 12')
+        expect(text).toContain('weighbridge')
+        // Every word is there, and not all of it on one line.
+        expect(text).not.toContain(long)
+    })
+
+    test('a cancelled prompt makes no file', async () => {
+        bind(jest.fn(async () => null))
+        await expect(generatePDF([{ name: 'A' }], columns, company, null, 'Sales')).resolves.toBe(false)
+        await expect(generateExcel([{ name: 'A' }], columns, company, null, 'Sales')).resolves.toBe(false)
+        expect(global.savedPdf).toBeNull()
+        expect(global.savedBook).toBeNull()
+    })
+})
+
+test('a spreadsheet shows figures with separators and keeps them as numbers', async () => {
+    await generateExcel(
         [{ name: 'KINGS FRUIT', qty: 27360, sales: 3573000.5 }, { name: 'Total', qty: 27360, sales: 3573000.5 }],
         [{ name: 'Customer', reference: 'name' }, { name: 'Quantity', reference: 'qty', numeric: true }, { name: 'Sales', reference: 'sales', numeric: true }],
         company, null, 'Sales', {}, false, { skipAutoTotals: true },

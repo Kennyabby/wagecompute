@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom'
 import { FaBoxes, FaInfoCircle } from 'react-icons/fa'
 import { IoAdd, IoSave, IoCalculator, IoPrint, IoTrash } from 'react-icons/io5'
 import ContextProvider from '../../Resources/ContextProvider'
+import { withReportAddress } from '../../utils/exportAddress'
 
 const money = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 2 })
 
@@ -112,6 +113,7 @@ const Assets = () => {
     const glDeepLinkAppliedRef = useRef(false)
     const [glDeepLinkTargetId, setGlDeepLinkTargetId] = useState(null)
     const assetRowRefs = useRef({})
+    const moduleRef = useRef(null)
     useEffect(() => {
         if (glDeepLinkAppliedRef.current) return;
         const params = new URLSearchParams(glLocation.search)
@@ -293,9 +295,7 @@ const Assets = () => {
         }
     }
 
-    const printRegister = () => {
-        window.print()
-    }
+    const printRegister = () => withReportAddress(moduleRef.current, {}, 'Asset Register', () => window.print())
 
     const renderSelectMethod = (value, onChange) => (
         <select value={value} onChange={(event) => onChange(event.target.value)}>
@@ -304,7 +304,8 @@ const Assets = () => {
     )
 
     return (
-        <div className='asset-module'>
+        <div className='asset-module' ref={moduleRef}>
+            <p data-report-address style={{ display: 'none', margin: '0 0 8px', fontSize: 12 }} />
             <section className='asset-hero'>
                 <div>
                     <span className='asset-kicker'>Fixed assets</span>

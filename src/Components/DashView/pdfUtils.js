@@ -1,8 +1,19 @@
 
 import jsPDF from 'jspdf';
 import { loadPdfImage, fitImageBox } from '../../utils/pdfLogo';
+import { letterheadFor } from '../../utils/exportAddress';
+
+// Drawn beside the logo, above a title that already sits at the top margin, so
+// the two reports below stay as they were laid out when no address is chosen.
+const drawAddressLine = (doc, letterhead, x, y) => {
+  if (!letterhead?.address) return;
+  doc.setFontSize(9);
+  doc.text(String(letterhead.address), x, y);
+};
 
 export async function exportReceiptsTableToPDF({ payPointAccounts, dbName, filteredReceipts, filter, resultCount, employees, grouped = false, logoUrl = null }) {
+  const letterhead = await letterheadFor({}, {}, `${dbName} Payment Receipts Report`);
+  if (!letterhead) return false;
   const doc = new jsPDF({ orientation: 'landscape' });
   const marginLeft = 7;
   const marginTop = 18;
@@ -30,6 +41,7 @@ export async function exportReceiptsTableToPDF({ payPointAccounts, dbName, filte
   // Title
   doc.setFontSize(16);
   doc.text(`${dbName} Payment Receipts Report`, titleX, marginTop);
+  drawAddressLine(doc, letterhead, titleX, marginTop + 5);
   doc.setFontSize(11);
   doc.text(`Filters:`, marginLeft, marginTop + 10);
   // Format multi-select filters for display
@@ -211,6 +223,8 @@ export async function exportSummaryMatrixToPDF({
   filters = {},
   logoUrl = null
 }) {
+  const letterhead = await letterheadFor({}, {}, title);
+  if (!letterhead) return false;
   const doc = new jsPDF({ orientation: 'landscape' });
   const marginLeft = 10;
   const marginTop = 14;
@@ -233,6 +247,7 @@ export async function exportSummaryMatrixToPDF({
   // Title
   doc.setFontSize(14);
   doc.text(title, titleX, marginTop);
+  drawAddressLine(doc, letterhead, titleX, marginTop + 4.5);
   // Filters line
   doc.setFontSize(10);
   const filterLine = `Date From: ${filters.from || 'Any'} | Date To: ${filters.to || 'Any'}`;
@@ -311,6 +326,9 @@ export async function exportPurchaseDocumentToPDF({
   server = null,
   fetchServer = null
 }) {
+  const letterhead = await letterheadFor({ address: '', phone: companyRecord.phone || companyRecord.mobile || '', email: companyRecord.email || '' }, { location: fields.location }, title);
+  if (!letterhead) return false;
+  companyRecord = { ...companyRecord, address: letterhead.address, phone: letterhead.phone, email: letterhead.email };
   // Fetch central company profile to ensure logo/signature are current (matching Employees.js pattern)
   let centralCompany = null;
   try {
@@ -390,8 +408,9 @@ export async function exportPurchaseDocumentToPDF({
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   if (companyRecord.address) {
-    doc.text(formatValue(companyRecord.address), marginLeft, y);
-    y += rowHeight;
+    const addressLines = doc.splitTextToSize(formatValue(companyRecord.address), contentWidth);
+    doc.text(addressLines, marginLeft, y);
+    y += rowHeight + (addressLines.length - 1) * 4;
   }
   const contactLine = [companyRecord.phone || companyRecord.mobile, companyRecord.email].filter(Boolean).join(' | ');
   if (contactLine) {
@@ -536,6 +555,9 @@ export async function exportExpenseDocumentToPDF({
   server = null,
   fetchServer = null
 }) {
+  const letterhead = await letterheadFor({ address: '', phone: companyRecord.phone || companyRecord.mobile || '', email: companyRecord.email || '' }, {}, title);
+  if (!letterhead) return false;
+  companyRecord = { ...companyRecord, address: letterhead.address, phone: letterhead.phone, email: letterhead.email };
   let centralCompany = null;
   try {
     if (fetchServer && server) {
@@ -594,8 +616,9 @@ export async function exportExpenseDocumentToPDF({
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   if (companyRecord.address) {
-    doc.text(formatValue(companyRecord.address), marginLeft, y);
-    y += rowHeight;
+    const addressLines = doc.splitTextToSize(formatValue(companyRecord.address), contentWidth);
+    doc.text(addressLines, marginLeft, y);
+    y += rowHeight + (addressLines.length - 1) * 4;
   }
   const contactLine = [companyRecord.phone || companyRecord.mobile, companyRecord.email].filter(Boolean).join(' | ');
   if (contactLine) {
