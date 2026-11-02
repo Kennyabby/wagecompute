@@ -20,7 +20,7 @@ const OPERATORS = [
 const FORMATS = [['number', 'Number'], ['qty', 'Quantity'], ['money', 'Money'], ['percent', 'Percent']]
 const NUMERIC = ['number', 'qty', 'money', 'percent']
 // Kinds whose advice can end in an adjustment, so the switch means something.
-const ADJUSTING = ['stock', 'customers', 'vendors', 'accounts']
+const ADJUSTING = ['stock', 'finishedGoods', 'customers', 'vendors', 'accounts']
 const TABS = [['columns', 'Columns'], ['calcs', 'Calculated columns'], ['filters', 'Filters'], ['reconcile', 'Reconciliation']]
 
 // A key from the start, so a condition or a reconciliation can name the

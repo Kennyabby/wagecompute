@@ -51,7 +51,7 @@ test('a report is built step by step, previewed and saved', async () => {
 
     // The guide is open for a new report and covers every step.
     expect(await screen.findByRole('heading', { name: 'How to build a report' })).toBeInTheDocument()
-    expect(GUIDE).toHaveLength(14)
+    expect(GUIDE).toHaveLength(15)
     expect(screen.getByText(/A formula works on the figures by their letters/)).toBeInTheDocument()
     expect(GUIDE[7].body).toMatch(/Inbound_Item_Entry_No.*Outbound_Item_Entry_No.*Lot_No/)
 
