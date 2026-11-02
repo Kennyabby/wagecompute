@@ -2,6 +2,7 @@ import './Settings.css'
 import { useEffect, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
+import ReportAddresses from './ReportAddresses'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle, IoServer, IoRefresh } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
@@ -2845,6 +2846,8 @@ const Settings = () => {
                                 <button className='savebtn' onClick={saveCompanyProfile}><IoSave /> Save Company Profile</button>
                             </div>
                             </div>
+                            {/* Kept in the same state as the profile form, because Save Company Profile writes the whole document back. */}
+                            {companyProfile && <ReportAddresses saved={companyProfile.reportAddresses} onSaved={(reportAddresses) => setCompanyProfile((prev) => ({ ...prev, reportAddresses }))} />}
                         </div>
                     </motion.div>
                 )

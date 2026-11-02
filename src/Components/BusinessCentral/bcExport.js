@@ -29,7 +29,7 @@ const EXCEL_FORMATS = { money: '#,##0.00', percent: '#,##0.00' }
  * files from this module look like every other report the app produces.
  * A totals row is added at the bottom when the table has one.
  */
-export const exportTable = async ({ kind, title, columns, rows, totals, dateRange, filters, companyInfo }) => {
+export const exportTable = async ({ kind, title, columns, rows, totals, dateRange, filters, companyInfo, where }) => {
     // In a PDF a figure is printed the way the screen shows it, with
     // separators and its decimals. Excel gets the number itself.
     const exportColumns = columns.map((column) => ({
@@ -49,9 +49,9 @@ export const exportTable = async ({ kind, title, columns, rows, totals, dateRang
     const data = hasTotals
         ? [...laidOut, Object.fromEntries(columns.map((column, index) => [column.key, column.total ? totals[column.key] : (index === 0 ? 'Total' : '')]))]
         : laidOut
-    if (kind === 'pdf') await generatePDF(data, exportColumns, companyInfo, dateRange, title, filters, { totalsRow: !!hasTotals })
+    if (kind === 'pdf') await generatePDF(data, exportColumns, companyInfo, dateRange, title, filters, { totalsRow: !!hasTotals, where })
     // The data already ends with the report's own totals where it has
     // them, so the helper must not add a second line that would count the
     // first one in.
-    else generateExcel(data, exportColumns, companyInfo, dateRange, title, filters, false, { skipAutoTotals: true })
+    else await generateExcel(data, exportColumns, companyInfo, dateRange, title, filters, false, { skipAutoTotals: true, where })
 }

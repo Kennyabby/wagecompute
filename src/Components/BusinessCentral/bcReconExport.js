@@ -59,7 +59,7 @@ const lineTextOf = (result) => {
  * Every sheet of the workbook as rows of cells, so it can be checked
  * without writing a file.
  */
-export const reconSheets = (result, { fileName = '', company = '', comparedAt = new Date() } = {}) => {
+export const reconSheets = (result, { fileName = '', company = '', address = '', comparedAt = new Date() } = {}) => {
     const lineText = lineTextOf(result)
     const filters = result.filters || []
     const summary = result.summary || {}
@@ -86,6 +86,7 @@ export const reconSheets = (result, { fileName = '', company = '', comparedAt = 
             ['Compared with', fileName],
             ['Compared on', comparedAt.toLocaleString()],
             ...(company ? [['Company', company]] : []),
+            ...(address ? [['Address', address]] : []),
             ['Result', verdictOf(result)],
             [],
             ['Filters'],
@@ -248,6 +249,7 @@ export const buildReconPdf = async (result, meta = {}) => {
     }
 
     text(`${result.title}${result.report ? `: ${result.report}` : ''}`, { size: 15, bold: true })
+    if (meta.address) text(meta.address, { size: 9 })
     text(`${result.params.from} to ${result.params.to}${meta.company ? `, ${meta.company}` : ''}. Compared with ${meta.fileName || 'your file'} on ${(meta.comparedAt || new Date()).toLocaleString()}.`, { size: 9 })
     text(verdictOf(result), { size: 11, bold: true, gap: 8 })
     table(['Filter', 'Value'], (result.filters || []).length ? result.filters.map((entry) => [entry.label, entry.value]) : [['None', 'Everything in the period']])

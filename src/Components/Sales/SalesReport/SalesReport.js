@@ -3,6 +3,7 @@ import { useState, useContext, useRef, useEffect } from 'react'
 import ContextProvider from '../../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf from 'html2pdf.js';
+import { withReportAddress } from '../../../utils/exportAddress';
 
 const SalesReport = ({
     reportSales, multiple,
@@ -218,7 +219,7 @@ const SalesReport = ({
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'landscape' }
         };
-        html2pdf().set(options).from(element).save();
+        return withReportAddress(element, {}, 'Sales Report', () => html2pdf().set(options).from(element).save());
     };
     return (
         <>
@@ -243,6 +244,7 @@ const SalesReport = ({
                                                     <h4 className='payeecompany' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
                                                     {/* <p className='billfrompayee'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
                                                 <p className='billfrompayee'>{`Email: ${companyRecord.emailid}`}</p> */}
+                                                    <p className='billfrompayee' data-report-address style={{ display: 'none' }} />
                                                     <p className='billfrompayee'>{`SALES FROM `}<b>{`${getDate(fromDate)}`}</b>{` TO `}<b>{`${getDate(toDate)}`}</b></p>
                                                     <p className='billfrompayee'>Created Date: <b>{getDate()}</b></p>
                                                 </div>

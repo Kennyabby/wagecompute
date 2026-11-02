@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { loadPdfImage, fitImageBox } from '../../../utils/pdfLogo';
+import { letterheadFor } from '../../../utils/exportAddress';
 
 // Helper function to format currency
 const formatCurrency = (amount) => {
@@ -20,10 +21,14 @@ const formatDate = (dateString) => {
     return date.toLocaleString();
 };
 
-export const exportToExcel = (data, filename) => {
+export const exportToExcel = async (data, filename, where = {}, company = {}) => {
     try {
+        const letterhead = await letterheadFor(company, where, filename);
+        if (!letterhead) return false;
         // Create a new workbook
         const wb = XLSX.utils.book_new();
+        // This workbook is all data sheets, so the letterhead has one of its own.
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[letterhead.name || ''], [letterhead.address || ''], [`Phone: ${letterhead.phone || ''}`], [`Email: ${letterhead.email || ''}`]]), 'Report');
         
         // 1. Sessions Sheet
         if (data.sessions && data.sessions.length > 0) {
@@ -119,8 +124,10 @@ export const exportToExcel = (data, filename) => {
     }
 };
 
-export const exportToPDF = async (data, filename, type = 'sales', logoUrl = null) => {
+export const exportToPDF = async (data, filename, type = 'sales', logoUrl = null, where = {}) => {
     try {
+        const letterhead = await letterheadFor({}, where, filename);
+        if (!letterhead) return false;
         // Create a new PDF document
         const doc = new jsPDF({
             orientation: 'portrait',
@@ -153,6 +160,7 @@ export const exportToPDF = async (data, filename, type = 'sales', logoUrl = null
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(`Generated on: ${date}`, 14, 28);
+        if (letterhead.address) doc.text(String(letterhead.address), 14, 34);
         
         // Add summary information
         doc.setFontSize(12);

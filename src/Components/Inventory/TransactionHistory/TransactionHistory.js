@@ -10,6 +10,7 @@ import { utils, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { loadPdfImage, fitImageBox } from '../../../utils/pdfLogo';
+import { letterheadFor } from '../../../utils/exportAddress';
 import './TransactionHistory.css';
 
 // Reusable checkbox-list multi-select dropdown for the filter bar. Options
@@ -925,6 +926,8 @@ const TransactionHistory = () => {
 
   // Export data to PDF without using autoTable
   const exportToPDF = async (title, type, data, summary, startDate, endDate) => {
+    const letterhead = await letterheadFor({}, { location: filters.location }, title);
+    if (!letterhead) return;
     // Initialize jsPDF
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -952,16 +955,18 @@ const TransactionHistory = () => {
     // Add date and date range
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, textX, 28);
+    const addressPush = letterhead.address ? 5 : 0;
+    if (letterhead.address) doc.text(String(letterhead.address), textX, 27);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, textX, 28 + addressPush);
 
-    let startY = 35; // Default start position
+    let startY = 35 + addressPush; // Default start position
 
     // Add date range if available
     if (startDate && endDate) {
       const formattedStart = new Date(startDate).toLocaleDateString();
       const formattedEnd = new Date(endDate).toLocaleDateString();
-      doc.text(`Date Range: ${formattedStart} to ${formattedEnd}`, textX, 34);
-      startY = 42; // Adjust startY if date range is shown
+      doc.text(`Date Range: ${formattedStart} to ${formattedEnd}`, textX, 34 + addressPush);
+      startY = 42 + addressPush; // Adjust startY if date range is shown
     }
 
     // Table settings
@@ -1760,9 +1765,11 @@ const TransactionHistory = () => {
   }, []);
 
   // Export to Excel
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
-      const ws = utils.json_to_sheet(displayedTransactions.map(tx => ({
+      const letterhead = await letterheadFor({ name: companyRecord?.name || '', phone: companyRecord?.phone || '', email: companyRecord?.emailid || '' }, { location: filters.location }, 'Transaction History');
+      if (!letterhead) return;
+      const rows = displayedTransactions.map(tx => ({
         'Date': tx.formattedDate,
         'Type': getTransactionType(tx),
         'Document #': tx.documentNumber,
@@ -1775,7 +1782,10 @@ const TransactionHistory = () => {
         'Total Cost': tx.formattedTotalCost,
         'Total Sales': tx.totalSales ? `₦${Math.abs(Number(tx.totalSales)).toLocaleString()}` : 'N/A',
         'Reference': tx.reference
-      })));
+      }));
+      const head = [[letterhead.name], [letterhead.address || ''], [`Phone: ${letterhead.phone || ''}`], [`Email: ${letterhead.email || ''}`], []];
+      const ws = utils.aoa_to_sheet(head);
+      utils.sheet_add_json(ws, rows, { origin: head.length });
 
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, 'Transaction History');

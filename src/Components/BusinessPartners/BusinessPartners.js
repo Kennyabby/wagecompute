@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import { uploadFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi'
 import html2pdf from 'html2pdf.js'
+import { letterheadFor, withReportAddress } from '../../utils/exportAddress'
 import { generateExcel } from '../../utils/exportUtils'
 
 const emptyPartner = { name: '', type: '', email: '', phone: '', address: '', contactPerson: '', paymentTermsDays: 30, notes: '' }
@@ -432,10 +433,10 @@ const BusinessPartners = () => {
         }
     }
 
-    const exportCurrentReportExcel = () => {
+    const exportCurrentReportExcel = async () => {
         if (!report) return notify('Load a report before exporting.', 'error', 3500)
         const { rows, columns } = getReportRowsAndColumns()
-        generateExcel(rows, columns, companyInfo, { startDate: reportFilters.fromDate, endDate: reportFilters.toDate }, report.title || 'Partner Report', {
+        await generateExcel(rows, columns, companyInfo, { startDate: reportFilters.fromDate, endDate: reportFilters.toDate }, report.title || 'Partner Report', {
             partner: selectedReportPartnerName,
             report: report.title,
             skipAutoTotals: true,
@@ -444,13 +445,14 @@ const BusinessPartners = () => {
 
     const exportCurrentReportPdf = () => {
         if (!report || !reportPrintRef.current) return notify('Load a report before printing.', 'error', 3500)
-        html2pdf().set({
+        const element = reportPrintRef.current
+        return withReportAddress(element, {}, report.title || 'Partner Report', () => html2pdf().set({
             margin: 0.25,
             filename: `${cleanName(companyInfo.name)}_${cleanName(report.title)}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'landscape' },
-        }).from(reportPrintRef.current).save()
+        }).from(element).save())
     }
 
     const documentNumber = (doc = {}) => doc.shipmentNo || doc.invoiceNo || doc.orderNo || doc.quoteNo || doc.billNo || 'DRAFT'
@@ -464,7 +466,9 @@ const BusinessPartners = () => {
         purchaseInvoice: 'Purchase Invoice',
     }[type] || 'Document')
 
-    const printBusinessDocument = (doc, type = 'order') => {
+    const printBusinessDocument = async (doc, type = 'order') => {
+        const letterhead = await letterheadFor(companyInfo, { location: (doc.lines || []).map((line) => line.location) }, documentTitle(type))
+        if (!letterhead) return
         const no = documentNumber(doc)
         const qrData = encodeURIComponent(`${companyInfo.name}|${documentTitle(type)}|${no}|${doc.postingDate || today()}|${doc.total || 0}`)
         const rows = (doc.lines || []).map((line, index) => `
@@ -484,8 +488,8 @@ const BusinessPartners = () => {
                     <div>
                         ${companyInfo.logoUrl ? `<img alt="" class="bp-report-logo" src="${companyInfo.logoUrl}" crossorigin="anonymous" />` : ''}
                         <h1>${companyInfo.name}</h1>
-                        <p>${companyInfo.address || ''}</p>
-                        <p>${companyInfo.phone || ''} ${companyInfo.email ? ` | ${companyInfo.email}` : ''}</p>
+                        <p>${letterhead.address || ''}</p>
+                        <p>${letterhead.phone || ''} ${letterhead.email ? ` | ${letterhead.email}` : ''}</p>
                     </div>
                     <img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${qrData}" />
                 </header>
@@ -967,7 +971,7 @@ const BusinessPartners = () => {
                 {report && <div className='bp-report-heading'>
                     {companyInfo.logoUrl && <img src={companyInfo.logoUrl} alt="" className="bp-report-logo" crossOrigin="anonymous" />}
                     <h2>{companyInfo.name}</h2>
-                    <p>{companyInfo.address}</p>
+                    <p data-report-address>{companyInfo.address}</p>
                     <h3>{report.title || 'Partner Report'}</h3>
                     <p>Period: {reportFilters.fromDate} to {reportFilters.toDate} | Partner: {selectedReportPartnerName}</p>
                 </div>}

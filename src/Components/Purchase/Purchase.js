@@ -1825,7 +1825,7 @@ const AddProduct = ({
             const documentEntries = type === 'purchaseOrder'
                 ? (fields.data?.validEntries?.length ? fields.data.validEntries : purchaseEntries)
                 : purchaseEntries
-            await exportPurchaseDocumentToPDF({
+            const made = await exportPurchaseDocumentToPDF({
                 type,
                 title: getPurchasePrintTitle(type),
                 companyRecord,
@@ -1837,6 +1837,12 @@ const AddProduct = ({
                 server,
                 fetchServer
             })
+            if (made === false) {
+                setAlertState('info')
+                setAlert('Export cancelled.')
+                setAlertTimeout(1500)
+                return
+            }
             setAlertState('success')
             setAlert('Document generated successfully!')
             setAlertTimeout(1000)

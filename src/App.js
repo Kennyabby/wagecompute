@@ -7,6 +7,7 @@ import LoadingPage from './Components/LoadingPage/LoadingPage';
 import LandingPage from './Components/LandingPage/LandingPage';
 import TenantSetup from './Components/TenantSetup/TenantSetup';
 import Epsilon from './Components/Epsilon/Epsilon';
+import ExportAddressPrompt from './Components/Shared/ExportAddressPrompt';
 import PricingPage from './Components/LandingPage/PricingPage';
 import CommunityPage from './Components/LandingPage/CommunityPage';
 import PaymentConfirmPage from './Components/LandingPage/PaymentConfirmPage';
@@ -4404,6 +4405,7 @@ function App() {
         {!window.electronAPI?.isElectron && !isAuthPage && companyRecord && companyRecord.aiAccess === true && (
           <Epsilon />
         )}
+        <ExportAddressPrompt />
       </ContextProvider.Provider>
     </>
   );

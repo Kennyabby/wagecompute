@@ -4,6 +4,7 @@ import { useState, useEffect, useContext, useRef } from 'react'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
 import html2pdf from 'html2pdf.js';
+import { withReportAddress } from '../../utils/exportAddress';
 import { MdFullscreen, MdFullscreenExit, MdDownload, MdClose } from 'react-icons/md';
 
 const Reports = () => {
@@ -432,7 +433,7 @@ const Reports = () => {
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
-        html2pdf().set(options).from(element).save();
+        return withReportAddress(element, {}, `${curReport.title} Report`, () => html2pdf().set(options).from(element).save());
     };
 
     return (
@@ -495,8 +496,8 @@ const Reports = () => {
                                             <h4 className='company report-company' style={{ color: '#173829' }}>
                                                 <strong>{companyRecord.name.toUpperCase()}</strong>
                                             </h4>
-                                            <p className='billfromitem report-billfrom'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
-                                            <p className='billfromitem report-billfrom'>{`Email: ${companyRecord.emailid}`}</p>
+                                            <p className='billfromitem report-billfrom' data-report-address>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
+                                            <p className='billfromitem report-billfrom' data-report-email>{`Email: ${companyRecord.emailid}`}</p>
                                         </div>
                                     </div>
                                     <div className='reports-onview'>

@@ -10,6 +10,7 @@ import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import { FaTableCells } from "react-icons/fa6";
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
 import html2pdf, { f } from 'html2pdf.js';
+import { withReportAddress } from '../../utils/exportAddress';
 import SalesReport from './SalesReport/SalesReport';
 import RentalReceipt from './RentalReceipt/RentalReceipt';
 import { uploadFile, updateFile, getFileUrl, deleteFile, createFolder } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
@@ -5710,7 +5711,7 @@ const AddProduct = ({
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' }
         };
-        html2pdf().set(options).from(element).save();
+        return withReportAddress(element, { location: wrh }, 'Product Sales Details', () => html2pdf().set(options).from(element).save());
     };
 
     const resetSalesEntries = () => {
@@ -5914,6 +5915,7 @@ const AddProduct = ({
         <>
             <div className='addproduct'>
                 <div className='add-products' ref={targetRef}>
+                    <p data-report-address style={{ display: 'none', margin: '0 0 6px', fontSize: 12 }} />
                     {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" style={{ maxWidth: 60, maxHeight: 60, objectFit: 'contain', display: 'block', marginBottom: 6 }} crossOrigin="anonymous" />}
                     <div className='slprwh-cover' onClick={(e) => {
                         const name = e.target.getAttribute('name')

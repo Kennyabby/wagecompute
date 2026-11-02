@@ -1368,12 +1368,12 @@ const TransactionReports = ({
             // Export to Excel logic
             console.log('Exporting to Excel:', data);
             // alert('Export to Excel functionality will be implemented here');
-            exportToExcel(data, `${type}_report_${new Date().toISOString().split('T')[0]}`);
+            exportToExcel(data, `${type}_report_${new Date().toISOString().split('T')[0]}`, { location: filters.wrh }, { name: centralCompany?.name || '', phone: centralCompany?.phone || '', email: centralCompany?.email || '' });
         } else {
             // Export to PDF logic
             console.log('Exporting to PDF:', data);
             // alert('Export to PDF functionality will be implemented here');
-            exportToPDF(data, `${type}_report_${new Date().toISOString().split('T')[0]}`, type, centralCompany?.logoUrl || null);
+            exportToPDF(data, `${type}_report_${new Date().toISOString().split('T')[0]}`, type, centralCompany?.logoUrl || null, { location: filters.wrh });
         }
     };
     return (

@@ -256,7 +256,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts: receiptsProp, ti
                 { name: 'Approved By', reference: 'paymentApprover' }
                 // { name: 'Ref', reference: 'paymentModuleRef' }
               ];
-              const companyInfo = { name: 'Payment Receipts', address: '', phone: '', email: '' };
+              const companyInfo = { name: companyRecord.name, address: '', phone: '', email: '' };
               const dateRange = { startDate: filter.from, endDate: filter.to };
               let excelFilteredReceipts = filteredReceipts.map((receipt) => {
                 const employee = employees?.find(e => String(e.i_d) === String(receipt.paymentHandler))
@@ -318,7 +318,7 @@ const PaymentReceiptsModal = ({ open, onClose, paymentReceipts: receiptsProp, ti
                 row.rowTotal = sum;
                 return row;
               });
-              const companyInfo = { name: 'Payment Receipts Summary', address: '', phone: '', email: '' };
+              const companyInfo = { name: companyRecord.name, address: '', phone: '', email: '' };
               const dateRange = { startDate: filter.from, endDate: filter.to };
               generateExcel(data, columns, companyInfo, dateRange, 'Payment Receipts Summary (Module x Paypoint)', filter, false);
             }}

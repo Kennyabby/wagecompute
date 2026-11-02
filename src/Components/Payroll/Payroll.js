@@ -4,6 +4,7 @@ import {useEffect, useState, useRef, useContext, useMemo } from 'react'
 import Payee from './Payees/Payees';
 import ContextProvider from '../../Resources/ContextProvider'
 import generatePDF, { Resolution, Margin } from 'react-to-pdf';
+import { withReportAddress } from '../../utils/exportAddress';
 import Barcode from 'react-barcode';
 
 const Payroll = () =>{
@@ -198,8 +199,8 @@ const Payroll = () =>{
                                             {centralCompany?.logoUrl && <img src={centralCompany.logoUrl} alt="" className='invlogo' crossOrigin="anonymous" />}
                                             <div className="billfrom">
                                                 <h4 className='company' style={{ color: '#325aa8' }}><strong>{companyRecord.name.toUpperCase()}</strong></h4>
-                                                <p className='billfromitem'>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
-                                                <p className='billfromitem'>{`Email: ${companyRecord.emailid}`}</p>
+                                                <p className='billfromitem' data-report-address>{`Address: ${companyRecord.address}, ${companyRecord.city}, ${companyRecord.state}, ${companyRecord.country}.`}</p>
+                                                <p className='billfromitem' data-report-email>{`Email: ${companyRecord.emailid}`}</p>
                                                 <p className='billfromitem'>Created Date: <b>{date}</b></p>
                                             </div>
                                        </div>
@@ -394,7 +395,7 @@ const Payroll = () =>{
                     className='invbutton'
                     onClick={
                         () => {
-                            generatePDF(targetRef, options)
+                            withReportAddress(targetRef.current, {}, 'Pay Slip', () => generatePDF(targetRef, options))
                             // setViewSchedule(false)
                             // resetField()
                         }

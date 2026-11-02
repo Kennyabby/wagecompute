@@ -752,7 +752,7 @@ const Stock = ({
             });
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         setIsExporting(true);
         try {
             const visibleData = prepareExportData();
@@ -805,7 +805,7 @@ const Stock = ({
                 warehouse: curWarehouse !== 'all' ? warehouses.find(w => w.code === curWarehouse)?.name || curWarehouse : null
             };
 
-            generatePDF(
+            await generatePDF(
                 visibleData,
                 exportColumns,
                 getCompanyInfo(),
@@ -876,7 +876,7 @@ const Stock = ({
                 warehouse: curWarehouse !== 'all' ? warehouses.find(w => w.code === curWarehouse)?.name || curWarehouse : null
             };
 
-            generateExcel(
+            await generateExcel(
                 visibleData,
                 exportColumns,
                 getCompanyInfo(),

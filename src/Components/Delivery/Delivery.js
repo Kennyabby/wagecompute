@@ -2974,7 +2974,7 @@ const AddProduct = ({
         setExporting(true)
         try {
             const fn = format === 'excel' ? exportReconciliationExcel : exportReconciliationPDF
-            fn({
+            await fn({
                 companyInfo: { name: company, logoUrl: centralCompany?.logoUrl || null },
                 postingDate,
                 location: wrh1,

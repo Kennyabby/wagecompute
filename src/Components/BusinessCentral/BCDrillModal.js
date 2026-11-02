@@ -5,6 +5,7 @@ import { useBCAccess } from './bcAccess'
 import BCDataTable from './BCDataTable'
 import BCPreparing, { BCUpdating, usePreparingRetry } from './BCPreparing'
 import { companyInfoFrom, dateRangeFrom, exportTable } from './bcExport'
+import { mergeWhere, whereFromFilters } from '../../utils/exportAddress'
 import { formatValue } from './bcFormat'
 
 /**
@@ -21,7 +22,7 @@ const unitOf = (kind, count) => {
     return count === 1 ? 'line' : 'lines'
 }
 
-const BCDrillModal = ({ api, report, target, filters, onClose }) => {
+const BCDrillModal = ({ api, report, target, filters, where, onClose }) => {
     const context = useContext(ContextProvider)
     const { setAlert, setAlertState, setAlertTimeout } = context
     const [breakdown, setBreakdown] = useState(null)
@@ -75,6 +76,7 @@ const BCDrillModal = ({ api, report, target, filters, onClose }) => {
                     ...Object.fromEntries(Object.entries(view?.filters || {}).map(([label, value]) => [`Filtered by ${label}`, value])),
                 },
                 companyInfo: companyInfoFrom(context),
+                where: mergeWhere(where, whereFromFilters(view?.filters)),
             })
         } catch (failure) {
             setAlertState('error')
