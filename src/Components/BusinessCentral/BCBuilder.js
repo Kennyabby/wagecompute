@@ -62,7 +62,7 @@ const FORMATS = [{ value: 'money', label: 'Money (2 decimals)' }, { value: 'qty'
 const CHART_LABELS = { none: 'No chart', bar: 'Bars', horizontalBar: 'Bars lying down (good for long names)', line: 'Line (good for time)' }
 const LINKED = /^L(\d+)\./
 const CALCULATED = /^C(\d+)$/
-const NO_VALUE = ['blank', 'notblank']
+const NO_VALUE = ['blank', 'notblank', 'lotday', 'lotnight', 'lotunread']
 // Tests whose value can be ticked from a list of what the field holds.
 const PICKABLE = ['eq', 'ne', 'in', 'notin']
 const listOf = (value) => String(value || '').split(',').map((part) => part.trim()).filter(Boolean)
@@ -126,6 +126,10 @@ export const GUIDE = [
         title: '14. Save your progress, or save it as a report',
         body: '"Save progress" keeps the report as a draft, finished or not. Only you see it, under Reports in "My reports", marked Draft, and "Continue" reopens it here. "Save report" checks it and makes it a report anyone with access to this module can run, filter and export. It can be edited again at any time. Tick "Show on the dashboard" to put its tiles and chart on the dashboard as well. Only you or an admin can change or delete it.',
     },
+    {
+        title: '15. A stock report with opening, production and closing',
+        body: 'Read Item Ledger Entries, with Posting Date as the period and Item No as the row. Add a figure summing Quantity and set it to "Before the period" for opening stock, and another set to "Up to the end of the period" for closing stock. For production by shift, sum Quantity only where Entry Type is one of Output and Assembly Output, and press "And where..." to add "lot reads as day shift". Do the same for "lot reads as night shift" and "lot shift cannot be read", so no production is left out however a lot was typed. For sold, make a calculated field =0-[Quantity] and sum it only where Entry Type is Sale. For damaged, use the same field only where Document No starts with your damage series. Tick "In the sales unit" on each figure to show packs.',
+    },
 ]
 
 const labelIn = (fields, name) => fields.find((field) => field.name === name)?.label || name
@@ -137,7 +141,7 @@ const mapFields = (spec, change) => {
     return {
         rows: spec.rows.map(test),
         across: spec.across ? test(spec.across) : null,
-        measures: spec.measures.map((measure) => ({ ...measure, field: change(measure.field), ...(measure.when ? { when: test(measure.when) } : {}) })),
+        measures: spec.measures.map((measure) => ({ ...measure, field: change(measure.field), ...(measure.when ? { when: test(measure.when) } : {}), ...(measure.when2 ? { when2: test(measure.when2) } : {}) })),
         filters: spec.filters.map(test),
         prompts: spec.prompts.map(test),
         pages: spec.pages.map((page) => ({ ...page, match: page.match.map(change), matchAcross: change(page.matchAcross), filters: page.filters.map(test) })),
@@ -680,7 +684,7 @@ const BCBuilder = ({ api, saved = null, onSaved, onClose, notify }) => {
                                             <div className='bc-builder-line'>
                                                 <span className='bc-builder-letter' aria-hidden='true'>{letter(index)}</span>
                                                 {several && (
-                                                    <select className='bc-input' value={page} onChange={(event) => changeIn('measures', index, { page: Number(event.target.value), field: '', when: undefined })} aria-label={`Figure ${letter(index)} page`}>
+                                                    <select className='bc-input' value={page} onChange={(event) => changeIn('measures', index, { page: Number(event.target.value), field: '', when: undefined, when2: undefined })} aria-label={`Figure ${letter(index)} page`}>
                                                         {pageTables.map((entry, at) => <option key={at} value={at}>{pageName(at)}</option>)}
                                                     </select>
                                                 )}
@@ -694,13 +698,25 @@ const BCBuilder = ({ api, saved = null, onSaved, onClose, notify }) => {
                                                         {FORMATS.filter((format) => format.value !== 'percent').map((format) => <option key={format.value} value={format.value}>{format.label}</option>)}
                                                     </select>
                                                 )}
+                                                {schema.spans && !['first'].includes(measure.aggregate) && (page === 0 ? spec.dateField : spec.pages[page - 1]?.dateField) && (
+                                                    <select className='bc-input' value={measure.span || 'period'} onChange={(event) => changeIn('measures', index, { span: event.target.value })} aria-label={`Figure ${letter(index)} reads rows`}>
+                                                        {Object.entries(schema.spans).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                                    </select>
+                                                )}
+                                                {!['count', 'distinct', 'first'].includes(measure.aggregate) && (
+                                                    <label className='bc-muted'>
+                                                        <input type='checkbox' checked={!!measure.inSalesUnit} onChange={(event) => changeIn('measures', index, { inSalesUnit: event.target.checked })} /> In the sales unit
+                                                    </label>
+                                                )}
                                                 {!measure.when && <button type='button' className='bc-link-button' onClick={() => changeIn('measures', index, { when: { ...EMPTY_TEST } })}>Only where...</button>}
                                                 {spec.measures.length > 1 && <button type='button' className='bc-link-button' onClick={() => change(withoutMeasure(index))}>Remove</button>}
                                             </div>
                                             {measure.when && (
                                                 <div className='bc-builder-block'>
                                                     <span className='bc-muted'>Figure {letter(index)} only counts rows where</span>
-                                                    {testLine(measure.when, page, (patch) => changeIn('measures', index, { when: { ...measure.when, ...patch } }), `Figure ${letter(index)} only where`, `m:${index}`, () => changeIn('measures', index, { when: undefined }))}
+                                                    {testLine(measure.when, page, (patch) => changeIn('measures', index, { when: { ...measure.when, ...patch } }), `Figure ${letter(index)} only where`, `m:${index}`, () => changeIn('measures', index, { when: measure.when2, when2: undefined }))}
+                                                    {measure.when2 && testLine(measure.when2, page, (patch) => changeIn('measures', index, { when2: { ...measure.when2, ...patch } }), `Figure ${letter(index)} and where`, `m2:${index}`, () => changeIn('measures', index, { when2: undefined }))}
+                                                    {!measure.when2 && <button type='button' className='bc-link-button' onClick={() => changeIn('measures', index, { when2: { ...EMPTY_TEST } })}>And where...</button>}
                                                 </div>
                                             )}
                                         </div>
