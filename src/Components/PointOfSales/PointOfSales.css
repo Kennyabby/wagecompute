@@ -367,6 +367,70 @@
      background: #e53935;
 }
 
+.pos-opening-cash-clear {
+     align-self: flex-start;
+     margin-top: 6px;
+     padding: 6px 12px;
+     border: 1px solid #ddd;
+     border-radius: 8px;
+     background: #fff;
+     color: #333;
+     font-size: 0.85rem;
+     cursor: pointer;
+}
+
+/* Sits above the end-session box it was opened from. */
+.pos-end-review-overlay,
+.pos-container .closingsession.pos-end-review-overlay {
+     z-index: 4100;
+}
+
+.pos-end-review {
+     max-width: 620px;
+}
+
+.pos-end-review-note {
+     margin: 0;
+     color: #555;
+     font-size: 0.9rem;
+     line-height: 1.4;
+}
+
+.pos-end-review-table {
+     width: 100%;
+     border-collapse: collapse;
+     font-size: 0.9rem;
+}
+
+.pos-end-review-table th,
+.pos-end-review-table td {
+     padding: 8px 6px;
+     border-bottom: 1px solid #eee;
+     text-align: right;
+}
+
+.pos-end-review-table th:first-child,
+.pos-end-review-table td:first-child {
+     text-align: left;
+}
+
+.pos-end-review-table tr.owing td:last-child {
+     color: #c62828;
+     font-weight: 700;
+}
+
+.pos-end-review-table tfoot td {
+     border-bottom: none;
+     border-top: 2px solid #333;
+     font-weight: 700;
+     font-size: 1rem;
+}
+
+.pos-end-review-actions .pos-session-btn:not(.end) {
+     background: #eceff1;
+     color: #333;
+}
+
 /* =========================================
    2. Header Styles
    ========================================= */

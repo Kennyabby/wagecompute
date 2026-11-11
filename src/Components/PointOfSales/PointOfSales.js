@@ -29,6 +29,45 @@ import { orderBusinessFields, deliveryBusinessFields, businessDayOf } from '../.
 import { getTerminalId } from '../../Resources/clientTxnId';
 import SessionManagerReconcile from './SessionManagerReconcile';
 
+// Which locations set in Settings, POS Reconciliation, still have no closing
+// stock saved for a session's business day. Asked of the server when the
+// session is about to end, so a count saved on another device is seen.
+// `unchecked` carries the reason when the server could not be asked.
+const reconciliationGap = async ({ settings, fetchServer, server, formatDateToDefault, session }) => {
+    const setting = (settings || []).find((entry) => entry.name === 'posReconciliation')
+    const required = setting?.enabled ? (setting.locations || []) : []
+    if (!required.length || !session?.start) return { missing: [], postingDate: '' }
+    const postingDate = formatDateToDefault(session.start)
+    let resp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
+    if (resp?.err) {
+        await new Promise((resolve) => setTimeout(resolve, 1200))
+        resp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
+    }
+    if (resp?.err) return { missing: [], postingDate, unchecked: resp?.mess || 'The server could not be reached.' }
+    const saved = new Set((resp?.record?.locations || []).map((loc) => loc.location))
+    return { missing: required.filter((name) => !saved.has(name)), postingDate, nothingSaved: !resp?.exists }
+}
+
+// Says no, or yes, to ending a session as far as closing stock goes. The
+// session cannot end while a required location is missing. When the server
+// cannot be asked, an admin may go ahead after being told; anyone else waits,
+// because letting it through is how sessions came to end with nothing counted.
+const reconciliationAllowsEnd = async (args, { isAdmin, say }) => {
+    const gap = await reconciliationGap(args)
+    if (gap.unchecked) {
+        if (isAdmin && window.confirm(`Could not check the inventory reconciliation for ${gap.postingDate}: ${gap.unchecked}\n\nEnd the session anyway?`)) return true
+        say(`Could not check the inventory reconciliation for ${gap.postingDate}, so the session was not ended. ${gap.unchecked} Try again in a moment.`)
+        return false
+    }
+    if (gap.missing.length) {
+        say(`Inventory Reconciliation Pending. Please Save Closing Stock before ending session! ${gap.nothingSaved ? `Nothing saved yet for ${gap.postingDate}.` : `Still missing for ${gap.postingDate}: ${gap.missing.join(', ')}.`}`)
+        return false
+    }
+    return true
+}
+
+const naira = (value) => `₦${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+
 const PointOfSales = () => {
     // =========================================
     // 1. Context and State Management
@@ -96,6 +135,8 @@ const PointOfSales = () => {
     const [posSalesDifference, setPosSalesDifference] = useState({})
     const [startSession, setStartSession] = useState(false);
     const [endSession, setEndSession] = useState(false);
+    // The settlement shown for agreement before a session is ended, or null.
+    const [endReview, setEndReview] = useState(null);
     const [sessionEnded, setSessionEnded] = useState(false);
     const [curSession, setCurrSession] = useState(null);
     const [currSessionManager, setCurrSessionManager] = useState(null)
@@ -818,8 +859,20 @@ const PointOfSales = () => {
                     setAlertTimeout(500);
                     setCurrSessionManager(newSessionManager);
                     setSessions([...(sessions || []), newSessionManager]);
-                    // Start Session for Session Manager
-                    createSession()
+                    // The admin's own session starts with the cash left from
+                    // the last one. When there is any, the start box opens so
+                    // it can be kept or cleared first, on the sales post the
+                    // session would have used anyway.
+                    if (Number(openingCash || 0) !== 0) {
+                        setWrh(wrh || curSession?.wrh || Object.keys(posWrhAccess)[0])
+                        setSessionUser(null)
+                        setStartSession(true)
+                        setAlertState('info')
+                        setAlert(`Session Manager started. ${naira(openingCash)} opening cash was carried over from the last session. Keep it or clear it, then start your session.`)
+                        setAlertTimeout(9000)
+                    } else {
+                        createSession()
+                    }
                     // Start Session for last active users.
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
@@ -1167,51 +1220,58 @@ const PointOfSales = () => {
         return false
     }
 
+    // What a session comes to once its counts are in. The review shown before
+    // ending and the end itself both use this, so the debt the user agrees to
+    // is the debt that is saved.
+    const sessionSettlement = (session, sessionOrders, counted) => {
+        const { allSales, totalPendingSales, totalCancelledSales, totalCashChange } = getSessionSales(sessionOrders)
+        const openingCash = session?.openingCash
+        let netBalance = 0
+        let unAccounted = 0
+        let allSalesAmount = 0
+        const salesDifference = {}
+        const allCountedSales = {}
+        const lines = []
+        Object.keys(payPoints).forEach((payPoint) => {
+            let expected
+            if (payPoint === 'cash') {
+                expected = Number(openingCash) + Number(allSales[payPoint] || 0) - Number(totalCashChange)
+                allSalesAmount += Number(allSales[payPoint] || 0) - Number(totalCashChange)
+            } else {
+                expected = Number(allSales[payPoint] || 0)
+                allSalesAmount += Number(allSales[payPoint] || 0)
+            }
+            salesDifference[payPoint] = Number(counted[payPoint] || 0) - expected
+            allCountedSales[payPoint] = Number(counted[payPoint])
+            if (salesDifference[payPoint] < 0) {
+                netBalance += Number(salesDifference[payPoint])
+            } else {
+                unAccounted += Number(salesDifference[payPoint])
+            }
+            lines.push({ payPoint, expected, counted: Number(counted[payPoint] || 0), difference: salesDifference[payPoint], debt: salesDifference[payPoint] < 0 ? -salesDifference[payPoint] : 0 })
+        })
+        netBalance += -1 * Number(totalPendingSales || 0)
+        return {
+            allSales, totalPendingSales, totalCancelledSales, totalCashChange,
+            salesDifference, allCountedSales, lines, netBalance, unAccounted, allSalesAmount,
+            debtDue: netBalance < 0 ? Math.abs(netBalance) : 0,
+        }
+    }
+
     const stopSession = async (session, sessionOrders) => {
         if (!(await confirmEverythingSynced({ sessionId: session.i_d ?? session.start, handlerId: session.employee_id }, 'session'))) {
             setLoading(false)
             return
         }
         const {
-            allSales,
             totalPendingSales,
             totalCancelledSales,
             totalCashChange,
-        } = getSessionSales(sessionOrders);
-        const openingCash = session.openingCash;
-        let netBalance = 0;
-        let unAccounted = 0;
-        let allSalesAmount = 0;
-        const salesDifference = {};
-        const allCountedSales = {};
-
-        Object.keys(payPoints).forEach((payPoint) => {
-            if (payPoint === 'cash') {
-                const expectedCash =
-                    Number(openingCash) +
-                    Number(allSales[payPoint] || 0) -
-                    Number(totalCashChange);
-                salesDifference[payPoint] =
-                    Number(countedSales[payPoint] || 0) - expectedCash;
-                allSalesAmount +=
-                    Number(allSales[payPoint] || 0) - Number(totalCashChange);
-            } else {
-                salesDifference[payPoint] =
-                    Number(countedSales[payPoint] || 0) -
-                    Number(allSales[payPoint] || 0);
-                allSalesAmount += Number(allSales[payPoint] || 0);
-            }
-
-            allCountedSales[payPoint] = Number(countedSales[payPoint]);
-
-            if (salesDifference[payPoint] < 0) {
-                netBalance += Number(salesDifference[payPoint]);
-            } else {
-                unAccounted += Number(salesDifference[payPoint]);
-            }
-        });
-
-        netBalance += -1 * Number(totalPendingSales || 0);
+            allCountedSales,
+            netBalance,
+            unAccounted,
+            allSalesAmount,
+        } = sessionSettlement(session, sessionOrders, countedSales);
 
         const sessionUpdate = {
             end: new Date().getTime(),
@@ -3649,8 +3709,21 @@ const PointOfSales = () => {
                     return ((getSessionEnd(order.sessionId) === getSessionEnd((sessionUser.curSession).i_d)) && (order.handlerId === (sessionUser.profile).emailid))
                 })
                 setLoading(true);
+                // Checked again here, at the last step, whatever led to it:
+                // closing stock may have been deleted, or the box opened while
+                // the Session Manager rule let it skip the first check.
+                const allowed = await reconciliationAllowsEnd(
+                    { settings, fetchServer, server, formatDateToDefault, session: sessionUser.curSession },
+                    { isAdmin: companyRecord?.status === 'admin', say: (message) => { setAlertState('error'); setAlert(message); setAlertTimeout(8000) } },
+                )
+                if (!allowed) {
+                    setEndReview(null)
+                    setLoading(false)
+                    return
+                }
                 await stopSession(sessionUser.curSession, allUserOrders);
                 setPosSalesDifference({})
+                setEndReview(null)
                 setLoading(false)
             } else {
                 setAlertState('info')
@@ -3739,6 +3812,12 @@ const PointOfSales = () => {
                                         disabled={loading}
                                         placeholder="Enter starting cash amount"
                                     />
+                                    {Number(openingCash || 0) !== 0 && <button
+                                        type="button"
+                                        className="pos-opening-cash-clear"
+                                        onClick={() => setOpeningCash(0)}
+                                        disabled={loading}
+                                    >Clear opening cash</button>}
                                 </div>
                                 <div className="entry-row">
                                     <label>Sales Post</label>
@@ -3794,6 +3873,7 @@ const PointOfSales = () => {
                                         setSessionUser(null)
                                         setCountedSales({})
                                         setPosSalesDifference({})
+                                        setEndReview(null)
                                     }}
                                 >×</button>
                             </div>
@@ -3906,13 +3986,55 @@ const PointOfSales = () => {
                                 <button
                                     className="pos-session-btn end"
                                     onClick={() => {
-                                        // const { shortages } = handleSalesUdpate()
-                                        handleEndSession()
+                                        if (sessionUser?.curSession) setEndReview(sessionSettlement(sessionUser.curSession, allUserOrders, countedSales))
                                     }}
                                     disabled={loading}
                                 >
                                     {loading ? 'Ending...' : 'Confirm & End Session'}
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {endSession && endReview && (
+                    <div className='closingsession pos-end-review-overlay'>
+                        <div className="pos-session-entry pos-end-review" role="dialog" aria-modal="true" aria-labelledby="pos-end-review-title">
+                            <div className="modal-header">
+                                <h2 id="pos-end-review-title">Debt from this session</h2>
+                            </div>
+                            <p className="pos-end-review-note">Check what this session leaves owing before it is ended. Go back to change a count.</p>
+                            <table className="pos-end-review-table">
+                                <thead>
+                                    <tr><th>Paypoint</th><th>Expected</th><th>Counted</th><th>Difference</th><th>Debt</th></tr>
+                                </thead>
+                                <tbody>
+                                    {endReview.lines.map((line) => (
+                                        <tr key={line.payPoint} className={line.debt ? 'owing' : ''}>
+                                            <td>{line.payPoint.toUpperCase()}</td>
+                                            <td>{naira(line.expected)}</td>
+                                            <td>{naira(line.counted)}</td>
+                                            <td>{naira(line.difference)}</td>
+                                            <td>{line.debt ? naira(line.debt) : '-'}</td>
+                                        </tr>
+                                    ))}
+                                    {Number(endReview.totalPendingSales || 0) > 0 && (
+                                        <tr className="owing">
+                                            <td colSpan={4}>Sales delivered but not paid</td>
+                                            <td>{naira(endReview.totalPendingSales)}</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colSpan={4}>Debt for this session</td>
+                                        <td>{naira(endReview.debtDue)}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            {endReview.unAccounted > 0 && <p className="pos-end-review-note">{naira(endReview.unAccounted)} counted above what was expected is recorded as unaccounted, not set against the debt.</p>}
+                            <div className="pos-session-actions pos-end-review-actions">
+                                <button type="button" className="pos-session-btn" onClick={() => setEndReview(null)} disabled={loading}>Back to edit</button>
+                                <button type="button" className="pos-session-btn end" onClick={() => handleEndSession()} disabled={loading}>{loading ? 'Ending...' : 'End Session'}</button>
                             </div>
                         </div>
                     </div>
@@ -4571,6 +4693,7 @@ const PointOfSales = () => {
     );
 };
 
+export { reconciliationGap, reconciliationAllowsEnd };
 export default PointOfSales;
 
 const PaymentModal = ({
@@ -5151,6 +5274,10 @@ const POSDashboard = ({
     const { fetchServer, server, company, wrhs, formatDateToDefault, settings, sessionManagerRequired, sessionManagerStopRequired, getSessionStart } = useContext(ContextProvider);
 
     const canRunSessionManager = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')
+    // Admin sessions are hidden from everyone but the Super Admin. This lets
+    // someone else see them and end one that is open; starting one stays
+    // with the Super Admin.
+    const canEndAdminSessions = companyRecord?.status !== 'admin' && (companyRecord?.permissions?.includes('end_admin_sessions') || companyRecord?.permissions?.includes('all'))
 
     // Devices still holding POS changes the server has not received, and
     // changes it refused. Shown to admins and session runners so a missing
@@ -5614,7 +5741,7 @@ const POSDashboard = ({
                     )}
                     <div className='pos-session-card-list' style={{ display: 'flex', flexWrap: 'wrap' }}>
                         {profiles?.map((profile) => {
-                            if (profile.status !== 'admin' || companyRecord.status === 'admin') {
+                            if (profile.status !== 'admin' || companyRecord.status === 'admin' || canEndAdminSessions) {
                                 var hasPosSalesAccess = false
                                 let wrhsPosObj = {}
                                 let wrhsDeliveryObj = {}
@@ -5667,8 +5794,9 @@ const POSDashboard = ({
                                                 <h4 className='pos-session-card-status'>{([null, undefined].includes(employeeSession)) ? 'No Sessions' : (sessionLive ? 'Session Live' : 'Session Ended')}</h4>
                                                 <div
                                                     className='pos-session-card-action'
-                                                    onClick={() => {
-                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin') {                                                            
+                                                    onClick={async () => {
+                                                        const endingOpenSession = !!employeeSession && !employeeSession.end
+                                                        if (profile.status !== 'admin' || companyRecord.status === 'admin' || (canEndAdminSessions && endingOpenSession)) {
                                                             var viewModal = true
                                                             const validateUserSession = async () => {
                                                                 if (!allSessionOrders.length) {
@@ -5724,56 +5852,23 @@ const POSDashboard = ({
                                                                         setAlert('This User Still Has Pending Delivery(s) for Order(s) that have been paid for. Please place all deliveries before proceeding!')
                                                                         setAlertTimeout(3000)
                                                                     }
-                                                                    if (reconciliationEnabled && reconciliationRequiredLocations.length) {
-                                                                        // Checked against the specific session's own
-                                                                        // business day (not whatever the currently
-                                                                        // active Session Manager happens to be), a
-                                                                        // lingering session from a prior day needs
-                                                                        // that day's stock reconciled, regardless of
-                                                                        // whether a newer Session Manager has since
-                                                                        // been started for today. Fetched fresh right
-                                                                        // here rather than relying on a background
-                                                                        // effect's cached state, which could sit
-                                                                        // stale (or never populate at all) depending
-                                                                        // on which Session Manager was "current" at
-                                                                        // the time it last ran.
-                                                                        const postingDate = formatDateToDefault(employeeSession.start)
-                                                                        let reconResp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
-                                                                        if (reconResp?.err) {
-                                                                            await new Promise((resolve) => setTimeout(resolve, 1200))
-                                                                            reconResp = await fetchServer("POST", { postingDate }, "inventoryReconciliation/getForDate", server)
-                                                                        }
-                                                                        if (reconResp?.err) {
-                                                                            // Fail open on a verification failure, the
-                                                                            // reconciliation posting itself is still
-                                                                            // enforced server-side; wrongly blocking a
-                                                                            // session end is worse than occasionally
-                                                                            // skipping this soft client-side reminder.
-                                                                            setAlertState('error')
-                                                                            setAlert(reconResp?.mess || 'Could not verify inventory reconciliation status, so the session end is allowed through without blocking.')
-                                                                            setAlertTimeout(6000)
-                                                                        } else {
-                                                                            const recordLocations = new Set((reconResp?.record?.locations || []).map((loc) => loc.location))
-                                                                            const missingLocations = reconciliationRequiredLocations.filter((name) => !recordLocations.has(name))
-                                                                            if (!reconResp?.exists || missingLocations.length) {
-                                                                                viewModal = false
-                                                                                setAlertState('error')
-                                                                                const gapDetail = missingLocations.length
-                                                                                    ? ` Still missing for ${postingDate}: ${missingLocations.join(', ')}.`
-                                                                                    : ` Nothing saved yet for ${postingDate}.`
-                                                                                setAlert(`Inventory Reconciliation Pending. Please Save Closing Stock before ending session!${gapDetail}`)
-                                                                                setAlertTimeout(6000)
-                                                                            }
-                                                                        }
+                                                                    // Waited for: the box used to open before this
+                                                                    // answer came back, so it never stopped anyone.
+                                                                    if (viewModal && reconciliationEnabled && reconciliationRequiredLocations.length) {
+                                                                        const allowed = await reconciliationAllowsEnd(
+                                                                            { settings, fetchServer, server, formatDateToDefault, session: employeeSession },
+                                                                            { isAdmin: companyRecord?.status === 'admin', say: (message) => { setAlertState('error'); setAlert(message); setAlertTimeout(8000) } },
+                                                                        )
+                                                                        if (!allowed) viewModal = false
                                                                     }
                                                                 }
                                                             }
                                                             if (sessionLive) {
-                                                                validateUserSession()
+                                                                await validateUserSession()
                                                             } else {
                                                                 if (![null, undefined].includes(employeeSession)) {
                                                                     if (!employeeSession.end) {
-                                                                        validateUserSession()
+                                                                        await validateUserSession()
                                                                     }
                                                                 }
                                                             }
@@ -5843,8 +5938,8 @@ const POSDashboard = ({
                                                             }                                                            
                                                         } else {
                                                             setAlertState('error')
-                                                            setAlert('Only the Super Admin can interact with this Session!')
-                                                            setAlertTimeout(3000)
+                                                            setAlert(canEndAdminSessions ? 'You can end an admin session while it is open. Only the Super Admin can start one.' : 'Only the Super Admin can interact with this Session!')
+                                                            setAlertTimeout(4000)
                                                         }
                                                     }}
                                                 >{sessionLive ? 'End Session' : ([null, undefined].includes(employeeSession) ? 'Start Session' : (employeeSession.end ? (Array.isArray(filteredSessions) ? 'End Session' : 'Start Session') : 'End Session'))}</div>
