@@ -24,6 +24,10 @@ const DEFAULT_POS_RECONCILIATION_CONFIG = {
     locations: ['bar1', 'vip', 'kitchen'],
 }
 
+// How long backlog access lasts before it ends by itself, unless the
+// workspace sets otherwise. Mirrors wageserver UserModule/Users/backlogAccess.js.
+const DEFAULT_BACKLOG_HOURS = 24
+
 const DEFAULT_APPROVAL_CONFIG = {
     name: 'approvalConfig',
     desc: 'Approval Configuration',
@@ -143,6 +147,8 @@ const Settings = () => {
     const [billingRefreshKey, setBillingRefreshKey] = useState(0)
     const [approvalConfig, setApprovalConfig] = useState(DEFAULT_APPROVAL_CONFIG)
     const [posReconciliationConfig, setPosReconciliationConfig] = useState(DEFAULT_POS_RECONCILIATION_CONFIG)
+    const [backlogHours, setBacklogHours] = useState(DEFAULT_BACKLOG_HOURS)
+    const [backlogHoursDraft, setBacklogHoursDraft] = useState(String(DEFAULT_BACKLOG_HOURS))
     const [propState, setPropState] = useState('new')
     const [curPropSet, setCurPropSet] = useState(null)
     const [currentProfiles, setCurrentProfiles] = useState([])
@@ -305,6 +311,9 @@ const Settings = () => {
                             setting.desc = 'POS Settings'
                             setting.prop = 'posSettings'
                             return setting.desc
+                        case 'backlogAccess':
+                            // A single number, with its own sidebar entry below.
+                            return false
                         case 'posReconciliation':
                             // Rendered as a static sidebar entry below instead
                             // (it's a singleton config, not a list), so it's
@@ -384,6 +393,11 @@ const Settings = () => {
             if (posReconSet) {
                 setPosReconciliationConfig({ ...DEFAULT_POS_RECONCILIATION_CONFIG, ...posReconSet })
             }
+
+            const backlogSet = settings.find((setting) => setting.name === 'backlogAccess')
+            const savedHours = Number(backlogSet?.hours) > 0 ? Number(backlogSet.hours) : DEFAULT_BACKLOG_HOURS
+            setBacklogHours(savedHours)
+            setBacklogHoursDraft(String(savedHours))
         }
     }, [settings])
 
@@ -809,6 +823,35 @@ const Settings = () => {
                     : [...locations, locationName]
             }
         })
+    }
+
+    const saveBacklogHours = async () => {
+        if (!canConfigurePosReconciliation) {
+            setAlertState('error')
+            setAlert('Backlog access settings are restricted to admins.')
+            setAlertTimeout(3000)
+            return
+        }
+        const hours = Number(backlogHoursDraft)
+        if (!(hours > 0) || hours > 720) {
+            setAlertState('error')
+            setAlert('Enter how many hours backlog access lasts, from 1 to 720.')
+            setAlertTimeout(4000)
+            return
+        }
+        setSaveStatus('Saving Backlog Access...')
+        const resp = await fetchServer("POST", { prop: [{ name: 'backlogAccess' }, { name: 'backlogAccess', hours }] }, "updateSettings", server)
+        if (resp.err || resp.updated === false) {
+            setSaveStatus('')
+            setAlertState('error')
+            setAlert(resp.mess || 'Failed to save backlog access hours')
+            setAlertTimeout(4000)
+            return
+        }
+        setBacklogHours(hours)
+        getSettings(company, companyRecord)
+        setSaveStatus('Backlog Access Saved')
+        setTimeout(() => setSaveStatus(''), 2500)
     }
 
     const savePosReconciliationConfig = async () => {
@@ -1311,7 +1354,9 @@ const Settings = () => {
             enableDebtRecovery: profile.enableDebtRecovery || false,
             aiAccess: profile.aiAccess || false,
             accessLevel: isAdminProfile(profile) ? 'admin' : 'user',
-            defaultModule: profile.defaultModule || ''
+            defaultModule: profile.defaultModule || '',
+            // Blank uses the workspace's length (Settings, General Config, Backlog Access).
+            backlogAccessHours: profile.backlogAccessHours ? String(profile.backlogAccessHours) : ''
         })
     }
 
@@ -1349,7 +1394,9 @@ const Settings = () => {
                 enableLogin: loginDetails.enableLogin,
                 enableDebtRecovery: loginDetails.enableDebtRecovery,
                 aiAccess: loginDetails.aiAccess,
-                defaultModule: loginDetails.defaultModule || ''
+                defaultModule: loginDetails.defaultModule || '',
+                // The server works out when the grant ends; only its length is sent.
+                backlogAccessHours: Number(loginDetails.backlogAccessHours) > 0 ? Number(loginDetails.backlogAccessHours) : null
             }
             const fail = (mess) => {
                 console.log(mess)
@@ -1415,6 +1462,7 @@ const Settings = () => {
                     // instead of the admin explicitly granting one via this toggle.
                     aiAccess: loginDetails.aiAccess,
                     sessionId: '',
+                    backlogAccessHours: Number(loginDetails.backlogAccessHours) > 0 ? Number(loginDetails.backlogAccessHours) : null,
                     status: loginDetails.accessLevel === 'admin' ? 'admin' : 'user',
                     access: loginDetails.accessLevel === 'admin' ? 'admin' : 'user',
                     defaultModule: loginDetails.defaultModule || ''
@@ -2052,6 +2100,32 @@ const Settings = () => {
                                                         </label>
                                                     ))}
                                                 </div>
+                                                {loginDetails.permissions.includes('allowBacklogs') && !loginDetails.permissions.includes('all') && (() => {
+                                                    // The grant on record, if this profile already holds it and it has not run out.
+                                                    const stored = selectedEmployee && (selectedEmployee.permissions || []).includes('allowBacklogs') && Number(selectedEmployee.backlogExpiresAt) > Date.now() ? selectedEmployee : null
+                                                    const hours = Number(loginDetails.backlogAccessHours) > 0 ? Number(loginDetails.backlogAccessHours) : backlogHours
+                                                    const ends = stored ? Number(stored.backlogGrantedAt || 0) + hours * 60 * 60 * 1000 : null
+                                                    return (
+                                                        <div className='inpcov backlog-hours'>
+                                                            <div>Backlog access lasts (hours)</div>
+                                                            <input
+                                                                className='forminp'
+                                                                type='number'
+                                                                min='1'
+                                                                max='720'
+                                                                name='backlogAccessHours'
+                                                                placeholder={`${backlogHours} (workspace default)`}
+                                                                value={loginDetails.backlogAccessHours || ''}
+                                                                onChange={handleLoginDetailsChange}
+                                                            />
+                                                            <small>
+                                                                {stored && ends
+                                                                    ? `Ends ${new Date(ends).toLocaleString()}, then allowBacklogs is unticked by itself. Change the hours to shorten or extend it.`
+                                                                    : `Ends ${hours} hours after you save, then allowBacklogs is unticked by itself.`}
+                                                            </small>
+                                                        </div>
+                                                    )
+                                                })()}
                                             </div>
 
                                             <div className="permission-group">
@@ -2401,13 +2475,41 @@ const Settings = () => {
                                 >
                                     POS Reconciliation
                                 </div>
+                                <div
+                                    className={'profile-item ' + (currentSetting?.name === 'backlogAccess' ? 'profile-item-active' : '')}
+                                    onClick={() => handleSettingSelect({ name: 'backlogAccess', desc: 'Backlog Access', prop: 'hours' })}
+                                >
+                                    Backlog Access
+                                </div>
                             </div>
                         </div>
                         <div className='general-details'>
                             <div className="form-card">
                                 <div className='formtitle'><IoSettings /> {currentSetting?.desc} Configuration</div>
 
-                                {currentSetting?.name === 'posReconciliation' ? (
+                                {currentSetting?.name === 'backlogAccess' ? (
+                                    <div className="form-fields-container">
+                                        <p className='settings-accounting-copy'>
+                                            Backlog access (allowBacklogs in Team Access) lets someone see and work on earlier days, for example to make a debt recovery request. It ends by itself this many hours after it is given, so it does not stay on if nobody takes it back. A different length can be set for one person when it is given.
+                                        </p>
+                                        <div className='inpcov'>
+                                            <div>Backlog access lasts (hours)</div>
+                                            <input
+                                                className='forminp'
+                                                type='number'
+                                                min='1'
+                                                max='720'
+                                                value={backlogHoursDraft}
+                                                disabled={!canConfigurePosReconciliation}
+                                                onChange={(e) => setBacklogHoursDraft(e.target.value)}
+                                            />
+                                        </div>
+                                        <p className='settings-accounting-copy'>Currently {backlogHours} hours. Changing this applies to grants given from now on, and to anyone who already has backlog access without a length of their own.</p>
+                                        <div className="form-actions" style={{ marginTop: '24px' }}>
+                                            <button className='savebtn' onClick={saveBacklogHours} disabled={!canConfigurePosReconciliation}><IoSave /> Save Configuration</button>
+                                        </div>
+                                    </div>
+                                ) : currentSetting?.name === 'posReconciliation' ? (
                                     <div className="form-fields-container">
                                         <p className='settings-accounting-copy'>
                                             When enabled, POS agents must save a closing-stock reconciliation for every selected location before that session manager's session can be ended. Only the locations selected below appear in the Reconciliation add-stock screen.

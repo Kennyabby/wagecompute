@@ -14,6 +14,17 @@ import { localDate } from './businessDay'
 
 export const canSeeBacklog = (companyRecord, allowBacklogs) => companyRecord?.status === 'admin' || !!allowBacklogs
 
+// Whether a profile's backlog access is in force. A grant ends by itself at
+// backlogExpiresAt (wageserver UserModule/Users/backlogAccess.js); 'all' is a
+// standing grant and does not.
+export const backlogActive = (profile, now = Date.now()) => {
+  const held = Array.isArray(profile?.permissions) ? profile.permissions : []
+  if (held.includes('all')) return true
+  if (!held.includes('allowBacklogs')) return false
+  const ends = Number(profile?.backlogExpiresAt)
+  return !(ends > 0 && ends <= now)
+}
+
 export const currentDayWindow = (getSessionStart) => {
   const now = Date.now()
   const today = localDate(now)
