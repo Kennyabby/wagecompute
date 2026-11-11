@@ -1839,3 +1839,22 @@ input:checked + .slider:before {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Team Access: the devices a person has signed in on. */
+.settings-devices {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.settings-devices th,
+.settings-devices td {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    text-align: left;
+    vertical-align: top;
+}
+
+.settings-devices td:nth-child(3) {
+    text-align: right;
+}

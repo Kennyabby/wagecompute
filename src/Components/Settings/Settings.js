@@ -3,6 +3,7 @@ import { useEffect, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ContextProvider from '../../Resources/ContextProvider'
 import ReportAddresses from './ReportAddresses'
+import SignInDevices from './SignInDevices'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IoSettings, IoPerson, IoCard, IoOptions, IoAdd, IoTrash, IoSave, IoEye, IoEyeOff, IoInformationCircle, IoServer, IoRefresh } from 'react-icons/io5'
 import BillingSettingsPanel from './BillingSettingsPanel'
@@ -2029,6 +2030,8 @@ const Settings = () => {
                                             {selectedEmployee && !isOwnerProfile(selectedEmployee) && sameEmail(selectedEmployee.emailid, companyRecord?.emailid) && <small className='settings-hint'>Another admin has to change your own access level.</small>}
                                             {selectedEmployee && !isOwnerProfile(selectedEmployee) && !sameEmail(selectedEmployee.emailid, companyRecord?.emailid) && loginDetails.accessLevel !== (isAdminProfile(selectedEmployee) ? 'admin' : 'user') && <small className='settings-hint'>Saving signs this user out, so the new level applies when they sign in again.</small>}
                                         </div>
+
+                                        {selectedEmployee && <SignInDevices userId={selectedEmployee.emailid} />}
 
                                         <div className='inpcov'>
                                             <div>Opens On</div>

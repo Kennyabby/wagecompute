@@ -15,6 +15,7 @@
 
 import { loadPendingChanges, markPendingChangeSynced, queuePendingChange, updatePendingChange } from './offlineDb';
 import { generateClientTxnId, getTerminalId } from './clientTxnId';
+import { deviceHints } from './deviceInfo';
 
 // How to reach the server, handed over once by App.js. Kept here so a screen
 // can submit a change without passing these along every time.
@@ -98,7 +99,7 @@ async function reportOutbox(company, userId, remaining, fetchServer, server, { f
     lastError: change.lastError || null,
     status: change.lastStatus || null,
   }));
-  const resp = await fetchServer('POST', { terminalId: getTerminalId(), pending, ...(closing ? { closing: true } : {}) }, 'pos/outbox/report', server).catch(() => null);
+  const resp = await fetchServer('POST', { terminalId: getTerminalId(), device: deviceHints(), pending, ...(closing ? { closing: true } : {}) }, 'pos/outbox/report', server).catch(() => null);
   if (resp && !resp.err) lastReport.set(key, { signature, at: Date.now() });
 }
 
@@ -329,7 +330,11 @@ export function describeNotReady(check) {
   const parts = [];
   if (check.localLeft?.length) parts.push(`${check.localLeft.length} change(s) on this device have not reached the server yet`);
   (check.tills || []).forEach((till) => {
-    const orders = till.orderNumbers?.length ? ` (orders ${till.orderNumbers.slice(0, 5).join(', ')}${till.orderNumbers.length > 5 ? ', ...' : ''})` : '';
+    // Each order with what is still waiting for it, when the server says.
+    const detail = (till.orders || []).slice(0, 5).map((order) => `${order.orderNumber}: ${Object.keys(order.changes || {}).join(', ')}${order.onServer ? '' : ', not on the server yet'}`);
+    const orders = detail.length
+      ? ` (${detail.join('; ')}${till.orders.length > 5 ? '; ...' : ''})`
+      : (till.orderNumbers?.length ? ` (orders ${till.orderNumbers.slice(0, 5).join(', ')}${till.orderNumbers.length > 5 ? ', ...' : ''})` : '');
     const seen = till.lastSeenAt ? `, last seen ${new Date(till.lastSeenAt).toLocaleString()}` : '';
     parts.push(`${till.count} change(s) still on ${till.user || 'a device'}'s device ${till.terminalId}${orders}${seen}`);
   });
