@@ -564,7 +564,7 @@ const Settings = () => {
         setDeliveryPostsPermissions(deliveryPostsPerms)
         setPosAdminPermissions([
             'access_pos_sessions', 'access_pos_deliveries', 'make_pos_agent', 'make_delivery_agent', 'reconcile_inventory',
-            'edit_ended_sessions', 'place_multiple_deliveries', 'manage_session_manager', ...overridePerms])
+            'edit_ended_sessions', 'place_multiple_deliveries', 'manage_session_manager', 'end_admin_sessions', ...overridePerms])
     }, [wrhs])
 
     // useCache=true (mount + the periodic timer's leading edge is fine to
