@@ -2811,10 +2811,16 @@ select.pos-session-board-btn {
     }
 }
 
-/* Devices still holding sales the server has not received. */
+/* Devices still holding sales the server has not received. Its own row
+   above the board, collapsed to one line until opened, so it never sits
+   beside the Session Manager and the session cards and squeezes them. */
 .pos-container .pos-unsynced {
-    margin: 12px 0;
-    padding: 14px 16px;
+    display: block;
+    flex: none;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 14px;
+    padding: 10px 14px;
     border-radius: 14px;
     border: 1px solid var(--pos-warning);
     background: var(--pos-surface-strong);
@@ -2823,12 +2829,65 @@ select.pos-session-board-btn {
     overflow-wrap: anywhere;
 }
 
+.pos-container .pos-unsynced summary {
+    cursor: pointer;
+    line-height: 1.5;
+}
+
+.pos-container .pos-unsynced[open] summary {
+    margin-bottom: 8px;
+}
+
+.pos-container .pos-unsynced-till {
+    padding: 10px 0;
+    border-top: 1px solid rgba(23, 56, 41, 0.08);
+}
+
+.pos-container .pos-unsynced-till-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 16px;
+}
+
+.pos-container .pos-unsynced-offline {
+    color: var(--pos-danger);
+    font-weight: 600;
+}
+
+.pos-container .pos-unsynced-orders {
+    margin: 6px 0;
+    padding-left: 18px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.pos-container .pos-unsynced-orders li {
+    margin: 3px 0;
+}
+
+.pos-container .pos-unsynced-order {
+    font-weight: 600;
+}
+
 .pos-container .pos-unsynced p {
     margin: 6px 0;
 }
 
-.pos-container .pos-unsynced .pos-unsynced-refused {
+.pos-container .pos-unsynced .pos-unsynced-refused,
+.pos-container .pos-unsynced .pos-unsynced-error {
     color: var(--pos-danger);
+}
+
+.pos-container .pos-unsynced-clear {
+    margin-top: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--pos-danger);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--pos-danger);
+    font-size: 0.8rem;
+    cursor: pointer;
 }
 
 .pos-container .pos-unsynced small {

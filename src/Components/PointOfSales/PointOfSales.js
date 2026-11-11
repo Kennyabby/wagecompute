@@ -28,6 +28,7 @@ import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClo
 import { orderBusinessFields, deliveryBusinessFields, businessDayOf } from '../../Resources/businessDay';
 import { getTerminalId } from '../../Resources/clientTxnId';
 import SessionManagerReconcile from './SessionManagerReconcile';
+import UnsyncedDevices from './UnsyncedDevices';
 
 // Which locations set in Settings, POS Reconciliation, still have no closing
 // stock saved for a session's business day. Asked of the server when the
@@ -5284,18 +5285,29 @@ const POSDashboard = ({
     // sale can be traced to the till that has it.
     const [unsynced, setUnsynced] = useState({ tills: [], refused: [] })
     const seesAllTills = companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('access_pos_sessions') || canRunSessionManager
+    const unsyncedAlive = useRef(true)
+    const loadUnsynced = async () => {
+        const resp = await fetchServer("POST", {}, "pos/outbox/status", server).catch(() => null)
+        if (unsyncedAlive.current && resp?.ok) setUnsynced({ tills: resp.tills || [], refused: resp.refused || [] })
+    }
     useEffect(() => {
         if (!seesAllTills || !server) return
-        let alive = true
-        const load = async () => {
-            const resp = await fetchServer("POST", {}, "pos/outbox/status", server).catch(() => null)
-            if (alive && resp?.ok) setUnsynced({ tills: resp.tills || [], refused: resp.refused || [] })
-        }
-        load()
-        const timer = setInterval(load, 30000)
-        return () => { alive = false; clearInterval(timer) }
+        unsyncedAlive.current = true
+        loadUnsynced()
+        const timer = setInterval(loadUnsynced, 30000)
+        return () => { unsyncedAlive.current = false; clearInterval(timer) }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [server, company, seesAllTills])
+
+    // For a device that is gone for good. The server keeps what it listed.
+    const clearDeviceList = async (till) => {
+        if (!window.confirm(`Clear the ${till.count} change(s) listed for ${till.user}'s device ${till.terminalId}?\n\nDo this only if the device is lost, reset or replaced. If it comes back online, anything still on it is listed again.`)) return
+        const resp = await fetchServer("POST", { user: till.user, terminalId: till.terminalId }, "pos/outbox/dismiss", server).catch(() => null)
+        setAlertState(resp?.ok ? 'success' : 'error')
+        setAlert(resp?.ok ? 'Device list cleared.' : (resp?.mess || 'Could not clear the device list.'))
+        setAlertTimeout(4000)
+        loadUnsynced()
+    }
 
     // Configured in Settings > General Config > POS Reconciliation, instead of
     // a fixed list, so admins control which locations gate session-end without
@@ -5578,6 +5590,14 @@ const POSDashboard = ({
                         </span>
                     </div>
                 </div>
+                {seesAllTills && (
+                    <UnsyncedDevices
+                        tills={unsynced.tills}
+                        refused={unsynced.refused}
+                        canClear={companyRecord?.status === 'admin'}
+                        onClear={clearDeviceList}
+                    />
+                )}
                 <div className='pos-session-board-view'>
                     {(sessionManagerRequired ? (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')) : companyRecord?.status === 'admin') && <div className='pos-session-manager-panel'>
                         <label className='pos-session-manager-label'>{sessionManagerRequired ? 'Session Manager' : 'Account Clearing'}</label>
@@ -5651,23 +5671,6 @@ const POSDashboard = ({
                         >
                             {`Clear ₦${Math.round(earlierUncleared.reduce((sum, row) => sum + Number(row.amount || 0), 0)).toLocaleString()} left from earlier days`}
                         </button>}
-                    </div>}
-                    {seesAllTills && (unsynced.tills.length > 0 || unsynced.refused.length > 0) && <div className='pos-unsynced' role='status'>
-                        <strong>Sales not yet on the server</strong>
-                        {unsynced.tills.map((till) => (
-                            <p key={`${till.user}-${till.terminalId}`}>
-                                {`${till.count} change(s) on ${till.user || 'a device'}'s device ${till.terminalId}`}
-                                {till.orderNumbers?.length ? `, orders ${till.orderNumbers.slice(0, 6).join(', ')}${till.orderNumbers.length > 6 ? ', ...' : ''}` : ''}
-                                {till.lastSeenAt ? `. Last seen ${new Date(till.lastSeenAt).toLocaleString()}` : ''}
-                                {till.errors?.length ? `. Last error: ${till.errors[0]}` : ''}
-                            </p>
-                        ))}
-                        {unsynced.refused.slice(0, 10).map((row) => (
-                            <p key={row.opId} className='pos-unsynced-refused'>
-                                {`Refused: ${row.entityType} ${row.key || ''} from ${row.user || 'a device'}: ${row.message || 'no reason given'}`}
-                            </p>
-                        ))}
-                        <small>Sessions holding these cannot be ended until they arrive. Ask the user to open the POS on that device while online.</small>
                     </div>}
                     {showClearingModal && (
                         <div className='closingsession' onClick={() => { if (!clearingLoading) setShowClearingModal(false) }}>

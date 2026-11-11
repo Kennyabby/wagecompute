@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import applogo from '../../Resources/assets/images/enterprisecompute.png'
 import AuthNotify from '../../Resources/Notify/AuthNotify';
 import { fetchPublicCompanyLogo } from '../../Resources/ClientServerAPIConn/fetchServer';
+import { getTerminalId } from '../../Resources/clientTxnId';
+import { deviceHints } from '../../Resources/deviceInfo';
 
 const Login = () => {
   const { server, fetchServer, storePath,
@@ -238,7 +240,10 @@ const Login = () => {
     const endpoint = isRootDomainLogin ? "authenticateTenantAdmin" : "authenticateUser"
     const resp = await fetchServer("POST", {
       pass: field.password,
-      prop: { 'emailid': field.emailid }
+      prop: { 'emailid': field.emailid },
+      // Which device this is, for the sign-in device list in Team Access.
+      deviceId: getTerminalId(),
+      device: deviceHints(),
     }, endpoint, server)
 
     if (resp.err) {
