@@ -2914,8 +2914,10 @@ function App() {
     }
   }
 
-  const getEmployees = async (company, _unused, useCache = false) => {
-    const cached = await getCached(company, 'employees', companyRecord?.emailid, useCache ? CACHE_TTL_MS : undefined);
+  // `skipCache` is for a reload right after a save, when the cached copy is
+  // known to be out of date.
+  const getEmployees = async (company, _unused, useCache = false, skipCache = false) => {
+    const cached = skipCache ? null : await getCached(company, 'employees', companyRecord?.emailid, useCache ? CACHE_TTL_MS : undefined);
     if (cached) {
       setEmployees(cached);
       if (useCache) return

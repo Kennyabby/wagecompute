@@ -217,7 +217,7 @@ const Employees = () => {
                     )
                     setAlertTimeout(1000)
                 }
-                getEmployees(company)
+                getEmployees(company, null, false, true)
             }
         } else {
             setAlertState('error')
@@ -243,6 +243,7 @@ const Employees = () => {
                 ...getEmployeeForInitialSave(fields, existingEmployee),
                 createdAt: existingEmployee.createdAt || fields.createdAt || Date.now()
             }
+            delete updatedEmployee._id
             const filteredEmp = employees.filter((emp) => {
                 return emp.i_d !== i_d
             })
@@ -252,15 +253,18 @@ const Employees = () => {
                 prop: [{ i_d: i_d }, updatedEmployee]
             }, "updateOneDoc", server)
 
-            if (resps.err) {
-                console.log(resps.mess)
+            // `updated` is false when no record has this ID, which used to be
+            // reported as a success while the old figures came back on reload.
+            if (resps.err || resps.updated !== true) {
                 setAlertState('error')
                 setAlert(
-                    resps.mess
+                    resps.err
+                        ? (resps.mess || 'The employee could not be saved. Please try again.')
+                        : `No employee record with ID ${i_d} was found, so nothing was saved. Reload the page and try again.`
                 )
                 // A dismissal refused because the person still has sessions
                 // open lists them; it stays up long enough to read.
-                setAlertTimeout(resps.code === 'OPEN_SESSIONS' ? 15000 : 5000)
+                setAlertTimeout(resps.code === 'OPEN_SESSIONS' ? 15000 : 6000)
             } else {
                 let employeeWithPhotos = updatedEmployee
                 let photoUploadFailed = false
@@ -274,7 +278,7 @@ const Employees = () => {
                             collection: "Employees",
                             prop: [{ i_d: i_d }, employeeWithPhotos]
                         }, "updateOneDoc", server)
-                        if (photoUpdate?.err) {
+                        if (photoUpdate?.err || photoUpdate?.updated !== true) {
                             throw new Error(photoUpdate.mess || 'Photo uploaded, but employee photo links were not saved.')
                         }
                     }
@@ -300,7 +304,7 @@ const Employees = () => {
                     )
                     setAlertTimeout(1000)
                 }
-                getEmployees(company)
+                getEmployees(company, null, false, true)
             }
         } else {
             setAlertState('error')
@@ -391,7 +395,7 @@ const Employees = () => {
                     'Employee Deleted Successfully!'
                 )
                 setAlertTimeout(5000)
-                getEmployees(company)
+                getEmployees(company, null, false, true)
             }
         }
     }
