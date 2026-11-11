@@ -48,6 +48,8 @@ import { OPERATIONS_POSTS } from './postsOperations'
 import { BUSINESS_POSTS } from './postsBusiness'
 import { MODULE_POSTS } from './postsModules'
 import { EXPLAINER_POSTS } from './postsExplainers'
+import { GUIDE_POSTS } from './postsGuides'
+import { POSTS as INSIGHT_POSTS } from '../insights'
 
 export { PILLARS, PILLAR_BY_KEY, pillarName, AUTHORS, authorFor, SOURCES }
 
@@ -99,7 +101,28 @@ export const THEME_OPTIONS = {
 
 /* ---------------------------------------------------------------- posts -- */
 
+// The product team's articles (content/insights.js) are linked from Resources,
+// Community, the newsroom and site search as /blog/<slug>, but were never in
+// this list, so each of those links opened "Article not found". They are
+// written in an older block format; this carries them over as they are.
+const INSIGHT_PILLAR = { Accounting: 'money', Operations: 'operations', Product: 'modules', AI: 'technology', Engineering: 'technology' }
+const INSIGHT_AUTHOR = { Accounting: 'finance', Operations: 'operations', Product: 'editorial', AI: 'engineering', Engineering: 'engineering' }
+const FROM_INSIGHTS = INSIGHT_POSTS.map((post) => ({
+  slug: post.slug,
+  pillar: INSIGHT_PILLAR[post.topic] || 'modules',
+  title: post.title,
+  excerpt: post.excerpt,
+  image: post.image,
+  date: post.date,
+  minutes: post.minutes,
+  author: INSIGHT_AUTHOR[post.topic] || 'editorial',
+  references: [],
+  body: (post.body || []).map((block) => ({ t: block.type, text: block.text })),
+}))
+
 const ALL = [
+  ...GUIDE_POSTS,
+  ...FROM_INSIGHTS,
   ...NUMBERS_POSTS,
   ...MONEY_POSTS,
   ...INFRASTRUCTURE_POSTS,

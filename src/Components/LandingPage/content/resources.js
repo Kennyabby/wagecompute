@@ -3,13 +3,9 @@
    ----------------------------------------------------------------------------
    The library mirrors the resource-centre pattern used by every major ERP
    vendor: one pool of items, three filter axes (type, topic, industry), and
-   a small number of promoted entries. Everything is routed to a real
-   destination, mostly the documentation and help pages that already exist,
-   rather than to a download gate that is not built.
-
-   Items marked `gated: false` genuinely open in-app. Anything that would need
-   an asset the platform does not host yet points at the relevant doc section
-   instead of a dead PDF link.
+   a small number of promoted entries. Every item opens the blog article on
+   its subject (/blog/<slug>), not the documentation index; the documentation
+   stays reachable from the navigation and from each article's closing aside.
    ========================================================================= */
 
 export const RESOURCE_TYPES = ['All types', 'Guide', 'Checklist', 'Template', 'Webinar', 'Article', 'Documentation']
@@ -35,7 +31,7 @@ export const RESOURCES = [
     image: 'businessTraining',
     minutes: 14,
     featured: true,
-    to: '/docs',
+    to: '/blog/first-thirty-days',
   },
   {
     slug: 'chart-of-accounts-design',
@@ -46,7 +42,7 @@ export const RESOURCES = [
     image: 'accountantDesk',
     minutes: 11,
     featured: true,
-    to: '/docs',
+    to: '/blog/what-is-a-chart-of-accounts',
   },
   {
     slug: 'stock-count-checklist',
@@ -56,7 +52,7 @@ export const RESOURCES = [
     text: 'What to freeze, what to count, how to record variance with a reason, and how to stop the same gap reappearing next quarter.',
     image: 'inventoryCount',
     minutes: 6,
-    to: '/docs',
+    to: '/blog/a-stocktake-that-actually-reconciles',
   },
   {
     slug: 'opening-balances-template',
@@ -66,7 +62,7 @@ export const RESOURCES = [
     text: 'The spreadsheet templates used to load your item catalogue, opening stock quantities, rooms and rate plans without typing them one at a time.',
     image: 'bookkeeping',
     minutes: 4,
-    to: '/docs',
+    to: '/blog/opening-balances-template',
   },
   {
     slug: 'cash-accountability',
@@ -76,7 +72,7 @@ export const RESOURCES = [
     text: 'Why session-based handling changes behaviour, how to set opening floats, and what to do the first time a shift is genuinely short.',
     image: 'posTerminal',
     minutes: 9,
-    to: '/products/pos',
+    to: '/blog/what-a-till-is-actually-for',
   },
   {
     slug: 'attendance-to-payroll',
@@ -86,7 +82,7 @@ export const RESOURCES = [
     text: 'Setting up shift patterns, approval responsibility and deduction rules so the pay run reads attendance directly.',
     image: 'workingOffice',
     minutes: 10,
-    to: '/products/payroll',
+    to: '/blog/payroll-is-a-records-problem',
   },
   {
     slug: 'closing-a-period',
@@ -96,7 +92,7 @@ export const RESOURCES = [
     text: 'What a closing snapshot actually stores, why it makes later periods faster, and how to handle an adjustment to a closed month properly.',
     image: 'financialAnalysis',
     minutes: 12,
-    to: '/products/journals',
+    to: '/blog/closing-a-period',
   },
   {
     slug: 'permissions-model',
@@ -106,7 +102,7 @@ export const RESOURCES = [
     text: 'Per-action permissions, approval thresholds and the profiles most operators end up needing: cashier, supervisor, storekeeper, accountant, owner.',
     image: 'cyberSecurity',
     minutes: 8,
-    to: '/products/settings',
+    to: '/blog/permissions-model',
   },
   {
     slug: 'offline-operations',
@@ -116,7 +112,7 @@ export const RESOURCES = [
     text: 'The local queue, client transaction ids, ordered replay and how conflicts are surfaced rather than silently resolved.',
     image: 'shopkeeper',
     minutes: 7,
-    to: '/products/offline-sync',
+    to: '/blog/what-offline-first-really-means',
   },
   {
     slug: 'asking-epsilon-well',
@@ -126,7 +122,7 @@ export const RESOURCES = [
     text: 'The kinds of question that work, such as tracing a number, finding a blocker or identifying an approver, and why it will never change anything without you.',
     image: 'dataAnalytics',
     minutes: 6,
-    to: '/products/epsilon',
+    to: '/blog/asking-epsilon-well',
   },
   {
     slug: 'reading-your-reports',
@@ -136,7 +132,7 @@ export const RESOURCES = [
     text: 'A practical walkthrough for owners and operations leads: what each statement tells you, and how to drill from a figure to the transaction behind it.',
     image: 'businessFinance',
     minutes: 13,
-    to: '/products/reports',
+    to: '/blog/reading-your-reports',
   },
   {
     slug: 'multi-site-rollout',
@@ -146,7 +142,7 @@ export const RESOURCES = [
     text: 'Sequencing locations, handling inter-branch transfers from day one, and avoiding the consolidated-reporting trap.',
     image: 'warehouseLogistics',
     minutes: 11,
-    to: '/services',
+    to: '/blog/opening-a-second-location',
   },
   {
     slug: 'margin-by-item',
@@ -156,7 +152,7 @@ export const RESOURCES = [
     text: 'Assumed markup, unattributed landed cost and unrecorded wastage. These are the three reasons reported margin and real margin drift apart.',
     image: 'dataDashboard',
     minutes: 8,
-    to: '/products/reports',
+    to: '/blog/what-an-item-actually-costs-you',
   },
   {
     slug: 'module-dependencies',
@@ -166,7 +162,7 @@ export const RESOURCES = [
     text: 'Which modules are free forever, which are priced, what gets added automatically when you enable something, and when a price change takes effect.',
     image: 'officeLaptop',
     minutes: 5,
-    to: '/pricing',
+    to: '/blog/module-dependencies',
   },
   {
     slug: 'security-practices',
@@ -176,7 +172,7 @@ export const RESOURCES = [
     text: 'Tenant isolation, access control, audit trails, encryption in transit and at rest, and what happens to your data if you leave.',
     image: 'dataCentre',
     minutes: 9,
-    to: '/trust-center',
+    to: '/blog/security-basics-for-a-business-with-no-it-team',
   },
 ]
 
