@@ -686,6 +686,41 @@
 
 }
 
+/* Desktop: the list stays put while the record beside it scrolls with the
+   page. .mainview in Dashboard.css is the scrolling element, so sticky is
+   measured against it, and the 24px matches the page padding above and below. */
+@media (min-width: 1181px) {
+    .employees-shell {
+        align-items: start;
+        min-height: 0;
+    }
+
+    .employees-sidebar {
+        position: sticky;
+        top: 24px;
+        height: calc(100vh - 48px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    /* The whole pane scrolls, so the list no longer needs a scroll of its own
+       and a short screen does not squeeze it down to a sliver. */
+    .employees-list {
+        flex: none;
+        overflow: visible;
+    }
+
+    .employees-detail,
+    .employees-detail-panel,
+    .employees-page .fm {
+        overflow: visible;
+    }
+
+    .employees-detail-panel {
+        flex: none;
+    }
+}
+
 @media (max-width: 760px) {
     .employees-page {
         padding: 14px;
