@@ -1,4 +1,4 @@
-import{ React, useContext, useEffect} from 'react';
+import { useContext, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { HiOutlineDatabase, HiArrowLeft } from 'react-icons/hi';

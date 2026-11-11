@@ -16,8 +16,16 @@ build
 .env.development.local
 .env.test.local
 .env.production.local
-.env.example
 
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Environment files hold keys and server addresses. Only the example is shared.
+.env
+.env.*
+!.env.example
+
+# Spreadsheets of real staff, salary and sales data. Kept on disk, never committed.
+/*.xlsx
+src/Resources/assets/Testdata/

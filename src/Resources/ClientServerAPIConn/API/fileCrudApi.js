@@ -174,62 +174,7 @@ export async function uploadCompanyFile(file, folderPath, createdAt, company, co
   return normalizeUploadResponse(res, uploadableFile);
 }
 
-export async function updateFile(fileId, file, createdAt, company, collection, server) {
-  const uploadableFile = await compressImageFile(blobToFile(file));
-  const sizeError = validateClientUploadSize(uploadableFile);
-  if (sizeError) return sizeError;
-  const base64 = await fileToBase64(uploadableFile);
-  const res = await sendFileRequest('POST',{
-        collection: collection,
-        prop:[{createdAt: createdAt}],
-        imageInfo: {
-            fileId: fileId,
-            fileName: uploadableFile.name,
-            mimeType: uploadableFile.type,
-            data: base64
-        }
-        
-    } , 
-    'updateImage', 
-    server
-  )
-  return normalizeUploadResponse(res, uploadableFile);
-}
-
-export async function updateCompanyFile(fileId, file, createdAt, company, collection, server) {
-  const uploadableFile = await compressImageFile(blobToFile(file));
-  const sizeError = validateClientUploadSize(uploadableFile);
-  if (sizeError) return sizeError;
-  const base64 = await fileToBase64(uploadableFile);
-  const res = await sendFileRequest('POST',{
-        collection: collection,
-        prop:[{db: company}],
-        imageInfo: {
-            fileId: fileId,
-            fileName: uploadableFile.name,
-            mimeType: uploadableFile.type,
-            data: base64
-        }
-        
-    } , 
-    'updateCompanyImage', 
-    server
-  )
-  return normalizeUploadResponse(res, uploadableFile);
-}
-
-export async function getFileUrl(fileId, server) {
-  const res = await fetchServer('POST',{imgId: fileId}, 'getImageLink', server);
-  return res;
-}
-
 export async function deleteFile(fileId, server) {
   const res = await fetchServer('POST',{imgId: fileId}, 'deleteImage', server);
-  return res;
-}
-
-// Optional: ensure folder endpoint
-export async function createFolder(folderPath, server) {
-  const res = await fetchServer('POST', {folderPath}, 'createFolderPath', server)
   return res;
 }

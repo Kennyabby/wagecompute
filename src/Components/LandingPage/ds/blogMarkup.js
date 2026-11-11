@@ -28,6 +28,10 @@ import { Fragment } from 'react'
 const TOKEN = /(\*\*[^*]+\*\*|\*[^*\n]+\*|\[\^[A-Za-z0-9_-]+\]|\[[^\]]+\]\([^)\s]+\))/g
 
 const isExternal = (href) => /^(https?:)?\/\//.test(href) || href.startsWith('mailto:')
+// React renders a javascript: link as written, so a post could carry script
+// in a link even with no HTML in it. Only web, mail, on-page and on-site
+// links are kept; any other link shows as its plain label.
+export const isSafeHref = (href) => /^(https?:\/\/|mailto:|#|\/(?!\/))/i.test(String(href || '').trim())
 
 /**
  * @param text      the raw string
@@ -64,7 +68,9 @@ export const renderInline = (text, refIndex = {}, navigate) => {
       const split = token.indexOf('](')
       const label = token.slice(1, split)
       const href = token.slice(split + 2, -1)
-      if (isExternal(href)) {
+      if (!isSafeHref(href)) {
+        out.push(label)
+      } else if (isExternal(href)) {
         out.push(
           <a key={key++} href={href} target="_blank" rel="noopener noreferrer nofollow">{label}</a>
         )

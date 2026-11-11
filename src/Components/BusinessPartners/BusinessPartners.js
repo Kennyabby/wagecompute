@@ -1,3 +1,4 @@
+import { escapeHtml, safeUrl } from '../../utils/escapeHtml'
 import './BusinessPartners.css'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -474,9 +475,9 @@ const BusinessPartners = () => {
         const rows = (doc.lines || []).map((line, index) => `
             <tr>
                 <td>${index + 1}</td>
-                <td>${line.productName || line.description || ''}<br/><small>${line.productId || ''}</small></td>
-                <td>${line.location || ''}</td>
-                <td>${line.quantity || ''}</td>
+                <td>${escapeHtml(line.productName || line.description)}<br/><small>${escapeHtml(line.productId)}</small></td>
+                <td>${escapeHtml(line.location)}</td>
+                <td>${escapeHtml(line.quantity)}</td>
                 <td>${money(line.unitPrice || line.salesPrice || 0)}</td>
                 <td>${money(line.lineTotal || 0)}</td>
             </tr>
@@ -486,29 +487,29 @@ const BusinessPartners = () => {
             <section class="bp-print-doc">
                 <header>
                     <div>
-                        ${companyInfo.logoUrl ? `<img alt="" class="bp-report-logo" src="${companyInfo.logoUrl}" crossorigin="anonymous" />` : ''}
-                        <h1>${companyInfo.name}</h1>
-                        <p>${letterhead.address || ''}</p>
-                        <p>${letterhead.phone || ''} ${letterhead.email ? ` | ${letterhead.email}` : ''}</p>
+                        ${companyInfo.logoUrl ? `<img alt="" class="bp-report-logo" src="${safeUrl(companyInfo.logoUrl)}" crossorigin="anonymous" />` : ''}
+                        <h1>${escapeHtml(companyInfo.name)}</h1>
+                        <p>${escapeHtml(letterhead.address)}</p>
+                        <p>${escapeHtml(letterhead.phone)} ${letterhead.email ? ` | ${escapeHtml(letterhead.email)}` : ''}</p>
                     </div>
                     <img alt="QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${qrData}" />
                 </header>
                 <div class="bp-print-title">
-                    <h2>${documentTitle(type)}</h2>
-                    <strong>${no}</strong>
+                    <h2>${escapeHtml(documentTitle(type))}</h2>
+                    <strong>${escapeHtml(no)}</strong>
                 </div>
                 <div class="bp-print-meta">
-                    <p><b>Customer:</b> ${doc.customerName || ''}</p>
-                    <p><b>Customer No:</b> ${doc.customerNo || ''}</p>
-                    <p><b>Posting Date:</b> ${doc.postingDate || ''}</p>
-                    <p><b>Due Date:</b> ${doc.dueDate || ''}</p>
+                    <p><b>Customer:</b> ${escapeHtml(doc.customerName)}</p>
+                    <p><b>Customer No:</b> ${escapeHtml(doc.customerNo)}</p>
+                    <p><b>Posting Date:</b> ${escapeHtml(doc.postingDate)}</p>
+                    <p><b>Due Date:</b> ${escapeHtml(doc.dueDate)}</p>
                 </div>
                 <table>
                     <thead><tr><th>#</th><th>Item</th><th>Location</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
                     <tbody>${rows || '<tr><td colspan="6">No lines</td></tr>'}</tbody>
                 </table>
                 <div class="bp-print-total"><span>Total</span><strong>${money(doc.total)}</strong></div>
-                <footer>${doc.notes || ''}</footer>
+                <footer>${escapeHtml(doc.notes)}</footer>
             </section>
         `
         document.body.appendChild(wrapper)

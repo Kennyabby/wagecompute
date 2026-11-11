@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/escapeHtml'
 import { useContext, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import ContextProvider from '../../Resources/ContextProvider'
@@ -43,7 +44,7 @@ const printHtmlDocument = ({ title, subtitle, rows = [], footer = '' }) => {
   const content = `
     <html>
       <head>
-        <title>${title}</title>
+        <title>${escapeHtml(title)}</title>
         <style>
           body { font-family: Montserrat, Arial, sans-serif; margin: 32px; color: #173829; }
           h1 { margin: 0 0 8px; font-size: 26px; }
@@ -58,17 +59,17 @@ const printHtmlDocument = ({ title, subtitle, rows = [], footer = '' }) => {
       </head>
       <body>
         <div class="sheet">
-          <h1>${title}</h1>
-          <p>${subtitle}</p>
+          <h1>${escapeHtml(title)}</h1>
+          <p>${escapeHtml(subtitle)}</p>
           <div class="grid">
             ${rows.map((row) => `
               <div class="row">
-                <div class="label">${row.label}</div>
-                <div class="value">${row.value}</div>
+                <div class="label">${escapeHtml(row.label)}</div>
+                <div class="value">${escapeHtml(row.value)}</div>
               </div>
             `).join('')}
           </div>
-          <div class="footer">${footer}</div>
+          <div class="footer">${escapeHtml(footer)}</div>
         </div>
       </body>
     </html>

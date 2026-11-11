@@ -1,3 +1,4 @@
+import { escapeHtml, safeUrl } from '../../utils/escapeHtml'
 import './Employees.css'
 
 import { useEffect, useState } from 'react'
@@ -477,7 +478,7 @@ const Employees = () => {
             [kind === 'profile' ? 'profilePhotoUrl' : 'guarantorPhotoUrl']: previewUrl,
         }))
     }
-    const safeText = (value) => String(value || '--')
+    const safeText = (value) => escapeHtml(value || '--')
     const printEmployeeDocument = async (type) => {
         const employee = curEmployee || fields
         // fetch central company profile to ensure logo/signature are current
@@ -522,13 +523,13 @@ const Employees = () => {
         `
         const printWindow = window.open('', '_blank', 'width=950,height=760')
         if (!printWindow) return
-        const photo = employee.profilePhotoUrl ? `<img class="photo" src="${employee.profilePhotoUrl}" alt="Employee" />` : ''
-        const guarantorPhoto = employee.guarantorPhotoUrl ? `<img class="photo" src="${employee.guarantorPhotoUrl}" alt="Guarantor" />` : ''
-        const table = (list) => list.map(([label, value]) => `<tr><th>${label}</th><td>${safeText(value)}</td></tr>`).join('')
+        const photo = employee.profilePhotoUrl ? `<img class="photo" src="${safeUrl(employee.profilePhotoUrl)}" alt="Employee" />` : ''
+        const guarantorPhoto = employee.guarantorPhotoUrl ? `<img class="photo" src="${safeUrl(employee.guarantorPhotoUrl)}" alt="Guarantor" />` : ''
+        const table = (list) => list.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${safeText(value)}</td></tr>`).join('')
         const signatureUrl = centralCompany?.signatureUrl || companyRecord?.signatureUrl
         const signHtml = type === 'details'
-            ? `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${signatureUrl ? `<div class="line">Authorized Signature / Date</div><img src="${signatureUrl}" style="max-width:220px;max-height:100px;object-fit:contain;" />` : ''}</div></div>`
-            : `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${(signatureUrl) ? `<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;"><div class="line">Authorized Signature / Date</div><img src=\"${signatureUrl}\" style=\"max-width:220px;max-height:100px;object-fit:contain;\" />` : 'Authorized Signature / Date'}</div></div>`
+            ? `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${signatureUrl ? `<div class="line">Authorized Signature / Date</div><img src="${safeUrl(signatureUrl)}" style="max-width:220px;max-height:100px;object-fit:contain;" />` : ''}</div></div>`
+            : `<div class="sign"><div class="line">Employee Signature / Date</div><div class="line">${(signatureUrl) ? `<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;"><div class="line">Authorized Signature / Date</div><img src=\"${safeUrl(signatureUrl)}\" style=\"max-width:220px;max-height:100px;object-fit:contain;\" />` : 'Authorized Signature / Date'}</div></div>`
         printWindow.document.write(`
             <html>
                 <head>
@@ -550,7 +551,7 @@ const Employees = () => {
                     <div class="sheet">
                         <div class="head">
                             <div style="display:flex;align-items:center;gap:12px;">
-                                ${(centralCompany?.logoUrl || companyRecord?.logoUrl) ? `<img src="${centralCompany?.logoUrl || companyRecord.logoUrl}" alt="Company Logo" style="width:80px;height:80px;object-fit:contain;border-radius:8px;" />` : ''}
+                                ${(centralCompany?.logoUrl || companyRecord?.logoUrl) ? `<img src="${safeUrl(centralCompany?.logoUrl || companyRecord.logoUrl)}" alt="Company Logo" style="width:80px;height:80px;object-fit:contain;border-radius:8px;" />` : ''}
                                 <div><h1>${titleMap[type] || titleMap.details}</h1><p>${safeText(centralCompany?.name || companyRecord?.name || company)}</p></div>
                             </div>
                             <div>${type === 'guarantor' ? guarantorPhoto : photo}</div>

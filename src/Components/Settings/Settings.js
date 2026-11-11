@@ -154,12 +154,9 @@ const Settings = () => {
     const [curPropSet, setCurPropSet] = useState(null)
     const [currentProfiles, setCurrentProfiles] = useState([])
     const [deleteCount, setDeleteCount] = useState(0)
-    const [accessValue, setAccessValue] = useState('')
     const [accountingMappings, setAccountingMappings] = useState(null)
     const [isAccountingLoading, setIsAccountingLoading] = useState(false)
     const [isAccountingSaving, setIsAccountingSaving] = useState(false)
-    const magicWord = 'oh ye server. deny all '
-    const activationWord = 'oh ye server. allow all into your world '
 
     const defaultWarehouse = {
         name: '',
@@ -656,36 +653,6 @@ const Settings = () => {
         if (changed) handleProfileSelect(latest)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profiles])
-
-    useEffect(() => {
-        const updateDBStatus = async () => {
-            if (accessValue === magicWord || accessValue === activationWord) {
-                setAccessValue('updating activation....')
-                const resps = await fetchServer("POST", {
-                    prop: [{ db: company }, { manualPauseDB: accessValue === magicWord }]
-                }, "updateDBProfileDoc", server)
-                if (resps.err) {
-                    console.log(resps.mess)
-                } else {
-                    fetchProfiles(company)
-                    setAccessValue('updated activation')
-                    setTimeout(() => {
-                        setAccessValue('')
-                    }, [2000])
-                }
-            }
-        }
-        updateDBStatus()
-    }, [accessValue])
-
-    const handleSecretAccess = (e) => {
-        const { name, value } = e.target
-        if (name === 'access') {
-            setAccessValue(value)
-        } else {
-            setAccessValue('')
-        }
-    }
 
     useEffect(() => {
         if (currentView === 'accounting' && company && chartOfAccounts?.length) {
@@ -3008,14 +2975,7 @@ const Settings = () => {
     }
 
     return (
-        <div className='settings' onClick={handleSecretAccess}>
-            <input
-                className='saccess1'
-                name='access'
-                value={accessValue}
-                onChange={handleSecretAccess}
-                disabled={accessValue === magicWord || accessValue === activationWord}
-            />
+        <div className='settings'>
             <AnimatePresence>
                 {saveStatus && (
                     <motion.div 

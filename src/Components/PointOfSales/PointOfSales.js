@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/escapeHtml'
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -3342,15 +3343,15 @@ const PointOfSales = () => {
         const table = orderTables.find((table) => { return table.i_d === orderData.tableId })
         const receiptContent = `
             <div class="receipt">
-                <h2>${companyRecord.name} Payment Receipt</h2>
-                <p>From: ${table?.name || ''} (${orderData.wrh})</p>
-                <p>Order: #${orderData.orderNumber}</p>
-                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
+                <h2>${escapeHtml(companyRecord.name)} Payment Receipt</h2>
+                <p>From: ${escapeHtml(table?.name)} (${escapeHtml(orderData.wrh)})</p>
+                <p>Order: #${escapeHtml(orderData.orderNumber)}</p>
+                <p>Placed By: ${orderEmployee ? `${escapeHtml(orderEmployee.firstName)} ${escapeHtml(orderEmployee.lastName)} (${escapeHtml(orderData.handlerId)})` : 'Admin'}</p>
                 <p>Date: ${new Date().toLocaleString()}</p>
                 <hr/>
                 ${orderData.items.map(item => `
                     <div class="receipt-item">
-                        <span>${item.name} x ${item.quantity}</span>
+                        <span>${escapeHtml(item.name)} x ${escapeHtml(item.quantity)}</span>
                         <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                     </div>
                 `).join('')}
@@ -3360,10 +3361,10 @@ const PointOfSales = () => {
                     <p>Tax: ₦${(Number(orderData.totalSales || 0) * 0.075).toFixed(2)}</p>
                     <p>Total: ₦${(Number(orderData.totalSales || 0) * 1).toFixed(2)}</p>
                     ${Object.keys(orderData.salesPosts).map(payPoint => `
-                        ${orderData[payPoint] ? `<p>${payPoint}(${payPoint === 'cash' ? 'cash' : orderData.receipts[payPoint]}): ₦${orderData[payPoint]}</p>` : ''}                    
+                        ${orderData[payPoint] ? `<p>${escapeHtml(payPoint)}(${payPoint === 'cash' ? 'cash' : escapeHtml(orderData.receipts?.[payPoint])}): ₦${escapeHtml(orderData[payPoint])}</p>` : ''}                    
                     `).join('')}
-                    ${orderData.cashChange ? `<p>{Change: ₦${orderData.cashChange}}</p>` : ''}
-                    <p>Paid: ₦${orderData.totalPayment}</p>
+                    ${orderData.cashChange ? `<p>Change: ₦${escapeHtml(orderData.cashChange)}</p>` : ''}
+                    <p>Paid: ₦${escapeHtml(orderData.totalPayment)}</p>
                 </div>
 
                 <p>Thank you for your business!</p>
@@ -3407,15 +3408,15 @@ const PointOfSales = () => {
         const table = orderTables.find((table) => { return table.i_d === orderData.tableId })
         const receiptContent = `
             <div class="receipt">
-                <h2>${companyRecord.name} Customer Order ${orderData.edited ? '(Edited)' : ''}</h2>
-                <p>From: ${table?.name || ''} (${orderData.wrh})</p>
-                <p>Order: #${orderData.orderNumber}</p>
-                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
+                <h2>${escapeHtml(companyRecord.name)} Customer Order ${orderData.edited ? '(Edited)' : ''}</h2>
+                <p>From: ${escapeHtml(table?.name)} (${escapeHtml(orderData.wrh)})</p>
+                <p>Order: #${escapeHtml(orderData.orderNumber)}</p>
+                <p>Placed By: ${orderEmployee ? `${escapeHtml(orderEmployee.firstName)} ${escapeHtml(orderEmployee.lastName)} (${escapeHtml(orderData.handlerId)})` : 'Admin'}</p>
                 <p>Date: ${new Date().toLocaleString()}</p>
                 <hr/>
                 ${orderData.items.map(item => `
                     <div class="receipt-item">
-                        <span>${item.name} x ${item.quantity}</span>
+                        <span>${escapeHtml(item.name)} x ${escapeHtml(item.quantity)}</span>
                         <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                     </div>
                 `).join('')}
@@ -3474,15 +3475,15 @@ const PointOfSales = () => {
             const receiptContent = `
                 <div class="receipt">
                     <h2>Kitchen Order Slip ${orderData.edited ? '(Edited)' : ''}</h2>
-                    <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
-                    <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
-                    <p>Order: #${orderData.orderNumber}</p>
+                    <p>Placed By: ${orderEmployee ? `${escapeHtml(orderEmployee.firstName)} ${escapeHtml(orderEmployee.lastName)} (${escapeHtml(orderData.handlerId)})` : 'Admin'}</p>
+                    <p>From: Table ${escapeHtml(orderData.tableId)} (${escapeHtml(orderData.wrh)})</p>
+                    <p>Order: #${escapeHtml(orderData.orderNumber)}</p>
                     <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                     <hr/>
                         ${orderData.items.map(item => (
                 wrhCategories['kitchen']?.includes(item.category) ? `
                                 <div class="receipt-item">
-                                    <span>${item.name} x ${item.quantity}</span>
+                                    <span>${escapeHtml(item.name)} x ${escapeHtml(item.quantity)}</span>
                                     <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                                 </div>` : ''
             )).join('')}
@@ -3541,16 +3542,16 @@ const PointOfSales = () => {
         const orderEmployee = employees.find((e) => e.i_d === orderData.handlerId);
         const receiptContent = `
             <div class="receipt">
-                <h2>${orderData.wrh} - Order Slip For Bars ${orderData.edited ? '(Edited)' : ''}</h2>
-                <p>Placed By: ${orderEmployee ? `${orderEmployee.firstName} ${orderEmployee.lastName} (${orderData.handlerId})` : 'Admin'}</p>
-                <p>From: Table ${orderData.tableId} (${orderData.wrh})</p>
-                <p>Order: #${orderData.orderNumber}</p>
+                <h2>${escapeHtml(orderData.wrh)} - Order Slip For Bars ${orderData.edited ? '(Edited)' : ''}</h2>
+                <p>Placed By: ${orderEmployee ? `${escapeHtml(orderEmployee.firstName)} ${escapeHtml(orderEmployee.lastName)} (${escapeHtml(orderData.handlerId)})` : 'Admin'}</p>
+                <p>From: Table ${escapeHtml(orderData.tableId)} (${escapeHtml(orderData.wrh)})</p>
+                <p>Order: #${escapeHtml(orderData.orderNumber)}</p>
                 <p>Date: ${new Date(orderData.createdAt).toLocaleString()}</p>
                 <hr/>
                     ${orderData.items.map(item => (
             !wrhCategories['kitchen']?.includes(item.category) ? `
                             <div class="receipt-item">
-                                <span>${item.name} x ${item.quantity}</span>
+                                <span>${escapeHtml(item.name)} x ${escapeHtml(item.quantity)}</span>
                                 <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                             </div>` : ''
         )).join('')}
@@ -3561,7 +3562,7 @@ const PointOfSales = () => {
                 ? (wrh === 'vip' ? (Number(item.quantity) * Number(item.vipPrice || item.salesPrice)) : (Number(item.quantity) * Number(item.salesPrice))) : 0)
             , 0)) || 0).toFixed(2)}</p>                    
                 </div>
-                <p>Printed For ${orderData.wrh} Use Only!</p>
+                <p>Printed For ${escapeHtml(orderData.wrh)} Use Only!</p>
             </div>
         `;
 

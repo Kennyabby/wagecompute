@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/escapeHtml'
 import './Delivery.css'
 
 import React, { useState, useEffect, useContext, useRef } from 'react';
@@ -1757,13 +1758,13 @@ const Delivery = () => {
     const printReceipt = (orderData) => {
         const receiptContent = `
             <div class="receipt">
-                <h2>${company}</h2>
-                <p>Order #${orderData.orderNumber}</p>
+                <h2>${escapeHtml(company)}</h2>
+                <p>Order #${escapeHtml(orderData.orderNumber)}</p>
                 <p>Date: ${new Date().toLocaleString()}</p>
                 <hr/>
                 ${orderData.items.map(item => `
                     <div class="receipt-item">
-                        <span>${item.name} x ${item.quantity}</span>
+                        <span>${escapeHtml(item.name)} x ${escapeHtml(item.quantity)}</span>
                         <span>₦${wrh === 'vip' ? ((item.vipPrice || item.salesPrice) * item.quantity).toFixed(2) : (item.salesPrice * item.quantity).toFixed(2)}</span>
                     </div>
                 `).join('')}
@@ -1772,8 +1773,8 @@ const Delivery = () => {
                     <p>Subtotal: ₦${orderData.totalSales.toFixed(2)}</p>
                     <p>Tax: ₦${(orderData.totalSales * 0.075).toFixed(2)}</p>
                     <p>Total: ₦${(orderData.totalSales * 1.075).toFixed(2)}</p>
-                    <p>Paid: ₦${orderData.totalPayment}</p>
-                    <p>Change: ₦${orderData.cashChange}</p>
+                    <p>Paid: ₦${escapeHtml(orderData.totalPayment)}</p>
+                    <p>Change: ₦${escapeHtml(orderData.cashChange)}</p>
                 </div>
                 <p>Thank you for your business!</p>
             </div>

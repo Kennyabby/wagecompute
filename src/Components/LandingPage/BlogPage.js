@@ -17,7 +17,7 @@ import PageShell from './ds/PageShell'
 import { Button, ButtonRow, CTABanner, Section } from './ds/DS'
 import { img, heroImg } from './ds/landingImages'
 import { BlogBody } from './ds/BlogBlocks'
-import { buildReferenceIndex, headingsOf, readingMinutes } from './ds/blogMarkup'
+import { buildReferenceIndex, headingsOf, readingMinutes, isSafeHref } from './ds/blogMarkup'
 import useBlogContent from './ds/useBlogContent'
 import { articleSchema } from './ds/seo'
 import {
@@ -326,7 +326,7 @@ export const BlogPostPage = () => {
                     {references.map((source, i) => (
                       <li key={source.id} id={`ref-${i + 1}`}>
                         <span className="blog-ref-title">
-                          {source.url
+                          {isSafeHref(source.url)
                             ? <a href={source.url} target="_blank" rel="noopener noreferrer nofollow">{source.title}</a>
                             : source.title}
                         </span>

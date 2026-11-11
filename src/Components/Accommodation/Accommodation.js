@@ -2,7 +2,7 @@ import './Accommodation.css'
 // import './AccommodationEnterprise.css'
 import PaymentReceiptsModal from '../DashView/PaymentReceiptsModal'
 import heic2any from "heic2any";
-import { useState, useEffect, useContext, useRef, use } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { syncPendingChanges } from '../../Resources/offlineSync';
 import ContextProvider from '../../Resources/ContextProvider'
@@ -12,7 +12,7 @@ import { FaChevronDown, FaChevronUp, FaReceipt } from "react-icons/fa";
 import AccommodationReceipt from './AccommodationReport/AccommodationReceipt';
 import AccommodationReport from './AccommodationReport/AccommodationReport';
 import ApprovalBox from '../../Resources/ApprovalBox/ApprovalBox';
-import { uploadFile, updateFile, getFileUrl, deleteFile, createFolder } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
+import { uploadFile, deleteFile } from '../../Resources/ClientServerAPIConn/API/fileCrudApi';
 import { FaTableCells } from "react-icons/fa6";
 import Notify from '../../Resources/Notify/Notify';
 import { MdAdd, MdArrowBack } from "react-icons/md";

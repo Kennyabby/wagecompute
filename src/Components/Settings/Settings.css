@@ -24,24 +24,6 @@
     color: var(--settings-text);
 }
 
-/* Secret access styling */
-.saccess1 {
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    width: 60px;
-    height: 20px;
-    opacity: 0.1;
-    cursor: default;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-size: 10px;
-    z-index: 100;
-}
-
-.saccess1:focus { opacity: 0.5; }
-
 /* Status Toast */
 .save-status {
     position: fixed;
