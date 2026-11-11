@@ -61,7 +61,7 @@ import fetchServer, { setConnectivityStatus, callDesktop } from './Resources/Cli
 import createSSE from './Resources/ClientServerAPIConn/sseClient'
 import { syncPendingChanges, setSyncTransport, startBackgroundSync, reportDeviceClosed } from './Resources/offlineSync';
 import { buildPaymentReceipts } from './Resources/paymentReceipts';
-import { canSeeBacklog, isInCurrentDay } from './Resources/viewWindow';
+import { canSeeBacklog, isInCurrentDay, backlogActive } from './Resources/viewWindow';
 import { useConnectionStatus } from './Resources/useConnectionStatus';
 import {
   getAppCache,
@@ -415,6 +415,18 @@ function App() {
   const [posWrhAccess, setPosWrhAccess] = useState({})
   const [deliveryWrhAccess, setDeliveryWrhAccess] = useState({})
   const [allowBacklogs, setAllowBacklogs] = useState(false)
+  // Backlog access ends at its time on this screen too, not only at the
+  // server's next sweep. Checked again every minute, since a timer for a
+  // grant days away could be held back by a sleeping device.
+  useEffect(() => {
+    if (!allowBacklogs || companyRecord?.status === 'admin') return undefined
+    const ends = Number(companyRecord?.backlogExpiresAt)
+    if (!(ends > 0)) return undefined
+    const check = () => { if (!backlogActive(companyRecord)) setAllowBacklogs(false) }
+    check()
+    const timer = setInterval(check, 60 * 1000)
+    return () => clearInterval(timer)
+  }, [allowBacklogs, companyRecord])
   const [changingSettings, setChangingSettings] = useState(false)
 
   const [chartOfAccounts, setChartOfAccounts] = useState([])
@@ -995,6 +1007,14 @@ function App() {
                   setCached(company, 'profiles', merged, companyRecord?.emailid)
                   return merged
                 })
+                // This user's own access, given or ended (backlog access
+                // running out), takes effect without signing in again.
+                const own = Array.isArray(payload) ? payload : [payload]
+                const mine = own.find((item) => item?.emailid && String(item.emailid).trim().toLowerCase() === String(companyRecord?.emailid || '').trim().toLowerCase())
+                if (mine && companyRecord?.status !== 'admin') {
+                  setCompanyRecord((current) => (current ? { ...current, permissions: mine.permissions, backlogExpiresAt: mine.backlogExpiresAt ?? null } : current))
+                  setAllowBacklogs(backlogActive(mine))
+                }
               } catch (e) {
                 console.error('SSE Profile apply error', e)
               }
@@ -1058,9 +1078,7 @@ function App() {
             setCompanyRecord(resp.record)
             setRecoveryVal(resp.record.enableDebtRecovery)
             setEnableBlockVal(!resp.record.enableLogin)
-            setAllowBacklogs(resp.record.permissions?.includes('allowBacklogs') ||
-              resp.record.permissions?.includes('all')
-            )
+            setAllowBacklogs(backlogActive(resp.record))
             setEditAccess((editAccess) => {
               return {
                 ...editAccess,
@@ -2374,9 +2392,7 @@ function App() {
     } else {
       window.localStorage.setItem('lgt-vw', 'user')
       setCompanyRecord(resp.record)
-      setAllowBacklogs(resp.record?.permissions?.includes('allowBacklogs') ||
-        resp.record?.permissions?.includes('all')
-      )     
+      setAllowBacklogs(backlogActive(resp.record))     
       if (resp.record?.status !== 'admin') {
         setEditAccess((editAccess) => {
           return {
