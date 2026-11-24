@@ -3034,3 +3034,58 @@ select.pos-session-board-btn {
     font-weight: 600;
     line-height: 1.4;
 }
+
+/* Session Manager repair (SessionManagerRepair.js), above the session board
+   where the unsynced devices list sits. */
+.sm-repair {
+    margin: 0 0 18px;
+    padding: 16px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(198, 83, 83, 0.35);
+    background: #fff7f5;
+    color: var(--pos-ink, #173829);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.sm-repair-title {
+    font-family: 'MontserratBold', sans-serif;
+    color: var(--pos-danger, #c65353);
+}
+.sm-repair-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(23, 56, 41, 0.08);
+}
+.sm-repair-item:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+.sm-repair-item p {
+    margin: 0;
+    line-height: 1.4;
+}
+.sm-repair-wait {
+    color: var(--pos-warning, #d28a1f);
+}
+.sm-repair-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+.sm-repair-field input {
+    max-width: 260px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(23, 56, 41, 0.2);
+}
+.sm-repair .pos-session-board-btn {
+    align-self: flex-start;
+}
+.sm-repair .pos-session-board-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

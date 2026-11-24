@@ -2056,7 +2056,10 @@ function App() {
       const sessionsResponse = await fetchServer("POST", {
         database: company,
         collection: "SessionManagers",
-        prop: {start: { $gte: allowedFromDays }}
+        // One still running is read however old it is. Left out after two
+        // days, a manager nobody stopped dropped off the list and the till
+        // could no longer show it or stop it.
+        prop: { $or: [{ start: { $gte: allowedFromDays } }, { end: { $in: [null, ''] }, active: { $ne: false } }] }
       }, "getDocsDetails", SERVER);
 
       if (!sessionsResponse.err) {

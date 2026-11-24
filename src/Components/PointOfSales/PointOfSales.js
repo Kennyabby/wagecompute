@@ -19,16 +19,18 @@ import {
     putSession,
     putSessionManager,
     putInventoryTransactions,
+    markPendingChangeSynced,
 } from '../../Resources/offlineDb';
 // queuePendingChange here is submitChange: written to this device's queue,
 // then sent at once; { immediate: true } waits for the server's answer (see
 // offlineSync.js). Order changes carry an action and the till's full copy of
 // the order (snapshot), so the server can apply a payment, cancellation or
 // delivery by its own rules and rebuild an order that never reached it.
-import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClose, describeNotReady, describeQuiet, getChangeResult } from '../../Resources/offlineSync';
+import { syncPendingChanges, submitChange as queuePendingChange, checkReadyToClose, describeNotReady, describeQuiet, getChangeResult, getQueueSummary, processChange } from '../../Resources/offlineSync';
 import { orderBusinessFields, deliveryBusinessFields, businessDayOf } from '../../Resources/businessDay';
-import { getTerminalId } from '../../Resources/clientTxnId';
+import { getTerminalId, generateClientTxnId } from '../../Resources/clientTxnId';
 import SessionManagerReconcile from './SessionManagerReconcile';
+import SessionManagerRepair from './SessionManagerRepair';
 import UnsyncedDevices from './UnsyncedDevices';
 
 // Which locations set in Settings, POS Reconciliation, still have no closing
@@ -743,7 +745,11 @@ const PointOfSales = () => {
                 setAlertTimeout(6000)
             }
     
-            if (currSessionManager && currSessionManager?.active && !activeSessions.length){
+            if (currSessionManager && currSessionManager?.active && !currSessionManager.end && fromEarlierDay(currSessionManager)){
+                setAlertState('error')
+                setAlert(`${earlierDayMessage(currSessionManager)} See "Session Manager needs putting right" in the sessions view.`)
+                setAlertTimeout(9000)
+            } else if (currSessionManager && currSessionManager?.active && !activeSessions.length){
                 setAlertState('info')
                 // Says who started it and when: on a device that did not,
                 // this is how its user learns it is already running.
@@ -813,8 +819,49 @@ const PointOfSales = () => {
         return { allSales, totalPendingSales, totalUnattendedSales, totalPendngDeliveries, totalCancelledSales, totalCashChange }
     }
 
+    // The Session Manager's start and stop are the one thing every device
+    // goes by, so they count only once the server has them. They used to be
+    // queued like a sale and taken as done at once (restaurant tills did not
+    // even wait for the send). A start or stop the server never got, or
+    // refused, left this till believing one thing and every other till the
+    // other, and a refused one did not hold back what was queued after it.
+    // So whatever this device still holds is sent first, in order, then the
+    // change itself, and the caller goes on only if the server applied it.
+    const sendManagerChange = async (change, what) => {
+        try {
+            await syncPendingChanges(company, companyRecord.emailid, fetchServer, server)
+            const held = (await getQueueSummary(company, companyRecord.emailid)).changes.filter((c) => c.entityType === 'sessionManagers')
+            // One the server refused will never apply, and what the server
+            // holds is what every device goes by, so it is dropped rather
+            // than left to block every start and stop after it.
+            // So is a stop the server is holding for a start it refused (left
+            // by tills from before this change): with no start of its own
+            // still queued here, it can never apply.
+            const startQueued = new Set(held.filter((c) => c.op === 'create' && c.lastStatus !== 'rejected').map((c) => String(c.clientId)))
+            const dead = (c) => c.lastStatus === 'rejected' || (c.lastStatus === 'waiting' && c.op !== 'create' && !startQueued.has(String(c.clientId)))
+            for (const refused of held.filter(dead)) {
+                // eslint-disable-next-line no-await-in-loop
+                await markPendingChangeSynced(company, companyRecord.emailid, refused.id)
+            }
+            const waiting = held.filter((c) => !dead(c))
+            if (waiting.length) {
+                setAlertState('error')
+                setAlert(`An earlier Session Manager change on this device has not reached the server: ${waiting[0].lastError || 'not sent yet'}. Nothing was ${what === 'start' ? 'started' : 'stopped'}. Check the connection and try again.`)
+                setAlertTimeout(9000)
+                return false
+            }
+            await processChange({ ...change, id: generateClientTxnId(), createdAt: Date.now() }, company, fetchServer, server)
+            return true
+        } catch (e) {
+            setAlertState('error')
+            setAlert(`The Session Manager was not ${what === 'start' ? 'started' : 'stopped'}: ${e?.message || 'the server could not be reached'}. Check the connection and try again.`)
+            setAlertTimeout(9000)
+            return false
+        }
+    }
+
     const createSessionManager = async () => {
-        
+
         setAlertState('info');
         setAlert('Creating Session Manager...');
         setAlertTimeout(100000);        
@@ -829,16 +876,6 @@ const PointOfSales = () => {
         };
 
         try {
-            // 1) Save session locally
-            if (company && companyRecord?.emailid) {
-                try{
-                    await putSessionManager(company, companyRecord.emailid, newSessionManager);
-                }catch{
-
-                }
-            }
-
-            // 3) Queue session create for sync
             if (company && companyRecord?.emailid) {
                 const change = {
                     entityType: 'sessionManagers',
@@ -846,16 +883,16 @@ const PointOfSales = () => {
                     clientId: newSessionManager.start,
                     payload: newSessionManager,
                 }
-                // await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
-                if (curPosSettings?.type === 'restaurant'){
-                    await queuePendingChange(company, companyRecord.emailid, change);
-                }else{
-                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
+                // Started only once the server has it, see sendManagerChange.
+                const sent = await sendManagerChange(change, 'start')
+                if (!sent) return
+                try{
+                    await putSessionManager(company, companyRecord.emailid, newSessionManager);
+                }catch{
+
                 }
-                
-                // Immediate sync attempt, failures are fine, queue remains
+
                 try {
-                    // 2) Update React state
                     setAlertState('success');
                     setAlert('Session Manager Started Successfully!');
                     setAlertTimeout(500);
@@ -873,20 +910,21 @@ const PointOfSales = () => {
                         setAlert(`Session Manager started. ${naira(openingCash)} opening cash was carried over from the last session. Keep it or clear it, then start your session.`)
                         setAlertTimeout(9000)
                     } else {
-                        createSession()
+                        createSession(undefined, newSessionManager)
                     }
                     // Start Session for last active users.
                     await syncPendingChanges(company, companyRecord.emailid, fetchServer, server);
                     fetchSessionManagers(company, companyRecord)
                 } catch (e) {
-                    // Still queued; the background sync retries it every 30 seconds
+                    // The manager is on the server; a failure here is in the
+                    // admin's own session start, which says so itself.
                 }
             }
             return;
         } catch (e) {
             console.log(e)
             setAlertState('error');
-            setAlert('Could not create session manager locally. Please try again.');
+            setAlert('Could not start the Session Manager. Please try again.');
             setAlertTimeout(3000);
             return;
         }
@@ -912,10 +950,44 @@ const PointOfSales = () => {
         return resp.record
     }
     const runningIn = (list) => [...(list || [])].filter((m) => !m?.end && m?.active !== false).sort((a, b) => b.start - a.start)[0] || null
+    // A manager is for the business day it was started in. One still running
+    // from an earlier day was never stopped, and only stopping it lets the
+    // next one start.
+    const fromEarlierDay = (manager) => !!manager && getSessionStart(manager.start) !== getSessionStart(Date.now())
+    const earlierDayMessage = (manager) => `The Session Manager started ${new Date(manager.start).toLocaleString()} belongs to an earlier business day and was never stopped. Stop it, then start today's Session Manager before starting sessions.`
     const sayAlreadyRunning = (running) => {
-        setAlertState('info')
-        setAlert(`The Session Manager is already running, started ${new Date(running.start).toLocaleString()} by ${running.startedBy || 'another device'}. Nothing more was started.`)
-        setAlertTimeout(6000)
+        setAlertState(fromEarlierDay(running) ? 'error' : 'info')
+        setAlert(fromEarlierDay(running)
+            ? earlierDayMessage(running)
+            : `The Session Manager is already running, started ${new Date(running.start).toLocaleString()} by ${running.startedBy || 'another device'}. Nothing more was started.`)
+        setAlertTimeout(fromEarlierDay(running) ? 9000 : 6000)
+    }
+
+    // Why a session cannot start under this manager, or '' when it can.
+    // Any running manager used to be enough, so one nobody stopped let
+    // sessions start on the days after it with no manager of their own.
+    const managerStartMessage = (manager) => {
+        if (!sessionManagerRequired) return ''
+        if (!manager || manager.end || manager.active === false) return startOnHoldMessage || 'Session Manager is not active. Start Session Manager to Continue!'
+        if (fromEarlierDay(manager)) return earlierDayMessage(manager)
+        return ''
+    }
+    // The same question asked of the server, which every device writes to,
+    // and whose answer stands: a start or stop counts only once the server
+    // has it (sendManagerChange). Only running managers and today's are
+    // read, a handful of rows, since this runs on every session start.
+    // Offline, this device's own list answers. `justStarted` is a manager the
+    // caller started a moment ago, before state has caught up.
+    const sessionManagerBlocksStart = async (justStarted) => {
+        if (!sessionManagerRequired) return ''
+        const resp = company
+            ? await fetchServer("POST", { database: company, collection: "SessionManagers", prop: { $or: [{ end: { $in: [null, ''] }, active: { $ne: false } }, { start: { $gte: getSessionStart(Date.now()) } }] } }, "getDocsDetails", server).catch(() => null)
+            : null
+        const fromServer = resp && !resp.err && Array.isArray(resp.record) ? resp.record : null
+        const known = fromServer
+            ? [...fromServer, ...(justStarted && !fromServer.some((m) => m.start === justStarted.start) ? [justStarted] : [])]
+            : [...(sessionManagers || []), currSessionManager, justStarted].filter(Boolean)
+        return managerStartMessage(runningIn(known))
     }
 
     const requestSessionManagerStart = async () => {
@@ -934,6 +1006,48 @@ const PointOfSales = () => {
             return
         }
         setReconcileManager(last)
+    }
+
+    // Repairs (SessionManagerRepair.js) are saved on the server straight
+    // away, never queued: each is checked there against the records of the
+    // day, which a device offline cannot do.
+    const runManagerRepair = async (body) => {
+        const resp = await fetchServer("POST", body, "pos/sessionManager/repair", server).catch(() => null)
+        if (resp?.ok) {
+            const record = resp.record
+            if (record) setSessionManagers((prev) => {
+                const rest = (prev || []).filter((m) => m.start !== record.start)
+                return [...rest, record]
+            })
+            setAlertState('success')
+            setAlert(body.action === 'close' ? 'Session Manager stopped and recorded as a repair.'
+                : body.action === 'record' ? `Session Manager recorded for ${formatDateToDefault(body.dayStart)}.`
+                : "Today's Session Manager started from the first open session.")
+            setAlertTimeout(5000)
+            fetchSessionManagers(company, companyRecord)
+        } else {
+            setAlertState('error')
+            setAlert(resp?.mess || 'Could not save the repair. Check the connection and try again.')
+            setAlertTimeout(7000)
+        }
+        return resp
+    }
+    // Starting today's manager over open sessions still asks for the
+    // reconciliation of the one before it, as every start does.
+    const [repairStartAfterReconcile, setRepairStartAfterReconcile] = useState(null)
+    const startTodayRepair = async (day) => {
+        const fromServer = await readServerSessionManagers()
+        if (!fromServer) {
+            setAlertState('error')
+            setAlert('The server cannot be reached. Repairs need a connection.')
+            setAlertTimeout(5000)
+            return null
+        }
+        const last = [...fromServer].filter((m) => m?.end && m.start < day.dayStart).sort((a, b) => b.start - a.start)[0] || null
+        if (!last || last.reconciliation?.status === 'approved') return runManagerRepair({ action: 'start', ...day })
+        setRepairStartAfterReconcile(day)
+        setReconcileManager(last)
+        return null
     }
 
     // Approved here: started only if no other device started one meanwhile.
@@ -966,18 +1080,27 @@ const PointOfSales = () => {
         setAlert('Stopping Session Manager...');
         setAlertTimeout(100000);
 
-        const sessionIds = (activeSessions || [])?.map((session) => {return session.start})
-        const firstActiveSession = activeSessions[0]
+        // Everything recorded on the manager is from its own business day.
+        // It used to be taken from whichever sessions were open, which for a
+        // manager stopped a day or more late are the sessions of a later day,
+        // and with none open there was nothing to take it from.
+        const managerDayEnd = getSessionEnd(dayStart)
+        const ofManagerDay = (timestamp) => getSessionEnd(timestamp) === managerDayEnd
+        const daySessions = new Map();
+        [...(lastActiveSessions || []), ...(activeSessions || [])].forEach((session) => {
+            if (session?.start && (session.type || 'sales') === 'sales' && ofManagerDay(session.start)) daySessions.set(session.start, session)
+        })
+        const sessionIds = [...daySessions.keys()]
         const orderNumbers = [];
         (allSessionOrders || [])?.forEach((order) => {
-            if ((getSessionEnd(order.sessionId) === getSessionEnd((firstActiveSession || curSession)?.start))){
+            if (ofManagerDay(order.sessionId)){
                 orderNumbers.push(order.orderNumber)
             }
         })
-        
+
         const handlers = [];
         (allSessionOrders || [])?.forEach((order) => {
-            if ((getSessionEnd(order.sessionId) === getSessionEnd((firstActiveSession || curSession)?.start))){
+            if (ofManagerDay(order.sessionId)){
                 const handlerId = order.handlerId
                 if (!handlers.includes(handlerId)){
                     handlers.push(handlerId)
@@ -987,7 +1110,7 @@ const PointOfSales = () => {
 
         const agents = [];
         (allSessionOrders || [])?.forEach((order) => {
-            if ((getSessionEnd(order.sessionId) === getSessionEnd((firstActiveSession || curSession)?.start))){
+            if (ofManagerDay(order.sessionId)){
                 const agent = order.agent
                 if (!agents.includes(agent)){
                     agents.push(agent)
@@ -1012,24 +1135,19 @@ const PointOfSales = () => {
 
         try{
             if (company && companyRecord?.emailid){
-                try{
-                    await putSessionManager(company, companyRecord.emailid, closedSessionManager)
-                }catch{
-
-                }
-            }
-            if (company && companyRecord?.emailid){
                 const change = {
                     entityType: 'sessionManagers',
                     op: 'update',
                     clientId: currSessionManager.start,
                     payload: closedSessionManager,
                 }
+                // Stopped only once the server has it, see sendManagerChange.
+                const sent = await sendManagerChange(change, 'stop')
+                if (!sent) return
+                try{
+                    await putSessionManager(company, companyRecord.emailid, closedSessionManager)
+                }catch{
 
-                if (curPosSettings?.type === 'restaurant'){
-                    await queuePendingChange(company, companyRecord.emailid, change);
-                }else{
-                    await queuePendingChange(company, companyRecord.emailid, change, { immediate: true });
                 }
 
                 try{
@@ -1039,12 +1157,17 @@ const PointOfSales = () => {
                     setCurrSessionManager(closedSessionManager)
                     setCountedSales({});
                     const allUserOrders = allSessionOrders.filter((order) => {
-                        return ((getSessionEnd(order.sessionId) === getSessionEnd((curSession).start)) && (order.handlerId === curSession?.startedBy))
+                        // With no session of the admin's own on this device
+                        // this threw, and the rest of the stop (sending it
+                        // now, the account clearing) was skipped.
+                        return (!!curSession && (getSessionEnd(order.sessionId) === getSessionEnd(curSession.start)) && (order.handlerId === curSession?.startedBy))
                     })
-                    if (allUserOrders.length === 0 && !curSession?.end){                    
-                        stopSession(curSession, allUserOrders)   
+                    if (allUserOrders.length === 0 && curSession && !curSession.end && ofManagerDay(curSession.start)){
+                        stopSession(curSession, allUserOrders)
                     }else{
-                        if (curSession?.end){
+                        if (!curSession || !ofManagerDay(curSession.start)){
+                            // Nothing of the admin's own to stop on that day.
+                        }else if (curSession?.end){
                             setAlertState('info')
                             setAlert('You have no active POS Session. POS Session already stopped!')
                             setAlertTimeout(3000)
@@ -1083,7 +1206,7 @@ const PointOfSales = () => {
         }
     };
 
-    const createSession = async (sessionUser) => {
+    const createSession = async (sessionUser, justStartedManager) => {
         if (!wrh && !window.localStorage.getItem('back-to-pos')) {
             setAlertState('info');
             setAlert('Please Select Your Sales Post');
@@ -1099,10 +1222,23 @@ const PointOfSales = () => {
         const openHere = [...(allSessions || []), ...(sessions || []), ...(lastActiveSessions || [])]
             .find((s) => s?.employee_id === forUser && (s?.type || 'sales') === 'sales' && !s?.end)
         let openSession = openHere || null
-        if (company) {
-            const resp = await fetchServer("POST", { database: company, collection: "POSSessions", prop: { employee_id: forUser, type: 'sales', end: { $in: [null, ''] } } }, "getDocsDetails", server).catch(() => null)
-            if (resp && !resp.err && Array.isArray(resp.record)) openSession = resp.record[0] || null
+        // Both questions go to the server together, so the start waits for
+        // one round trip as it did before the Session Manager check.
+        const [managerBlock, openResp] = await Promise.all([
+            // Every way of starting a session passes through here, so this
+            // is where the Session Manager of the day is required.
+            sessionManagerBlocksStart(justStartedManager),
+            company
+                ? fetchServer("POST", { database: company, collection: "POSSessions", prop: { employee_id: forUser, type: 'sales', end: { $in: [null, ''] } } }, "getDocsDetails", server).catch(() => null)
+                : null,
+        ])
+        if (managerBlock) {
+            setAlertState('error')
+            setAlert(managerBlock)
+            setAlertTimeout(9000)
+            return
         }
+        if (openResp && !openResp.err && Array.isArray(openResp.record)) openSession = openResp.record[0] || null
         if (openSession) {
             const who = employees.find((e) => e.i_d === forUser)
             const name = who ? `${who.firstName || ''} ${who.lastName || ''}`.trim() : forUser
@@ -4509,11 +4645,19 @@ const PointOfSales = () => {
                 onApproved={(record, resp) => {
                     if (record) setSessionManagers((prev) => (prev || []).map((m) => (m.start === record.start ? { ...m, ...record } : m)))
                     setReconcileManager(null)
+                    if (repairStartAfterReconcile) {
+                        const day = repairStartAfterReconcile
+                        setRepairStartAfterReconcile(null)
+                        if (resp?.alreadyStarted) sayAlreadyRunning(resp.alreadyStarted)
+                        else runManagerRepair({ action: 'start', ...day })
+                        return
+                    }
                     startAfterApproval(resp)
                 }}
                 onClose={(record) => {
                     if (record) setSessionManagers((prev) => (prev || []).map((m) => (m.start === record.start ? { ...m, ...record } : m)))
                     setReconcileManager(null)
+                    setRepairStartAfterReconcile(null)
                 }}
             />}
             {(loadSession || startSession || endSession) && renderSessionEntry()}
@@ -4541,6 +4685,10 @@ const PointOfSales = () => {
                     currSessionManager={currSessionManager}
                     createSessionManager={requestSessionManagerStart}
                     startOnHoldMessage={startOnHoldMessage}
+                    managerStartMessage={managerStartMessage}
+                    managerFromEarlierDay={!!currSessionManager && !currSessionManager.end && currSessionManager.active !== false && fromEarlierDay(currSessionManager)}
+                    runManagerRepair={runManagerRepair}
+                    startTodayRepair={startTodayRepair}
                     stopSessionManager={stopSessionManager}
                     fetchSessionManagers={fetchSessionManagers}
                     getLastActiveSessions={getLastActiveSessions}
@@ -5271,7 +5419,8 @@ const POSDashboard = ({
     setViewSessions, allSessions, setAllSessions, deliverySessions, setDeliverySessions, setAllSessionOrders, setSessionUser, getSessionEnd,
     setWrh, posWrhAccess, allSessionOrders, getSessionSales, curSession,currSessionManager, createSessionManager, stopSessionManager,
     fetchSessionManagers, getLastActiveSessions, fetchSessionsByRange, fetchOrdersByRange, lastActiveSessions,
-    setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories, glDeepLink, startOnHoldMessage
+    setAlertState, setAlert, setAlertTimeout, fetchTables, tables, wrhCategories, glDeepLink, startOnHoldMessage, managerStartMessage,
+    managerFromEarlierDay, runManagerRepair, startTodayRepair
 }) => {
     const { fetchServer, server, company, wrhs, formatDateToDefault, settings, sessionManagerRequired, sessionManagerStopRequired, getSessionStart } = useContext(ContextProvider);
 
@@ -5599,6 +5748,13 @@ const POSDashboard = ({
                         onClear={clearDeviceList}
                     />
                 )}
+                {sessionManagerRequired && canRunSessionManager && (
+                    <SessionManagerRepair
+                        sessions={lastActiveSessions}
+                        onRepair={runManagerRepair}
+                        onStartToday={startTodayRepair}
+                    />
+                )}
                 <div className='pos-session-board-view'>
                     {(sessionManagerRequired ? (companyRecord?.status === 'admin' || companyRecord?.permissions?.includes('manage_session_manager')) : companyRecord?.status === 'admin') && <div className='pos-session-manager-panel'>
                         <label className='pos-session-manager-label'>{sessionManagerRequired ? 'Session Manager' : 'Account Clearing'}</label>
@@ -5624,18 +5780,24 @@ const POSDashboard = ({
                                         setAlertTimeout(3000)      
                                     }
                                 }else{
-                                    if (currSessionManager && activeSessions.length){
+                                    // A running manager can be stopped with no
+                                    // session open. Where sessions may end before
+                                    // the manager stops (POS Settings), they often
+                                    // all have, and the manager used to be left
+                                    // running for good because Stop asked for an
+                                    // open session first.
+                                    if (managerFromEarlierDay){
+                                        // Stopped now, it would claim to have run
+                                        // over the days after its own.
+                                        setAlertState('info')
+                                        setAlert('This Session Manager is from an earlier business day. Stop it from "Session Manager needs putting right" above, at the time that day closed.')
+                                        setAlertTimeout(8000)
+                                    }else if (currSessionManager && Array.isArray(activeSessions)){
                                         stopSessionManager(activeSessions)
                                     }else{
-                                        if (!activeSessions){
-                                            setAlertState('error')
-                                            setAlert('Please Hold on... Let Active Sessions Load!')
-                                            setAlertTimeout(3000)
-                                        }else{
-                                            setAlertState('error')
-                                            setAlert('Session Manager Was Not Started. You can Start it after all sessions have been ended!')
-                                            setAlertTimeout(3000)
-                                        }
+                                        setAlertState('error')
+                                        setAlert('Please Hold on... Let Active Sessions Load!')
+                                        setAlertTimeout(3000)
                                     }
                                 }
                             }}
@@ -5884,10 +6046,8 @@ const POSDashboard = ({
                                                                     })
                                                                     setEndSession(true)
                                                                 } else {
-                                                                    let canStartSession = true
-                                                                    if (sessionManagerRequired && (!currSessionManager || currSessionManager?.end)) {
-                                                                         canStartSession = false                                                                           
-                                                                    }
+                                                                    const managerBlock = managerStartMessage(currSessionManager)
+                                                                    const canStartSession = !managerBlock
                                                                     setSessionUser({
                                                                         profile: profile,
                                                                     })
@@ -5901,8 +6061,8 @@ const POSDashboard = ({
                                                                                     setStartSession(true)
                                                                                 }else{
                                                                                     setAlertState('error')
-                                                                                    setAlert(startOnHoldMessage || 'Session Manager is not active. Start Session Manager to Continue!')
-                                                                                    setAlertTimeout(3000)
+                                                                                    setAlert(managerBlock)
+                                                                                    setAlertTimeout(9000)
                                                                                 }
                                                                             }
                                                                         }
@@ -5924,8 +6084,8 @@ const POSDashboard = ({
                                                                                             setStartSession(true)
                                                                                         }else{
                                                                                             setAlertState('error')
-                                                                                            setAlert(startOnHoldMessage || 'Session Manager is not active. Start Session Manager to Continue!')
-                                                                                            setAlertTimeout(3000)
+                                                                                            setAlert(managerBlock)
+                                                                                            setAlertTimeout(9000)
                                                                                         }
                                                                                     }
                                                                                 }
